@@ -1,0 +1,101 @@
+
+
+
+label     : /[a-zA-Z0-9_]+|[~]/
+argument  : ["["label[","label]*"]"]statement
+statement : label["("argument[","argument]*")"]
+
+
+
+labsgar     : "{"multistrat[","multistrat]*"}"
+            | [label":"]statement
+multistrat  : ["["multistrat[","multistrat]*"]"]labsgar
+strategy    : ["["multistrat[","multistrat]*"]"][label":"]statement
+
+
+scopemop : label
+         | "("scopemop(","scopemop)*")"
+
+
+objargument      : ["["scopemop[","scopemop]*"]"]object
+objargumentnamed : [label"="]objargument
+
+
+
+?object : objectinter ("|" objectinter)*
+
+?objectinter : objectnot ("^" objectnot)*
+
+?objectnot : "!" objectnot -> lognot
+           | objectlogop
+
+gtsymbol: ">>" -> gtsym | "=>>" -> gteqsym 
+ltsymbol: "<<" -> ltsym | "<<=" -> lteqsym 
+
+?objectlogop : objectsum
+             | objectsum ltsymbol objectsum [ltsymbol objectsum]  -> lt
+             | objectsum gtsymbol objectsum [gtsymbol objectsum]  -> gt
+             | objectsum"=("object")="objectsum                       -> customeq
+             | objectsum"=!("object")="objectsum                      -> customneq
+
+!objectsum : "-"? objectprod [("+"|"-") objectprod]
+
+?objectprod : objectatom ("*" objectatom)*
+
+objectatom : [objectatom"."]label["("objargument[","objargument]*")"]["<"objargumentnamed[","objargumentnamed]*">"] -> treeref
+           | "("objargumentnamed[","objargumentnamed]*")" -> union
+           | "{"declaration (","declaration)*"}"                           -> andtype
+
+
+
+
+objstrategy : ["["objstrategy["," objstrategy]*"]"][label":"]object
+
+declaration : objstrategy["="object]
+
+
+
+
+
+
+
+
+//?or_test: and_test ("or" and_test)*
+//?and_test: not_test ("and" not_test)*
+//?not_test: "not" not_test | comparison
+//?comparison: expr (comp_op expr)*
+//comp_op: "<"|">"|"=="|">="|"<="|"<>"|"!="
+//?expr: xor_expr ("|" xor_expr)*
+//?xor_expr: and_expr ("^" and_expr)*
+//?and_expr: shift_expr ("&" shift_expr)*
+//?shift_expr: arith_expr (("<<"|">>") arith_expr)*
+//?arith_expr: term (("+"|"-") term)*
+//?term: factor (("*"|"/"|"%"|"//") factor)*
+//?factor: ("+"|"-"|"~") factor | power
+//?power: molecule ["**" factor]
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+start : multistrat object
+
+
+
+%ignore /#[^\n]*/
+%ignore " "
+%ignore "\n"
+

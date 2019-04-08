@@ -1,0 +1,141 @@
+
+
+
+
+
+ 
+{U:U         
+,AFF:U 
+,ZERO:AFF
+,ONE:AFF 
+   
+,[A:U,A,A]EQ:U 
+,[A:U,a:A]IDENTITY:EQ(A,a,a) 
+,[A:U,B:U,A,EQ(U,A,B)]EQUIVALENCE:B
+,[A:U,B:U,[A]B,[B]A]HOMOMORPH:EQ(U,A,B)
+,[A:U,a:A,b:A,EQ(A,b,a)]REFLEXIVITY:EQ(A,a,b)
+,[A:U,B:U,[A]f:B,a:A,b:A,EQ(A,a,b)]PRESERVATION:EQ(B,f(a),f(b))
+ 
+
+,[A:U,[A]B:U]{
+    AND:U   
+    ,[c:AND(A,[a]B(a))]{   
+        ANDACC:A  
+        ,ANDACCB:B(ANDACC(A,[a]B(a),c))
+    }
+    ,[a:A,b:B(a)]{
+        UNION:AND(A,[a]B(a))
+        ,MEMBER:EQ(A,ANDACC(A,[e]B(e),UNION(A,[c]B(c),a,b)),a)
+        ,MEMBERB:EQ(B(a),ANDACCB(A,[e]B(e),UNION(A,[c]B(c),a,b)),b)  
+    }
+} 
+,[A:U]{   
+    NOT:U
+    ,DOUBLENEG:EQ(U,NOT(NOT(A)),A)
+}
+   
+,[AFF,AFF]ADD:AFF  
+,[AFF]AINVERSE:AFF
+,[a:AFF,b:AFF]ADD_COMMUTATIVE:EQ(AFF,ADD(a,b),ADD(b,a)) 
+,[a:AFF,b:AFF,c:AFF]ADD_ASSOCIATIVE:EQ(AFF,ADD(ADD(a,b),c),ADD(a,ADD(b,c)))
+,[a:AFF]ADD_IDENTITY:EQ(AFF,ADD(a,ZERO),a)
+,[a:AFF]ADD_IDENTITY_ANNIHALATE:EQ(AFF,ADD(a,AINVERSE(a)),ZERO)
+,[AFF,AFF]MULTIPLY:AFF 
+,[a:AFF,NOT(EQ(AFF,a,ZERO))]MINVERSE:AFF 
+,[a:AFF,b:AFF]MULTIPLY_COMMUTATIVE:EQ(AFF,MULTIPLY(a,b),MULTIPLY(b,a))
+,[a:AFF,b:AFF,c:AFF]MULTIPLY_ASSOCIATIVE:EQ(AFF,MULTIPLY(MULTIPLY(a,b),c),MULTIPLY(a,MULTIPLY(b,c)))
+,[a:AFF]MULTIPLY_IDENTITY:EQ(AFF,MULTIPLY(a,ONE),a)
+,[a:AFF,g:NOT(EQ(AFF,a,ZERO))]MULTIPLY_IDENTITY_ANNIHALATE:EQ(AFF,MULTIPLY(a,MINVERSE(a,g)),ONE)
+,[a:AFF,b:AFF,c:AFF]DISTRIBUTIVE:EQ(AFF,MULTIPLY(a,ADD(b,c)),ADD(MULTIPLY(a,b),MULTIPLY(a,c)))
+
+,[a:AFF,b:AFF]{
+    GT:U
+    ,[NOT(GT(b,a))    ,NOT(GT(a,b))]TRICHOTOMY_E:EQ(AFF,b,a)
+    ,[NOT(EQ(AFF,b,a)),NOT(GT(b,a))]TRICHOTOMY_G:GT(a,b)
+    ,[GT(b,a)]    TRICHOTOMY_NE:NOT(EQ(AFF,b,a))
+    ,[EQ(AFF,b,a)]TRICHOTOMY_NG:NOT(GT(b,a))
+    ,[c:AFF,d:AFF,GT(a,b),NOT(GT(d,c))]ADDITIVE:GT(ADD(a,c),ADD(b,d))
+    ,[c:AFF,GT(a,b),GT(c,ZERO)]       MULTIPLICATIVE:GT(MULTIPLY(a,c),MULTIPLY(b,c))
+    ,[c:AFF,GT(a,b),GT(ZERO,c)]FLIPPEDMULTIPLICATIVE:GT(MULTIPLY(b,c),MULTIPLY(a,c))
+}
+
+
+
+,[T:U,K:U,[K]a:T,[NOT(K)]b:T]{       
+    DEC:T 
+    ,[k:K]     DEC_POSITIVE:EQ(T,DEC(T,K,[c]a(c),[c]b(c)),a(k))
+    ,[k:NOT(K)]DEC_NEGATIVE:EQ(T,DEC(T,K,[c]a(c),[c]b(c)),b(k))
+}
+
+,[A:U,[A]B:U,[A]L:AFF,a:A,[b:A,[c:A,NOT(GT(ADD(L(c),ONE),L(b))),GT(L(b),ZERO)]B(c)]B(b)]INDUCTION:B(a)
+   
+} 
+                      
+{  
+
+
+#INT:U = {a:AFF,}
+NAT:U = {a:AFF,a =>> ZERO},
+
+  
+
+Array:U = {
+    J:U,
+    ara:NAT,
+    [n:NAT,n << ara]f:J,
+
+    [
+        [J,n:NAT,n << ara]P:U
+    ] each:U = {
+        [n:NAT,q:n << ara]q:P(f(n,q),n,q)
+    }
+},
+
+
+
+Tree:U = {
+    J:U,
+    root:J,
+    [J]f:Array<J>,
+    [J]l:NAT,
+    [j:J]q1:f(j).each([g,_,_]l(g)+ONE <<= l(j)),
+    [j:J,l(j) =(AFF)= ZERO]q2:f(j).ara =(AFF)= ZERO,
+
+    [
+        K:U,
+        [J,K]P:U,
+        k:K,
+        [j:J,k:K,P(j,k)]r:Array<K,f(j).ara>
+    ] each:U = {
+        INDUCTION({J,K},[_]U,(root,k),[(j,_)]l(j),[(j,k),R]{
+            p:P(j,k),
+            f(j).each([g,q3,q4]
+                R(
+                    (g,r(j,k,p).f(q3,q4)),
+                    q1(q3,q4),
+                    [q5]~#<q2(q5),q3,q4>
+                )
+            )
+        })
+    }    
+}
+
+
+
+
+
+
+
+
+
+}
+
+
+
+
+
+ 
+
+
+
+

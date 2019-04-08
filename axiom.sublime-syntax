@@ -1,0 +1,132 @@
+%YAML 1.2
+---
+# See http://www.sublimetext.com/docs/3/syntax.html
+name: Axiom
+file_extensions:
+  - ax
+scope: source.ax
+
+contexts:
+  # The prototype context is prepended to all contexts but those setting
+  # meta_include_prototype: false.
+  prototype:
+    - include: comments
+
+  main:
+    - include: strategy
+    - include: statement
+
+
+  inside_strategy:
+    - match: \]
+      scope: keyword.control
+      pop: true
+    - match: \,
+      scope: keyword.control
+    - include: strategy
+    - include: statement
+
+  inside_strategy_list:
+    - match: \}
+      scope: keyword.control
+      pop: true
+    - match: \,
+      scope: keyword.control
+    - include: strategy
+    - include: statement
+
+
+
+  strategy:
+    - match: \[
+      push: inside_strategy
+      scope: keyword.control
+    - match: \{
+      push: inside_strategy_list
+      scope: keyword.control
+    - match: \]
+      scope: invalid.illegal.stray-bracket-end
+    - match: \}
+      scope: invalid.illegal.stray-bracket-end
+    - match: '\b(\w+)\b\s*\:'
+      scope: variable.function
+
+
+  inc_introlist:
+    - match: \)
+      scope: variable.parameter
+      pop: true
+    - match: \(
+      scope: variable.parameter
+      push: inc_introlist
+    - match: '[\[\]{}]'
+      scope: invalid.illegal.stray-bracket-end
+    - match: '\b(\w+)\b'
+      scope: variable.function
+
+  introlist:
+    - match: \]
+      scope: variable.parameter
+      pop: true
+    - match: \(
+      scope: variable.parameter
+      push: inc_introlist
+    - match: '[\[){}]'
+      scope: invalid.illegal.stray-bracket-end
+    - match: '\b(\w+)\b'
+      scope: variable.function
+
+  inside_statement:
+    - match: \{
+      scope: keyword.control
+      push: inside_strategy_list
+    - match: \[
+      scope: variable.parameter
+      push: introlist
+    - match: \)
+      pop: true
+    - match: \,
+    - include: statement
+
+
+  inside_union:
+    - match: \{
+      scope: keyword.control
+      push: inside_strategy_list
+    - match: \[
+      scope: variable.parameter
+      push: introlist
+    - match: \)
+      scope: keyword.control
+      pop: true
+    - match: \,
+    - include: statement
+
+
+  statement:
+    # - match: '\b(\w+)\b'
+    - match: '(?<=\w)\s*\('
+      push: inside_statement
+    - match: '(?<=\W)\s*\('
+      scope: keyword.control
+      push: inside_union
+
+
+    - match: \)
+      scope: invalid.illegal.stray-bracket-end
+
+
+  comments:
+    # Comments begin with a '//' and finish at the end of the line.
+    - match: '#'
+      scope: punctuation.definition.comment.example-c
+      push:
+        # This is an anonymous context push for brevity.
+        - meta_scope: comment.line.double-slash.example-c
+        - match: $\n?
+          pop: true
+
+
+
+
+
