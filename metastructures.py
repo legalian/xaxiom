@@ -45,7 +45,7 @@ def mapping(subsf,subso):
 						return (1,subsf[aj][0],ja)
 				return (2,subsf[aj][0])
 	return construct
-def fillsubs(subs,scope,carry,errors,onlycomplete,blame):
+def fillsubs(subs,carry,errors,onlycomplete,blame):
 	if type(carry) is not ObjKindTypeUnion:
 		errors.append((blame,"Can't pair keyword arguments to static type."))
 		return
@@ -79,7 +79,7 @@ def fillsubs(subs,scope,carry,errors,onlycomplete,blame):
 	foe = []
 	semfoe = []
 	for v in carry.variables:
-		zong = v.substitute(scope+[(p.name,p) for p in semfoe],[z for z in srar if z[0] in asgo],errors,blame)
+		zong = v.substitute([z for z in srar if z[0] in asgo],errors,blame)
 		if zong == None: return
 		if v.name not in snar: foe.append(zong)
 		else: asgo.append(v.name)
@@ -106,7 +106,9 @@ def scopemake(lvluprow,grinz,errors,blame):
 				return
 			resk = resk + scopemake(lvluprow[f],grinz[f].type.variables,errors,blame)
 		else:
-			resk.append((lvluprow[f],grinz[f]))
+			snot = copy.copy(grinz[f])
+			snot.name = lvluprow[f]
+			resk.append(snot)
 	return resk
 
 
@@ -140,6 +142,35 @@ def ismember(name,lvluprow):
 		if h == name: return True
 		if isinstance(h,list) and ismember(name,h): return True
 	return False
+
+
+
+
+class ObjKindTemplateHolder(ObjKind):
+	def __init__(self,src=None,subs=[]):
+		assert src != None
+		self.src = src
+		self.subs = copy.copy(subs)
+		pass
+	def verify(self,scope,carry,errors):
+		if self.subs == []: return src
+
+		if type(self.src) is ObjKindTypeUnion:
+			if self.src.subs != []: return
+			juju = fillsubs(self.subs,src,errors,False,src)
+
+			if juju == None: return
+			src = self.src.compactify(scope,juju[0],errors,blame)
+			if src == None: return
+
+			return src
+
+		errors.append((blame,"Substitution is only supported on unions."))#substitution is unsupported
+		return
+	def get(self,name,args,errors,blame):
+		return ObjKindTemplateHolder()
+	def substitute(self,repl,errors,blame):
+		return ObjKindTemplateHolder()
 
 
 
@@ -212,25 +243,6 @@ class ObjKindReferenceTree(ObjKind):
 			else:
 				return self.name+"("+",".join([str(k) for k in self.args])+")"
 
-
-	def pullsrc(self,scope,errors,blame):
-		assert self.src != None
-		carry = self.src.get(scope,self.name,[(self.lvlup[i],self.args[i]) for i in range(len(self.args))],errors,blame)
-		if carry == None:return
-		if type(carry) is ObjKindTypeUnion:
-			if carry.subs != []: return
-			juju = fillsubs(self.subs,scope,carry,errors,False,self)
-			if juju == None: return
-			carry = carry.compactify(scope,juju[0],errors,blame)
-			if carry == None: return
-
-		transfer subs to carry if it resolves to a reference'
-
-		elif self.subs != []:
-			errors.append((blame,"Substitution is only supported on unions."))#substitution is unsupported
-			return
-		return carry
-
 	def verify(self,scope,carry,errors):
 		if self.verified: return
 		self.verified = True
@@ -248,8 +260,8 @@ class ObjKindReferenceTree(ObjKind):
 			return
 
 		for t in reversed(scope):
-			if t[0] == self.name:
-				if len(self.args) != len(t[1].args):
+			if t.name == self.name:
+				if len(self.args) != len(t.args):
 					errors.append((self,"Wrong argument count."))#wrong parameter count
 					return
 
@@ -266,16 +278,16 @@ class ObjKindReferenceTree(ObjKind):
 				for j in range(len(self.args)):
 
 
-					if len(self.lvlup[j]) != len(t[1].args[j].args):
-						if self.forgiveLvlup and len(self.lvlup[j]) < len(t[1].args[j].args):
-							self.lvlup[j] = self.lvlup[j]+["$" for n in range(len(t[1].args[j].args)-len(self.lvlup[j]))]
+					if len(self.lvlup[j]) != len(t.args[j].args):
+						if self.forgiveLvlup and len(self.lvlup[j]) < len(t.args[j].args):
+							self.lvlup[j] = self.lvlup[j]+["$" for n in range(len(t.args[j].args)-len(self.lvlup[j]))]
 						else:
 							errors.append((self,"Wrong number of introduced parameters."))#wrong introduced parameters
 							return
 
 
 					# the above error should be taken care of.
-					grin = t[1].args[j].substitute(nscope,nrepl,errors,self)
+					grin = t.args[j].substitute(nscope,nrepl,errors,self)
 
 					if grin == None: return
 					sadd = scopemake(self.lvlup[j],grin.args,errors,self)
@@ -291,93 +303,58 @@ class ObjKindReferenceTree(ObjKind):
 		# assert False
 		errors.append((self,"Referenced variable not in scope:"+self.name))#referenced variable not in scope.
 		return
-	def get(self,scope,name,args,errors,blame):
+	def get(self,name,args,errors,blame):
 		if self.src != None:
-			carry = self.pullsrc(scope,errors,blame)
-			if carry == None: return
-			return carry.get(scope,name,args,errors,blame)
+			carry = self.src.get(self.name,[(self.lvlup[i],self.args[i]) for i in range(len(self.args))],errors,blame)
+			if carry == None:return
+			if self.subs != []: carry = ObjKindTemplateHolder(carry,self.subs)
+			
+			return carry.get(name,args,errors,blame)
 		else:
-			#this is where you build up a structure.
 			carry = ObjKindReferenceTree(lvlup=[k[0] for k in args],args=[k[1] for k in args],src=self,name=name)
 			carry.column = self.column
 			carry.row = self.row
 			return carry
-	def substitute(self,scope,repl,errors,blame):
+	def substitute(self,repl,errors,blame):
 		if self.src != None:
-			carry = self.pullsrc(scope,errors,blame)
-			if carry == None: return
-			return carry.substitute(scope,repl,errors,blame)
-		for t in reversed(scope):
-			if t[0] == self.name:
-				if t[1] != None and len(self.args) != len(t[1].args):
-					errors.append((self,"Wrong argument count."))#wrong parameter count
-					return
+			carry = self.src.get(self.name,[(self.lvlup[i],self.args[i]) for i in range(len(self.args))],errors,blame)
+			if carry == None:return
+			if self.subs != []: carry = ObjKindTemplateHolder(carry,self.subs)
 
-				nscope = scope
-				nrepl = []
-				nargs = []
-				for j in range(len(self.args)):
+			return carry.substitute(repl,errors,blame)
 
-					grin = t[1].args[j].substitute(nscope,nrepl,errors,blame)
-					if grin == None: return
+		nrepl = []
+		nargs = []
+		for j in range(len(self.args)):
+			snap = self.args[j].substitute([r for r in repl if not ismember(r[0],self.lvlup[j])],errors,self.args[j] if blame is self else blame)
+			if snap == None: return
+			nargs.append(snap)
+			# nscope.append((grin.name,grin))
+			nrepl.append((t[1].args[j].name,self.lvlup[j],   snap   ))
 
-					sadd = scopemake(self.lvlup[j],grin.args,errors,blame)
-					if sadd == None: return
-					snap = self.args[j].substitute(scope+sadd,[r for r in repl if not ismember(r[0],self.lvlup[j])],errors,self.args[j] if blame is self else blame)
-					if snap == None: return
-					nargs.append(snap)
-					nscope.append((grin.name,grin))
-					nrepl.append((grin.name,self.lvlup[j],   snap   ))
-				
-				just transfer subs, dont call into compactify'
-				subs cannot be transferred if repl resolves to a tuple, and fillsubs can then be used...
-				but then some variables may be unknown.
 
-				for g in repl:
-					if g[0] == self.name:
+		for i in self.subs:
+			marm = i[2].substitute([r for r in repl if not ismember(r[0],i[1])],errors,i[2] if blame is self else blame)
+			if marm == None:return
+			nrepl.append((i[0],i[1],marm))
 
-						inspect scope here'
 
-						suys = subsmake(g[1],self.lvlup,nargs,errors,blame)
-						if suys == None: return
-						carry = g[2].substitute(scope,suys,errors,blame)
+		for g in repl:
+			if g[0] == self.name:
 
-						if type(carry) is ObjKindTypeUnion:
-							if carry.subs != []: return
-							jam = fillsubs(self.subs,scope,carry,errors,False,self)
-							if jam == None: return
-
-							zoggle = []
-							for i in range(len(jam[0])):
-
-								sadd = scopemake(jam[0][i][1],jam[1][i].args)
-								if sadd == None: return
-
-								marm = jam[0][i][2].substitute(scope+sadd,[r for r in repl if not ismember(r[0],jam[0][i][1])],errors,jam[0][i][2] if blame is self else blame)
-								if marm == None:return
-								zoggle.append((jam[0][i][0],jam[0][i][1],marm))
-							carry = carry.compactify(scope,zoggle,errors,blame)
-							if carry == None: return
-							# assert carry.subs == []
-						elif self.subs != []:
-							errors.append((blame,"Substitution is only supported on unions."))#substitution is unsupported
-							return
-
-						return carry
-
-				if len(self.subs) > 0:
-					assert False
-					errors.append((blame,"Substitution is only supported shallowly."))#subs not shallow enough...
-					return
-
-				carry = ObjKindReferenceTree(lvlup=self.lvlup,args=nargs,name=self.name)
-				carry.column = self.column
-				carry.row = self.row
+				suys = subsmake(g[1],self.lvlup,nargs,errors,blame)
+				if suys == None: return
+				doubleback needs to do a full inspection and deep-change variables here'
+				carry = g[2].substitute(suys,errors,blame)
+				if carry == None: return
+				if self.subs != []: carry = ObjKindTemplateHolder(carry,self.subs)
 				return carry
-		# print([t[0] for t in scope])
-		errors.append((blame,"Referenced variable not in scope:"+self.name))#referenced variable not in scope.
-		# assert False
-		return
+
+		carry = ObjKindReferenceTree(lvlup=self.lvlup,args=nargs,name=self.name,subs=nrepl)
+		carry.column = self.column
+		carry.row = self.row
+		return carry
+
 	def render(self,scope,carry,errors):
 		if self.src != None: return self.src.get(self.name,errors,self).render(scope,carry,errors)
 		#referencing something? had better not be- substitute should scrub the whole damn mess clean.
@@ -433,7 +410,7 @@ class ObjKindUnionSet(ObjKind):
 			asgo = []
 			semvari = []
 			for v in self.outsubs[4]:
-				zong = v.substitute(scope+semvari,asgo,errors,v if blame is self else blame)
+				zong = v.substitute(asgo,errors,v if blame is self else blame)
 				if zong == None: return
 				res = None
 				for i in self.subs:
@@ -441,12 +418,12 @@ class ObjKindUnionSet(ObjKind):
 						res = i
 				assert res != None
 				asgo.append(res)
-				semvari.append((zong.name,zong))
-			zong = o[0].substitute(scope+semvari,asgo,errors,v if blame is self else blame)
+				semvari.append(zong)
+			zong = o[0].substitute(asgo,errors,v if blame is self else blame)
 			if zong == None: return
-			sadd = scopemake(o[2],o[0].args,errors,self)
-			if sadd == None: return
-			shazam = o[3].substitute(scope+semvari+sadd,asgo,o[3] if blame is self else blame)
+			# sadd = scopemake(o[2],o[0].args,errors,self)
+			# if sadd == None: return
+			shazam = o[3].substitute(asgo,o[3] if blame is self else blame)
 			if shazam == None: return
 			self.outsubs.append((zong,o[1],o[2],shazam))
 
@@ -460,19 +437,14 @@ class ObjKindUnionSet(ObjKind):
 			if sadd == None: return
 			nscope = scope+sadd
 			self.subs[i][2].verify(nscope,self.smam[i].type,errors)
-	def substitute(self,scope,repl,errors,blame):
+	def substitute(self,repl,errors,blame):
 		assert self.smam != None
 		subu = []
 		assert len(self.subs) == len(self.smam)
 
 		for i in range(len(self.subs)):
-
-			sadd = scopemake(self.subs[i][1],self.smam[i].args,errors,blame)
-			if sadd == None: return
-
-			nscope = scope+sadd
 			nrepl = [(n2,j2,v2) for (n2,j2,v2) in repl if not ismember(n2,self.subs[i][1])]
-			marm = self.subs[i][2].substitute(nscope,nrepl,errors,blame)
+			marm = self.subs[i][2].substitute(nrepl,errors,blame)
 			if marm == None: return
 			subu.append((self.subs[i][0],self.subs[i][1],marm))
 
@@ -480,7 +452,7 @@ class ObjKindUnionSet(ObjKind):
 		zar.column = self.column
 		zar.row = self.row
 		return zar
-	def get(self,scope,name,args,errors,blame):
+	def get(self,name,args,errors,blame):
 		assert self.smam != None
 
 		res = None
@@ -502,14 +474,14 @@ class ObjKindUnionSet(ObjKind):
 			return
 
 
-		sadd = scopemake(res[2],res[0].args,errors,blame)
-		if sadd == None: return
+		# sadd = scopemake(res[2],res[0].args,errors,blame)
+		# if sadd == None: return
 
 		suys = subsmake(res[2],self.lvlup,[z[0] for z in args],[z[1] for z in args],errors,blame)
 		if suys == None: return
 
 
-		return res[3].substitute(scope+sadd,self.subs+suys,errors,blame)
+		return res[3].substitute(self.subs+suys,errors,blame)
 	def render(self,scope,carry,errors):
 		assert self.smam != None
 
@@ -558,7 +530,7 @@ class ObjKindTypeUnion(ObjKind):
 
 
 		for j in range(len(self.variables)):
-			self.variables[j].verify(scope+[(p.name,p) for p in self.variables[:j]],errors)
+			self.variables[j].verify(scope+self.variables[:j],errors)
 
 
 
@@ -583,7 +555,7 @@ class ObjKindTypeUnion(ObjKind):
 			if sadd == None: return
 			# marginscope = [(p.name,p) for p in o[4]]+sadd
 			# print([v.name for v in shakakan],"-=-=-=-",[m.name for m in o[4]],"<=-=-=-=new-=-")
-			i[2].verify(scope+[(p.name,p) for p in self.variables[:j]]+sadd,self.variables[j].type,errors)
+			i[2].verify(scope+self.variables[:j]+sadd,self.variables[j].type,errors)
 
 		# snar = [i[0] for i in self.subs]
 
@@ -591,9 +563,8 @@ class ObjKindTypeUnion(ObjKind):
 		for o in self.outsubs:
 			asgo = []
 			suho = []
-			semvari = []
 			for v in self.outsubs[4]:
-				zong = v.substitute(scope+semvari,asgo,errors,v if blame is self else blame)
+				zong = v.substitute(asgo,errors,v if blame is self else blame)
 				if zong == None: return
 				res = None
 				for i in subs:
@@ -603,20 +574,18 @@ class ObjKindTypeUnion(ObjKind):
 					suho.append(zong)
 				else:
 					asgo.append(res)
-				semvari.append((zong.name,zong))
-			zong = o[0].substitute(scope+semvari,asgo,errors,v if blame is self else blame)
+			zong = o[0].substitute(asgo,errors,v if blame is self else blame)
 			if zong == None: return
-			sadd = scopemake(o[2],o[0].args,errors,blame)
-			if sadd == None: return
-			shazam = o[3].substitute(scope+semvari+sadd,asgo,errors,o[3] if blame is self else blame)
+			# sadd = scopemake(o[2],o[0].args,errors,blame)
+			# if sadd == None: return
+			shazam = o[3].substitute(asgo,errors,o[3] if blame is self else blame)
 			if shazam == None: return
 			noutsubs.append((zong,o[1],o[2],shazam,suho))
 
 		asgo = []
 		vari = []
-		semvari = []
 		for v in self.variables:
-			zong = v.substitute(scope+semvari,asgo,errors,v if blame is self else blame)
+			zong = v.substitute(asgo,errors,v if blame is self else blame)
 			if zong == None: return None
 			res = None
 			for i in subs:
@@ -630,18 +599,14 @@ class ObjKindTypeUnion(ObjKind):
 				sadd = scopemake(res[1],zong.args,errors,self)
 				if sadd == None: return
 
-				noutsubs.append((zong,res[0],res[1],res[2].substitute(scope+semvari+sadd,asgo,errors,blame),vari))
+				noutsubs.append((zong,res[0],res[1],res[2].substitute(asgo,errors,blame),vari))
 
-			# if v.name not in snar: vari.append(zong)
-			# else: asgo.append(v.name)
-			semvari.append((zong.name,zong))
-		for y in vari:
-			if y == None: return
+
 		zar = ObjKindTypeUnion(variables = vari,outsubs=noutsubs)
 		zar.column = self.column
 		zar.row = self.row
 		return zar
-	def substitute(self,scope,repl,errors,blame):
+	def substitute(self,repl,errors,blame):
 		if self.subs != []: return
 
 		noutsubs = []
@@ -649,16 +614,16 @@ class ObjKindTypeUnion(ObjKind):
 			asgo = repl
 			suho = []
 			for v in o[4]:
-				zong = v.substitute(scope+[(z.name,z) for z in suho],asgo,errors,v if blame is self else blame)
+				zong = v.substitute(asgo,errors,v if blame is self else blame)
 				if zong == None: return
 				suho.append(zong)
 				asgo = [r for r in asgo if r[0] != v.name]
 
-			zong = o[0].substitute(scope+[(z.name,z) for z in suho],asgo,errors,v if blame is self else blame)
+			zong = o[0].substitute(asgo,errors,v if blame is self else blame)
 			if zong == None: return
-			sadd = scopemake(o[2],o[0].args,errors,blame)
-			if sadd == None: return
-			shazam = o[3].substitute(scope+[(z.name,z) for z in suho]+sadd,asgo,errors,o[3] if blame is self else blame)
+			# sadd = scopemake(o[2],o[0].args,errors,blame)
+			# if sadd == None: return
+			shazam = o[3].substitute(asgo,errors,o[3] if blame is self else blame)
 			if shazam == None: return
 			noutsubs.append((zong,o[1],o[2],shazam,suho))
 
@@ -666,7 +631,7 @@ class ObjKindTypeUnion(ObjKind):
 
 		vari = []
 		for v in self.variables:
-			zong = v.substitute(scope+[(p.name,p) for p in vari],repl,errors,v if blame is self else blame)
+			zong = v.substitute(repl,errors,v if blame is self else blame)
 			if zong == None: return
 			vari.append(zong)
 			repl = [r for r in repl if r[0] != v.name]
@@ -676,7 +641,7 @@ class ObjKindTypeUnion(ObjKind):
 		zar.column = self.column
 		zar.row = self.row
 		return zar
-	def get(self,scope,name,args,errors,blame):
+	def get(self,name,args,errors,blame):
 		if self.subs != []: return
 
 		#verify should check variables and subs before performing compactify.
@@ -694,14 +659,14 @@ class ObjKindTypeUnion(ObjKind):
 			errors.append((blame,"Wrong number of arguments provided."))#wrong number of arguments provided.
 			return
 
-		sadd = scopemake(res[2],res[0].args,errors,blame)
-		if sadd == None: return
+		# sadd = scopemake(res[2],res[0].args,errors,blame)
+		# if sadd == None: return
 
-		suys = subsmake(res[2],self.lvlup,[z[0] for z in args],[z[1] for z in args],errors,blame)
+		suys = subsmake(res[2],[z[0] for z in args],[z[1] for z in args],errors,blame)
 		if suys == None: return
 
 
-		return res[3].substitute(scope+[(k.name,k) for k in res[4]]+sadd,self.subs+suys,errors,blame)
+		return res[3].substitute(self.subs+suys,errors,blame)
 
 
 
@@ -758,24 +723,24 @@ class ObjStrategy:
 
 	def verify(self,scope,errors):
 		for j in range(len(self.args)):
-			self.args[j].verify(scope+[(p.name,p) for p in self.args[:j]],errors)
-		self.type.verify(scope+[(p.name,p) for p in self.args],ObjKindReferenceTree(name="U"),errors)
-	def substitute(self,scope,repl,errors,blame):
+			self.args[j].verify(scope+self.args[:j],errors)
+		self.type.verify(scope+self.args,ObjKindReferenceTree(name="U"),errors)
+	def substitute(self,repl,errors,blame):
 		# print("subbing: ",self)
 		vari = []
 		for v in self.args:
-			zong = v.substitute(scope+[(p.name,p) for p in vari],repl,errors,v if blame is self else blame)
+			zong = v.substitute(repl,errors,v if blame is self else blame)
 			if zong == None:return
 			vari.append(zong)
 			repl = [r for r in repl if r[0] != v.name]
-		for y in vari:
-			if y == None: return
-		semtype = self.type.substitute(scope+[(p.name,p) for p in vari],repl,errors,self.type if blame is self else blame)
+		semtype = self.type.substitute(repl,errors,self.type if blame is self else blame)
 		if semtype == None: return
 		zar = ObjStrategy(args = vari,ty=semtype,name=self.name)
 		zar.column = self.column
 		zar.row = self.row
 		return zar
+
+	# def incompactify(self,givens,name,errors,blame):
 
 
 
