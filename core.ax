@@ -26,7 +26,7 @@
     ,[a:A,b:B(a)]{
         UNION:AND(A,[a]B(a))
         ,MEMBER:EQ(A,ANDACC(A,[e]B(e),UNION(A,[c]B(c),a,b)),a)
-        ,MEMBERB:EQ(B(a),ANDACCB(A,[e]B(e),UNION(A,[c]B(c),a,b)),b)  
+        #,MEMBERB:EQ(B(a),ANDACCB(A,[e]B(e),UNION(A,[c]B(c),a,b)),b)  
     }
 } 
 ,[A:U]{   
@@ -77,13 +77,24 @@
 #INT:U = {a:AFF,}
 NAT:U = {a:AFF,a =>> ZERO},
 
-  
+ijoijoijo:U,
 
 Array:U = {
     J:U,
     ara:NAT,
     [n:NAT,n << ara]f:J,
+    [
+        [J,n:NAT,n << ara]P:U
+    ] each:U = {
+        [n:NAT,q:n << ara]q:P(f(n,q),n,q)
+    }
+},
 
+
+Aeerray:U = {
+    J:U,
+    ara:NAT,
+    [n:NAT,n << ara]f:J,
     [
         [J,n:NAT,n << ara]P:U
     ] each:U = {

@@ -221,10 +221,10 @@ class BuildAxiomCommand(sublime_plugin.ViewEventListener,sublime_plugin.TextComm
 				bank = ahah.children[0]
 				objec = ahah.children[1]
 
-				errors = []
-				objec.verify([(b.name,ObjStrategy(upcast=b)) for b in bank],[],errors)
+				errors = ErrorObject([])
+				objec.verify(StratSeries([ObjStrategy(upcast=b) for b in bank]),ObjKindReferenceTree(name="U"),errors)
 				print(objec)
-				print(errors)
+				print(errors.rer)
 
 				# print(parseobjkind(ahah.children[1]))
 				# attempt = Strategy(parsed=ahah)
