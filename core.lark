@@ -42,8 +42,11 @@ ltsymbol: "<<" -> ltsym | "<<=" -> lteqsym
 
 ?objectprod : objectatom ("*" objectatom)*
 
-objectatom : [objectatom"."]label["("objargument[","objargument]*")"]["<"objargumentnamed[","objargumentnamed]*">"] -> treeref
-           | "("objargumentnamed[","objargumentnamed]*")" -> union
+objargumentseries : objargument[","objargument]*
+objargumentnamedseries : objargumentnamed[","objargumentnamed]*
+
+objectatom : [objectatom"."]label["("objargumentseries")"]["<"objargumentnamedseries">"] -> treeref
+           | "("objargumentnamedseries")" -> union
            | "{"declaration (","declaration)*"}"                           -> andtype
 
 

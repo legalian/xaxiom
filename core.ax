@@ -77,8 +77,6 @@
 #INT:U = {a:AFF,}
 NAT:U = {a:AFF,a =>> ZERO},
 
-ijoijoijo:U,
-
 Array:U = {
     J:U,
     ara:NAT,
@@ -89,20 +87,6 @@ Array:U = {
         [n:NAT,q:n << ara]q:P(f(n,q),n,q)
     }
 },
-
-
-Aeerray:U = {
-    J:U,
-    ara:NAT,
-    [n:NAT,n << ara]f:J,
-    [
-        [J,n:NAT,n << ara]P:U
-    ] each:U = {
-        [n:NAT,q:n << ara]q:P(f(n,q),n,q)
-    }
-},
-
-
 
 Tree:U = {
     J:U,
