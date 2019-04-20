@@ -2,23 +2,24 @@
 
 
 label     : /[a-zA-Z0-9_]+|[~]/
-argument  : ["["label[","label]*"]"]statement
+argument  : ["["label(","label)*"]"]statement
 statement : label["("argument[","argument]*")"]
 
 
 
-labsgar     : "{"multistrat[","multistrat]*"}"
+labsgar     : "{"multistrat(","multistrat)*"}"
             | [label":"]statement
-multistrat  : ["["multistrat[","multistrat]*"]"]labsgar
-strategy    : ["["multistrat[","multistrat]*"]"][label":"]statement
+multistrat  : ["["multistrat(","multistrat)*"]"]labsgar
+strategy    : ["["multistrat(","multistrat)*"]"][label":"]statement
 
 
-scopemop : label
+scopemop : label -> label
          | "("scopemop(","scopemop)*")"
 
 
 objargument      : ["["scopemop[","scopemop]*"]"]object
 objargumentnamed : [label"="]objargument
+                 | "="label
 
 
 
@@ -29,21 +30,19 @@ objargumentnamed : [label"="]objargument
 ?objectnot : "!" objectnot -> lognot
            | objectlogop
 
-gtsymbol: ">>" -> gtsym | "=>>" -> gteqsym 
-ltsymbol: "<<" -> ltsym | "<<=" -> lteqsym 
+compsymbol: ">>" -> gtsym | "=>>" -> gteqsym | "==" -> eqsym | "!=" -> neqsym | "<<" -> ltsym | "<<=" -> lteqsym
 
 ?objectlogop : objectsum
-             | objectsum ltsymbol objectsum [ltsymbol objectsum]  -> lt
-             | objectsum gtsymbol objectsum [gtsymbol objectsum]  -> gt
-             | objectsum"=("object")="objectsum                       -> customeq
-             | objectsum"=!("object")="objectsum                      -> customneq
+             | objectsum (compsymbol objectsum)+    -> compchain
+             | objectsum"=("object")="objectsum     -> customeq
+             | objectsum"=!("object")="objectsum    -> customneq
 
 !objectsum : "-"? objectprod [("+"|"-") objectprod]
 
 ?objectprod : objectatom ("*" objectatom)*
 
-objargumentseries : objargument[","objargument]*
-objargumentnamedseries : objargumentnamed[","objargumentnamed]*
+objargumentseries : objargument(","objargument)*
+objargumentnamedseries : objargumentnamed(","objargumentnamed)*
 
 objectatom : [objectatom"."]label["("objargumentseries")"]["<"objargumentnamedseries">"] -> treeref
            | "("objargumentnamedseries")" -> union
@@ -52,7 +51,7 @@ objectatom : [objectatom"."]label["("objargumentseries")"]["<"objargumentnamedse
 
 
 
-objstrategy : ["["objstrategy["," objstrategy]*"]"][label":"]object
+objstrategy : ["["objstrategy("," objstrategy)*"]"][label":"]object
 
 declaration : objstrategy["="object]
 

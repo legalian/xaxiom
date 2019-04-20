@@ -40,7 +40,7 @@
 ,[a:AFF,b:AFF,c:AFF]ADD_ASSOCIATIVE:EQ(AFF,ADD(ADD(a,b),c),ADD(a,ADD(b,c)))
 ,[a:AFF]ADD_IDENTITY:EQ(AFF,ADD(a,ZERO),a)
 ,[a:AFF]ADD_IDENTITY_ANNIHALATE:EQ(AFF,ADD(a,AINVERSE(a)),ZERO)
-,[AFF,AFF]MULTIPLY:AFF 
+,[AFF,AFF]MULTIPLY:AFF
 ,[a:AFF,NOT(EQ(AFF,a,ZERO))]MINVERSE:AFF 
 ,[a:AFF,b:AFF]MULTIPLY_COMMUTATIVE:EQ(AFF,MULTIPLY(a,b),MULTIPLY(b,a))
 ,[a:AFF,b:AFF,c:AFF]MULTIPLY_ASSOCIATIVE:EQ(AFF,MULTIPLY(MULTIPLY(a,b),c),MULTIPLY(a,MULTIPLY(b,c)))
@@ -100,9 +100,10 @@ Tree:U = {
         K:U,
         [J,K]P:U,
         k:K,
+
         [j:J,k:K,P(j,k)]r:Array<K,f(j).ara>
     ] each:U = {
-        INDUCTION({J,K},[_]U,(root,k),[(j,_)]l(j),[(j,k),R]{
+        INDUCTION({J,K},[_]U,[(j,_)]l(j),(root,k),[(j,k),R]{
             p:P(j,k),
             f(j).each([g,q3,q4]
                 R(
@@ -112,7 +113,7 @@ Tree:U = {
                 )
             )
         })
-    }    
+    }
 }
 
 

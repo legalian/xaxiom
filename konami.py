@@ -38,34 +38,24 @@ class MyTransformer(Transformer):
 
 
 
-	def lt(self,children,meta):
-		if   str(children[1].data)=="ltsym":
-			start = ObjKindReferenceTree(pos=meta,name="GT",args=[children[2],children[0]])
-		elif str(children[1].data)=="lteqsym":
-			start = ObjKindReferenceTree(pos=meta,name="NOT",args=[ObjKindReferenceTree(pos=meta,name="GT",args=[children[0],children[2]])])
-		else: assert False
-		if len(children) == 5:
-			if   str(children[3].data)=="ltsym":
-				end = ObjKindReferenceTree(pos=meta,name="GT",args=[children[4],children[2]])
-			elif str(children[3].data)=="lteqsym":
-				end = ObjKindReferenceTree(pos=meta,name="NOT",args=[ObjKindReferenceTree(pos=meta,name="GT",args=[children[2],children[4]])])
+
+	def compchain(self,children,meta):
+		svart = []
+		g=0
+		while g < len(children)-1:
+			sym = str(children[g+1].data)
+			if   sym == "ltsym":   start = ObjKindReferenceTree(pos=meta,name="GT",args=[children[g+2],children[g+0]])
+			elif sym == "lteqsym": start = ObjKindReferenceTree(pos=meta,name="NOT",args=[ObjKindReferenceTree(pos=meta,name="GT",args=[children[g+0],children[g+2]])])
+			elif sym == "eqsym":   start = ObjKindReferenceTree(pos=meta,name="EQ",args=[ObjKindReferenceTree(pos=meta,name="AFF"),children[2],children[0]])
+			elif sym == "gteqsym": start = ObjKindReferenceTree(pos=meta,name="NOT",args=[ObjKindReferenceTree(pos=meta,name="GT",args=[children[g+2],children[g+0]])])
+			elif sym == "gtsym":   start = ObjKindReferenceTree(pos=meta,name="GT",args=[children[g+0],children[g+2]])
 			else: assert False
-			return ObjKindTypeUnion(pos=meta,variables=[ObjStrategy(pos=meta,ty=start),ObjStrategy(pos=meta,ty=end)])
-		else: return start
-	def gt(self,children,meta):
-		if   str(children[1].data)=="gtsym":
-			start = ObjKindReferenceTree(pos=meta,name="GT",args=[children[0],children[2]])
-		elif str(children[1].data)=="gteqsym":
-			start = ObjKindReferenceTree(pos=meta,name="NOT",args=[ObjKindReferenceTree(pos=meta,name="GT",args=[children[2],children[0]])])
-		else: assert False
-		if len(children) == 5:
-			if   str(children[3].data)=="gtsym":
-				end = ObjKindReferenceTree(pos=meta,name="GT",args=[children[2],children[4]])
-			elif str(children[3].data)=="gteqsym":
-				end = ObjKindReferenceTree(pos=meta,name="NOT",args=[ObjKindReferenceTree(pos=meta,name="GT",args=[children[4],children[2]])])
-			else: assert False
-			return ObjKindTypeUnion(pos=meta,variables=[ObjStrategy(pos=meta,ty=start),ObjStrategy(pos=meta,ty=end)])
-		else: return start
+			svart.append(start)
+			g = g + 2
+
+		assert len(svart) > 0
+		if len(svart) == 1: return svart[0]
+		return ObjKindTypeUnion(pos=meta,variables=[ObjStrategy(pos=meta,ty=svar) for svar in svart])
 
 	def scopemop(self,children,meta):
 		return children
