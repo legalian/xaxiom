@@ -93,7 +93,7 @@ declaration : objstrategy["="object]
 
 
 
-start : multistrat object
+start : objstrategy
 
 
 

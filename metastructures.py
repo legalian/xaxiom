@@ -648,10 +648,10 @@ class SubsObject:
 			if not self.subs[a].equate(cno,other.subs[b]): return False
 		return True
 class StratSeries:
-	def __init__(self,data,exverified=False):
-		for k in data: assert type(k) is ObjStrategy
-		self.data = data
-		self.verified = exverified and all(k.verified for k in self.data)
+	def __init__(self,data=None,exverified=False):
+		self.data = [] if data == None else data
+		for k in self.data: assert type(k) is ObjStrategy
+		self.verified = exverified and all(k.verified for k in self.data) or self.data == []
 		for h in range(len(self.data)):
 			for g in self.data[:h]:
 				if g.name != None:
@@ -885,7 +885,7 @@ class ObjKindReferenceTree(ObjKind):
 			ijuh = []
 			if lvlup == None:
 				for z in range(len(args)):
-					ijuh.append(IndividualSub(None,ScopeIntroducer(),args[z],[]))
+					ijuh.append(IndividualSub(None,ScopeIntroducer([]),args[z],[]))
 			else:
 				assert len(lvlup) == len(args)
 				for z in range(len(args)):
@@ -1253,6 +1253,7 @@ class ObjStrategy:
 			self.name = upcast.name
 			self.type = ObjKindReferenceTree(upcast=upcast.type)
 			self.args = StratSeries([ObjStrategy(upcast=i) for i in upcast.args])
+		# print(type(self.type))
 		assert issubclass(type(self.type),ObjKind)
 		assert type(self.args) is StratSeries
 
@@ -1370,7 +1371,7 @@ class ObjStrategy:
 					raise errors.error("Mechanical error (subside): Illegal unwrap length.")
 
 
-				res = StratSeries([],exverified=True)
+				res = StratSeries()
 				for i in range(len(j)):
 					res = res + populate(j[i],availb[i],repl,prevs+res)
 				return res
@@ -1382,7 +1383,7 @@ class ObjStrategy:
 			mold.name = j
 			return StratSeries([mold],exverified=True)
 
-		nargs = StratSeries([],exverified=True)
+		nargs = StratSeries()
 		assert nargs.verified
 		uio = []
 		for g in range(len(mog)):

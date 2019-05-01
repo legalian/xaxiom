@@ -222,14 +222,13 @@ class BuildAxiomCommand(sublime_plugin.ViewEventListener,sublime_plugin.TextComm
 				ahah = MyTransformer().transform(self.l.parse(document))
 				#ahah = self.l.parse(document)
 
-				bank = ahah.children[0]
-				objec = ahah.children[1]
+				task = ahah.children[0]
 
 				errors = ErrorObject()
-				cheat = StratSeries([ObjStrategy(upcast=b) for b in bank])
-				cheat = cheat.verify(StratSeries([],exverified=True),errors)
+				# cheat = StratSeries([ObjStrategy(upcast=b) for b in bank])
+				# cheat = cheat.verify(StratSeries([],exverified=True),errors)
 				try:
-					nobh = objec.verify(cheat,ObjKindReferenceTree(name="U"),errors)
+					nobh = task.verify(StratSeries(),errors)
 					print(nobh.wide_repr(0))
 					print("--=-=-=-=--=-=-=-=-=-=-==--=>>>>>>")
 				except ErrorObject as u:
@@ -241,16 +240,16 @@ class BuildAxiomCommand(sublime_plugin.ViewEventListener,sublime_plugin.TextComm
 				print()
 				print()
 				print()
-				print(objec)
+				print(task)
 				print(errors.rer)
 
 				# print(parseobjkind(ahah.children[1]))
 				# attempt = Strategy(parsed=ahah)
 				# for node in bank:
-				self.curtree = Strategy(args=bank,ty=Statement([],name="U",id=0,local=0),name="AxiomBank")
+				self.curtree = None
 
-
-				self.syntaxphantoms = syntaxreports(self.curtree,self) + errors.reports(self)
+				#syntaxreports(self.curtree,self)
+				self.syntaxphantoms = errors.reports(self)
 
 				# self.curtree = attempt
 			except UnexpectedInput as u:
