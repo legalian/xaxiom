@@ -11,8 +11,6 @@ import re
 
 
 
-
-
 @v_args(meta=True)
 class MyTransformer(Transformer):
 	def objstrategy(self,children,meta):
@@ -20,7 +18,23 @@ class MyTransformer(Transformer):
 		# assert False
 		return ObjStrategy(parsed=children,pos=meta)
 	def treeref(self,children,meta):
-		return ObjKindReferenceTree(parsed=children,pos=meta)
+		src = None
+		if issubclass(type(children[0]),ObjKind):
+			src = children[0]
+			name = children[1]
+		else:
+			name = children[0]
+		subs = None
+		args = SubsObject([])
+		for u in children:
+			if hasattr(u,'data') and u.data == 'objargumentseries':
+				args = parsesubsfromsrc(u)
+			if hasattr(u,'data') and u.data == 'objargumentnamedseries':
+				subs = parsesubsfromsrc(u)
+		if subs == None:
+			return ObjKindReferenceTree(src=src,name=name,args=args,pos=meta)
+		return ObjKindTemplateHolder(src=ObjKindReferenceTree(src=src,name=name,args=args,pos=meta),subs=subs)
+		
 	def union(self,children,meta):
 		return ObjKindUnionSet(parsed=children,pos=meta)
 	def andtype(self,children,meta):
@@ -211,8 +225,22 @@ class BuildAxiomCommand(sublime_plugin.ViewEventListener,sublime_plugin.TextComm
 				bank = ahah.children[0]
 				objec = ahah.children[1]
 
-				errors = ErrorObject([])
-				objec.verify(StratSeries([ObjStrategy(upcast=b) for b in bank]),ObjKindReferenceTree(name="U"),errors)
+				errors = ErrorObject()
+				cheat = StratSeries([ObjStrategy(upcast=b) for b in bank])
+				cheat = cheat.verify(StratSeries([],exverified=True),errors)
+				try:
+					nobh = objec.verify(cheat,ObjKindReferenceTree(name="U"),errors)
+					print(nobh.wide_repr(0))
+					print("--=-=-=-=--=-=-=-=-=-=-==--=>>>>>>")
+				except ErrorObject as u:
+					errors = u
+				# except RuntimeError:
+				# 	print("RECURSION DEPTH EXCEEDED")
+
+
+				print()
+				print()
+				print()
 				print(objec)
 				print(errors.rer)
 
@@ -222,7 +250,7 @@ class BuildAxiomCommand(sublime_plugin.ViewEventListener,sublime_plugin.TextComm
 				self.curtree = Strategy(args=bank,ty=Statement([],name="U",id=0,local=0),name="AxiomBank")
 
 
-				self.syntaxphantoms = syntaxreports(self.curtree,self) + metasyntaxreports(errors,self)
+				self.syntaxphantoms = syntaxreports(self.curtree,self) + errors.reports(self)
 
 				# self.curtree = attempt
 			except UnexpectedInput as u:

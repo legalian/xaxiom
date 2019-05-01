@@ -74,8 +74,13 @@
 {  
 
 
-#INT:U = {a:AFF,}
-NAT:U = {a:AFF,a =>> ZERO},
+#INT:U = {a:AFF,},
+#NAT:U = {a:AFF,a =>> ZERO},
+NAT:U = AFF,
+
+
+
+
 
 Array:U = {
     J:U,
@@ -108,8 +113,9 @@ Tree:U = {
             f(j).each([g,q3,q4]
                 R(
                     (g,r(j,k,p).f(q3,q4)),
-                    q1(q3,q4),
-                    [q5]~#<q2(q5),q3,q4>
+                    ~,#q1(q3,q4),
+                    ~
+                    #[q5]~#<q2(q5),q3,q4>
                 )
             )
         })
