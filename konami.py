@@ -36,9 +36,15 @@ class MyTransformer(Transformer):
 		return ObjKindTemplateHolder(src=ObjKindReferenceTree(src=src,name=name,args=args,pos=meta),subs=subs)
 		
 	def union(self,children,meta):
-		return ObjKindUnionSet(parsed=children,pos=meta)
-	def andtype(self,children,meta):
-		return ObjKindTypeUnion(parsed=children,pos=meta)
+		return ObjKindUnionSet(subs=parsesubsfromsrc(children[0]),pos=meta)
+	def andtype(self,parsed,meta):
+		variables = [gh.children[0] for gh in parsed]
+		argh = []
+		for n in range(len(variables)):
+			if len(parsed[n].children)==2:
+				if variables[n].name != None:
+					argh.append(IndividualSub(variables[n].name,ScopeIntroducer([j.name for j in variables[n].args]),parsed[n].children[1],[j.name for j in variables[:n] if j.name != None]))
+		return ObjKindTypeUnion(subs=DualSubs(StratSeries(variables),SubsObject(argh)),pos=meta)
 
 
 	def object(self,children,meta):

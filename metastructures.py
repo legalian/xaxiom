@@ -35,6 +35,20 @@ def parsesubsfromsrc(parsed):
 		return SubsObject(ij)
 	assert False
 
+def upcast_statement(inop):
+	dfji = []
+	for z in range(len(inop.args)):
+		dfji.append(IndividualSub(None,
+			ScopeIntroducer([] if z>=len(inop.lvlup) else inop.lvlup[z]),
+			upcast_statement(inop.args[z]),[]))
+	mod = ObjKindReferenceTree(name=inop.name,pos=inop,args=dfji)
+	mod.forgiveLvlup = True
+
+def upcast_strategy(inop):
+	pass
+	return ObjStrategy(pos=inop,name=inop.name,ty=upcast_statement(inop.type),args=StratSeries([upcast_strategy(i) for i in inop.args]))
+
+
 
 def transferlines(self,pos):
 	if pos == None:
@@ -52,13 +66,16 @@ def transferlines(self,pos):
 
 
 
+
+
+
 fonocolls = 0
 fonodepth = 0
 
 
 
 def debugdebug(F):
-	return F
+	# return F
 	def wrapper(*args,**kwargs):
 		global fonocolls
 		global fonodepth
@@ -66,11 +83,11 @@ def debugdebug(F):
 			fonocolls += 1
 			if fonocolls == 500000: assert False
 			janh = F.__name__
-			if janh != "substitute" and janh != "subsmake":
-				print("\t"*fonodepth+"entering: ",type(args[0]).__name__+"."+janh)
-			fonodepth += 1
+			# if janh != "substitute" and janh != "subsmake":
+			# 	print("\t"*fonodepth+"entering: ",type(args[0]).__name__+"."+janh)
+			# fonodepth += 1
 			ahjs = F(*args,**kwargs)
-			fonodepth -= 1
+			# fonodepth -= 1
 
 			if janh == "verify":
 				if not ahjs.verified:
@@ -79,7 +96,10 @@ def debugdebug(F):
 
 
 			if janh == "substitute":
-				if args[0].verified and len(args[2]) == 0 and not ahjs.verified:
+				# if args[0].verified and len(args[2]) == 0 and not ahjs.verified:
+				# 	print("error on: ",type(args[0]).__name__+"."+janh)
+				# 	assert False
+				if args[0].verified and all(i.obj.verified and (type(i.obj) is not ObjKindUnionSet or i.obj.verprot == 1) for i in args[2].subs) and not ahjs.verified:
 					print("error on: ",type(args[0]).__name__+"."+janh)
 					assert False
 
@@ -149,8 +169,8 @@ def subsmake(lvluprow,mog,errors):
 			return resk
 		jog = mog.obj
 		for s in trail:
-			jog = ObjKindReferenceTree(src=jog,name=s)
-		return [IndividualSub(lvluprow,mog.si,jog,[])]
+			jog = ObjKindReferenceTree(src=jog,name=s,verprot=0)
+		return [IndividualSub(lvluprow,mog.si,jog,[],exverified=True)]
 	if type(lvluprow) is ScopeIntroducer: lvluprow = lvluprow.dat
 	# assert type(errors) is ErrorObject and isinstance(lvluprow,list)
 	if len(lvluprow) != len(mog):
@@ -165,29 +185,47 @@ def subsmake(lvluprow,mog,errors):
 			else:
 				resk = resk + subsmake(lvluprow[f],mog.subs[f].obj.subs,errors)
 		else:
-			resk.append(IndividualSub(lvluprow[f],mog.subs[f].si,mog.subs[f].obj,[]))
+			resk.append(IndividualSub(lvluprow[f],mog.subs[f].si,mog.subs[f].obj,[],exverified=True))
 	return resk
-def meagersinglename(forbidden,intr,*repl):
+
+
+
+def meagersinglename(forbidden,intr,*repl,swmap=None):
 	if intr == None: return
 	if type(forbidden) is dict:
 		forbidden = [v for k,v in forbidden.items() if k!=intr]
+	if swmap == None: swmap = {}
 	# assert type(intr) is str
-	if not any(o.refs(intr) for o in repl) and intr not in forbidden: return intr
+	if not any(o.refs(swmap.get(intr,intr)) for o in repl) and intr not in forbidden: return intr
 	g = intr.split("$")
 	# assert len(g) == 1 or len(g) == 2
 	n = int(g[1]) if len(g) == 2 else 1
 	h = g[0]
-	while any(o.refs(h+"$"+str(n)) for o in repl) or h+"$"+str(n) in forbidden: n+=1
+	while any(o.refs(swmap.get(h+"$"+str(n),h+"$"+str(n))) for o in repl) or h+"$"+str(n) in forbidden: n+=1
 	return h+"$"+str(n)
 def mostmeagername(exrevf,intrs,repl):
 	# assert type(exrevf) is RenamerObject
 	# assert type(intrs)  is ScopeIntroducer
 	repls = copy.copy(exrevf.data)
 	for intr in intrs.allvars():
-		z = meagersinglename(repls,intr,repl)
-		if z == intr or z == None: continue
+		z = meagersinglename(repls,intr,repl,swmap=exrevf.alt)
+		if z == None: continue
 		repls[intr] = z
-	return RenamerObject(repls)
+	return RenamerObject(repls,exrevf.alt)
+
+def mostmeagernorepeats(exrevf,intrs,repl):
+	# assert type(exrevf) is RenamerObject
+	# assert type(intrs)  is ScopeIntroducer
+	repls = copy.copy(exrevf.data)
+	pres = []
+	def croc(intr):
+		if isinstance(intr,list):
+			return [croc(i) for i in intr]
+		z = meagersinglename([v for k,v in repls.items() if k!=intr]+pres,intr,repl,swmap=exrevf.alt)
+		pres.append(z)
+		if z != None: repls[intr] = z
+		return z
+	return (ScopeIntroducer(croc(intrs.dat)),RenamerObject(repls,exrevf.alt))
 
 
 
@@ -261,6 +299,7 @@ class ErrorObject(BaseException):
 	def takeblame(self,obk):
 		self.blame = obk
 	def nonfatal(self,err,obk=None):
+		# raise self.error(err,obk)
 		# assert type(err) is str
 		if obk == None:
 			# assert self.blame != None
@@ -295,6 +334,29 @@ class ErrorObject(BaseException):
 			o=self.rer[0]
 			return str((o[0],o[1].row,o[1].column))
 		return "multiple errors"
+
+class UnacceptableErrorObject:
+	def __init__(self,origin=None,err=None):
+		self.blame = None
+		self.err = err
+	def takeblame(self,obk):
+		self.blame = obk
+	def nonfatal(self,err,obk=None):
+		raise self.error(err,obk)
+	def error(self,err,obk=None):
+		# assert False
+		# assert type(err) is str
+		if obk == None:
+			# assert self.blame != None
+			return UnacceptableErrorObject(self.blame,err=err)
+		else:
+			return UnacceptableErrorObject(obk,err=err)
+	def tack(self):
+		# assert self.blame != None
+		return self
+	def __str__(self):
+		return str((err,self.blame.row,self.blame.column))
+
 class ScopeIntroducer:
 	def __init__(self,dat):
 		self.dat = dat
@@ -304,7 +366,6 @@ class ScopeIntroducer:
 			return str(j)
 		if len(self.dat) == 0: return ""
 		return "["+",".join([pretty(i) for i in self.dat])+"]"
-
 	def paired(self,other):
 		def croc(a,b):
 			if isinstance(a,list) and isinstance(b,list):
@@ -318,7 +379,6 @@ class ScopeIntroducer:
 			if isinstance(a,list) or isinstance(b,list): return None
 			return [(a,b)]
 		return croc(self.dat,other.dat)
-
 	def contains(self,label):
 		if label == None: return False
 		# assert type(label) is str
@@ -365,7 +425,6 @@ class IndividualSub:
 		# assert type(si) is ScopeIntroducer
 		# assert issubclass(type(obj),ObjKind)
 
-		self.linnonono = None#getframeinfo(stack()[1][0]).lineno
 
 		self.name = name
 		self.si = si
@@ -405,9 +464,8 @@ class IndividualSub:
 
 		jae = None if self.expected == None else self.expected.substitute(revf,repl,errors)
 
-		sgo = IndividualSub(self.name,self.si.rename(mmn2),uhf,nbon,jae,exverified=self.easyverified,extypeverified=self.verified)
-		sgo.linnonono = self.linnonono
-		return sgo
+		return IndividualSub(self.name,self.si.rename(mmn2),uhf,nbon,jae,exverified=self.easyverified,extypeverified=self.verified)
+
 
 	def replacebon(self,revf):
 		nbon = self.bon.upperrename(revf)
@@ -437,7 +495,7 @@ class IndividualSub:
 		if self.easyverified:
 			return (self.si,self.obj)
 		# assert scope.verified
-		shama = StratSeries(copy.copy(scope.data),exverified=True)
+		shama = StratSeries(copy.copy(scope.data))
 		# assert shama.verified
 
 		mmnstrat = RenamerObject()
@@ -450,18 +508,15 @@ class IndividualSub:
 				if shah[h].name == y[0]:
 					mmnobj.data[y[1]] = mn
 					break
-			
 
-			zxc = copy.copy(shah[h].substitute(mmnstrat,SubsObject(),None))
-			zxc.name = mn
+			zxc = shah[h].substitute(mmnstrat,SubsObject(),None).surfacerename(mn)
 			mmnstrat.data[shah[h].name] = mn
 			shama.data.append(zxc)
 
-		zaku = zaku.substitute(mmnstrat,SubsObject(),None)
+		if len(mmnstrat.data): zaku = zaku.substitute(mmnstrat,SubsObject(),None)
 
-
-		zakummn = mostmeagername(mmnobj,self.si,zaku)
-		nssi = self.si.rename(zakummn)
+		(nssi,zakummn) = mostmeagernorepeats(mmnobj,self.si,zaku)
+		# nssi = self.si.rename(zakummn)
 		shse = self.obj.substitute(zakummn,SubsObject(),None)
 		zaku = zaku.reformat(shama,nssi,errors)
 		shse = shse.verify(shama+zaku.args,zaku.type,errors)
@@ -481,7 +536,6 @@ class SubsObject:
 		# 	for k in data: assert type(k) is IndividualSub
 		self.subs = [] if data == None else data
 		self.verified = (exverified and all(i.verified for i in self.subs)) or self.subs == []
-
 	def __repr__(self):
 		return ",".join([str(k) for k in self.subs])
 	def wide_repr(self,depth):
@@ -489,15 +543,11 @@ class SubsObject:
 		return sep+(","+sep).join([k.wide_repr(depth+1) for k in self.subs])
 	def oblong_repr(self,depth):
 		return ",".join([k.wide_repr(depth) for k in self.subs])
-
 	@debugdebug
 	def substitute(self,revf,repl,errors):
 		return SubsObject([i.substitute(revf,repl,errors) for i in self.subs],exverified=self.verified)
 	def replacebon(self,revf):
 		return SubsObject([i.replacebon(revf) for i in self.subs],exverified=self.verified)
-	# @debugdebug
-	# def compactify(self,repl,errors):
-	# 	return SubsObject([i.compactify(repl,errors) for i in self.subs],exverified=self.verified)
 	def without(self,so):
 		return SubsObject([d for d in self.subs if not so.contains(d.name)],exverified=self.verified)
 	def only(self,so):
@@ -526,38 +576,52 @@ class SubsObject:
 
 
 	@debugdebug
-	def precompact(self,scope,cars,errors,onlycomplete=False,argmode=False):
-		# print("clowning: ",len(self.subs))
-		# assert type(scope) is StratSeries
-		# assert type(cars) is StratSeries
-		# assert type(errors) is ErrorObject
+	def precompactsimple(self,scope,cars,errors,argmode=False):
 		if argmode:
 			if len(self.subs) != len(cars): raise errors.error("Illegal argument count.")
 			gar = range(len(self.subs))
 		else:
 			gar = mapping(self.subs,cars,errors)
 		simpsubs = []
-		pospsubs = []
-		zn = []
 		mmn = RenamerObject()
-		fahg = []
-
 		carscope = scope
-
-		# for i in cars.data:
-		# 	assert i.verified
-
 		for z in range(len(gar)):
 			zaku = cars[z].substitute(mmn,SubsObject(),None)
 			zaku = zaku.substitute(RenamerObject(),SubsObject(simpsubs),errors)
-			zaku = zaku.verify(scope+StratSeries([zn[i] for i in range(z) if gar[i] == None]),errors.tack())
-			faku = zaku
+			if gar[z] == None:
+				if cars[z].name == None: raise errors.error("Not enough positional arguments.")
+				else: raise errors.error("Missing named argument:"+cars[z].name)
+			for check in self.subs[gar[z]].bon.bon():
+				if check not in [cars[k].name for k in range(z)] and self.subs[gar[z]].obj.refs(check) and not self.subs[gar[z]].si.contains(check):
+					if check in [cars[k].name for k in range(z,len(gar))]:
+						raise errors.error("This variable usage violates well-ordering property: "+check)
+					else:
+						raise errors.error("Mechanical error: referenced bon which isn't in given type list: "+check)
+			koso = self.subs[gar[z]].replacebon(mmn).compactify(SubsObject(simpsubs),errors).preverify(scope,[],zaku,errors.tack())
+			simpsubs.append(IndividualSub(None,koso[0],koso[1],[],zaku,exverified=True,extypeverified=True))
+			mmn = mostmeagername(mmn,ScopeIntroducer([cars[z].name]),SubsObject(simpsubs))
+			simpsubs[-1].name = mmn[cars[z].name]
+		return SubsObject(simpsubs,exverified=True)
+	@debugdebug
+	def precompact(self,scope,cars,errors,onlycomplete=False,argmode=False):
+		if argmode:
+			if len(self.subs) != len(cars): raise errors.error("Illegal argument count.")
+			gar = range(len(self.subs))
+		else:
+			gar = mapping(self.subs,cars,errors)
+		simpsubs = []
+		zn = []
+		mmn = RenamerObject()
+		fahg = []
+		carscope = scope
+		for z in range(len(gar)):
+			zaku = cars[z].substitute(mmn,SubsObject(),None)
+			zaku = zaku.substitute(RenamerObject(),SubsObject(simpsubs),errors)
 			if gar[z] == None:
 				if not onlycomplete:
 					mmn = mostmeagername(mmn,ScopeIntroducer([cars[z].name]),SubsObject(simpsubs))
 					fahg.append((cars[z].name,mmn[cars[z].name]))
-					zaku.name = mmn[zaku.name]
-					zn.append(zaku)
+					zn.append(zaku.surfacerename(mmn[zaku.name]))
 					continue
 				if cars[z].name == None: raise errors.error("Not enough positional arguments.")
 				else: raise errors.error("Missing named argument:"+cars[z].name)
@@ -567,10 +631,7 @@ class SubsObject:
 						raise errors.error("This variable usage violates well-ordering property: "+check)
 					else:
 						raise errors.error("Mechanical error: referenced bon which isn't in given type list: "+check)
-			
-
-			# evenbother = False
-			jambo = []#jambo is going to be different
+			jambo = []
 			for h in range(z):
 				if gar[h] == None:
 					for y in self.subs[gar[z]].bon.data:
@@ -578,56 +639,14 @@ class SubsObject:
 							if self.subs[gar[z]].obj.refs(y[1]) and not self.subs[gar[z]].si.contains(y[1]):
 								jambo.append(mmn[y])
 							break
-				# else:
-				# 	evenbother = True
-
-			# recombine = self.subs[gar[z]].substitute(mmn,SubsObject(),None,replacebon=True)
-			recombine = self.subs[gar[z]].replacebon(mmn)
-
-			# if evenbother:
-				# silencer = ErrorObject()
-				# silencer.takeblame(errors.blame)
-
-				#fix this- switch to silencer
-				#evenbother is broke...
-
-
-
-			# koso = recombine.preverify(scope,zn,zaku,errors)#doesnt use or provide name
-			# recombine = IndividualSub(cars[z].name,koso[0],koso[1],recombine.bon,exverified=True)
-
-
-
-
-			koso = recombine.compactify(SubsObject(simpsubs),errors)
-
-			# print("()()()()()",koso)
-			koso = koso.preverify(scope,[zn[h] for h in range(z) if gar[h] == None],zaku,errors.tack())
-
-			# else:
-			# 	koso = presco.preverify(scope,zn,zaku,errors)
-
-			simpsubs.append(IndividualSub(None,koso[0],koso[1],jambo,faku,exverified=True,extypeverified=True))
+			koso = self.subs[gar[z]].replacebon(mmn).compactify(SubsObject(simpsubs),errors).preverify(scope,[zn[h] for h in range(z) if gar[h] == None],zaku,errors.tack())
+			simpsubs.append(IndividualSub(None,koso[0],koso[1],jambo,zaku,exverified=True,extypeverified=True))
 			mmn = mostmeagername(mmn,ScopeIntroducer([cars[z].name]),SubsObject(simpsubs))
 			simpsubs[-1].name = mmn[cars[z].name]
 			fahg.append((cars[z].name,mmn[cars[z].name]))
+			zn.append(zaku.surfacerename(mmn[zaku.name]))
+		return DualSubs(StratSeries(zn),SubsObject(simpsubs,exverified=True),ScopeSelectionObject(fahg),exverified=True)
 
-			zaku.name = mmn[zaku.name]
-			zn.append(zaku)
-		# assert False
-		fomo = DualSubs(StratSeries(zn,exverified=True),SubsObject(simpsubs,exverified=True),ScopeSelectionObject(fahg),exverified=True)
-		# for j in simpsubs:
-		# 	assert j.verified
-
-		# for z in zn:
-		# 	assert z.verified
-
-		# assert fomo.variables.verified
-		# assert fomo.subs.verified
-		# assert fomo.verified
-
-		fomo.availvariables()
-		return fomo
 	def __len__(self):
 		return len(self.subs)
 	def equate(self,cno,other):
@@ -649,10 +668,10 @@ class SubsObject:
 			if not self.subs[a].equate(cno,other.subs[b]): return False
 		return True
 class StratSeries:
-	def __init__(self,data=None,exverified=False):
+	def __init__(self,data=None):
 		self.data = [] if data == None else data
 		# for k in self.data: assert type(k) is ObjStrategy
-		self.verified = exverified and all(k.verified for k in self.data) or self.data == []
+		self.verified = all(k.verified for k in self.data)
 		# for h in range(len(self.data)):
 		# 	for g in self.data[:h]:
 		# 		if g.name != None:
@@ -668,8 +687,8 @@ class StratSeries:
 		if self.verified: return self
 		zn = []
 		for k in range(len(self.data)):
-			zn.append(self.data[k].verify(scope+StratSeries(zn,exverified=True),errors))
-		return StratSeries(zn,exverified=True)
+			zn.append(self.data[k].verify(scope+StratSeries(zn),errors))
+		return StratSeries(zn)
 	@debugdebug
 	def substitute(self,revf,repl,errors):
 		zn = []
@@ -677,9 +696,8 @@ class StratSeries:
 		for k in range(len(self.data)):
 			zk = self.data[k].substitute(mmn,repl.without(ScopeIntroducer([k.name for k in self.data[:k]])),errors)
 			mmn = mostmeagername(mmn,ScopeIntroducer([self.data[k].name]),repl)
-			zk.name = mmn[zk.name]
-			zn.append(zk)
-		return StratSeries(zn,exverified=self.verified)
+			zn.append(zk.surfacerename(mmn[zk.name]))
+		return StratSeries(zn)
 	def introducer(self):
 		return ScopeIntroducer([k.name for k in self.data])
 	def refs(self,label):
@@ -697,31 +715,21 @@ class StratSeries:
 				return t
 		return None
 	def __add__(self,other):
-		# assert type(other) is StratSeries
-
 		j = []
 		mmn = RenamerObject()
 		forb = [y.name for y in other.data]
-
-		# errout = "P" in [i.name for i in self.data] and "P$1" in [i.name for i in self.data] and "P" in forb
-
-		# if errout: print("-=-=-=-=-=-=-=-=-")
-		# if errout: print([i.name for i in self.data])
+		if all(j.name not in forb for j in self.data): return StratSeries(self.data+other.data)
 		for p in self.data:
 			mn = meagersinglename(forb,p.name)
 			if p.name == mn: j.append(p)
 			else:
-				j.append(copy.copy(p.substitute(mmn,SubsObject(),None)))
-				j[-1].name = mn
+				j.append(p.substitute(mmn,SubsObject(),None).surfacerename(mn))
 				mmn.data[p.name] = mn
 			forb.append(mn)
-		# if errout: print([i.name for i in j])
 		for p in other.data:
-			j.append(copy.copy(p.substitute(mmn,SubsObject(),None)))
+			j.append(p.substitute(mmn,SubsObject(),None))
 			mmn.data[p.name] = p.name
-		# print([i.name for i in j])
-		return StratSeries(j,exverified=True)
-
+		return StratSeries(j)
 	def __len__(self):
 		return len(self.data)
 	def __getitem__(self, key):
@@ -834,9 +842,6 @@ class DualSubs:
 
 
 
-
-
-
 class ObjKindTemplateHolder(ObjKind):
 	def __init__(self,src,subs,pos=None,exverified=False):
 		# assert issubclass(type(src),ObjKind) and type(subs) is SubsObject
@@ -844,7 +849,6 @@ class ObjKindTemplateHolder(ObjKind):
 		self.subs = subs
 		transferlines(self,pos)
 		self.verified = exverified and self.src.verified and type(self.src) is ObjKindReferenceTree
-
 	def __repr__(self):
 		return str(self.src)+"<"+str(self.subs)+">"
 	def wide_repr(self,depth):
@@ -875,55 +879,20 @@ class ObjKindTemplateHolder(ObjKind):
 
 
 class ObjKindReferenceTree(ObjKind):
-	def __init__(self,lvlup=None,args=None,subs=None,src=None,upcast=None,name=None,pos=None,verprot=None):
+	def __init__(self,args=None,src=None,name=None,pos=None,verprot=None):
 		if args == None:
 			self.args = SubsObject()
-			# assert lvlup == None
 		elif type(args) is SubsObject:
 			self.args = args
-			# assert lvlup == None
 		else:
-			ijuh = []
-			if lvlup == None:
-				for z in range(len(args)):
-					ijuh.append(IndividualSub(None,ScopeIntroducer([]),args[z],[]))
-			else:
-				# assert len(lvlup) == len(args)
-				for z in range(len(args)):
-					ijuh.append(IndividualSub(None,ScopeIntroducer(lvlup[z]),args[z],[]))
-			self.args = SubsObject(ijuh)
+			self.args = SubsObject([IndividualSub(None,ScopeIntroducer([]),args[z],[]) for z in range(len(args))])
 
-		# if subs != None: assert type(subs) is SubsObject
 		# if src != None: assert issubclass(type(src),ObjKind)
 		# if name != None: assert type(name) is str or (src != None and type(name) is int)
 		self.forgiveLvlup = False
 		self.name = name
-		self.subs = subs if subs != None else SubsObject()
 		self.src = src
 		transferlines(self,pos)
-		if upcast != None:
-			# assert args == None
-			# assert subs == None
-			# assert src == None
-			# assert lvlup == None
-			# assert name == None
-
-			self.column = upcast.column
-			self.row = upcast.row
-			self.name = upcast.name
-
-			# assert len(upcast.lvlup) <= len(upcast.args)
-			dfji = []
-			for z in range(len(upcast.args)):
-				dfji.append(IndividualSub(None,
-					ScopeIntroducer([] if z>=len(upcast.lvlup) else upcast.lvlup[z]),
-					ObjKindReferenceTree(upcast=upcast.args[z]),[]))
-			self.args = SubsObject(dfji)
-			self.forgiveLvlup = True
-		# assert type(self.args) is SubsObject
-		# assert type(self.subs) is SubsObject
-
-
 
 		if   verprot == None:
 			self.verified = False
@@ -936,12 +905,7 @@ class ObjKindReferenceTree(ObjKind):
 			self.verified = self.args.verified
 		# else: assert False
 
-
 		self.verprot = verprot if self.verified else None
-
-		# if self.verified: assert self.verprot != None
-
-
 	def __repr__(self):
 		lab = ""
 		if self.src != None: lab = str(self.src)+"."
@@ -971,78 +935,44 @@ class ObjKindReferenceTree(ObjKind):
 	def verify(self,scope,carry,errors):
 		# assert scope.verified
 		errors.takeblame(self)
-
 		# print("VERIFYING:",self)
-
 		# if self.verified: assert self.verprot != None
 		if self.verified: return self
 		# if self.verified: return self
 		# errors.nonfatal("X")
-
 		if self.src == None and len(self.args) == 0 and self.name == "U":
 			if carry.src == None and len(carry.args) == 0 and carry.name == "U":
 				return ObjKindReferenceTree(name="U",verprot=2)
-
 		if self.src == None and len(self.args) == 0 and self.name == "~":
 			return ObjKindReferenceTree(name="~",verprot=2)
-
-
-
 		if self.src != None:
-			# print("calling src")
 			poc = self.src.verify(scope,None,errors)
-
-
 			if type(poc) is not ObjKindTypeUnion and type(poc) is not ObjKindUnionSet:
-
-				if type(poc) is ObjKindTemplateHolder:
-					root = poc.src
-					# assert type(root) is ObjKindReferenceTree
-				if type(poc) is ObjKindReferenceTree:
-					root = poc
-
-				gmo = root.gentype(scope,errors)
-
+				if type(poc) is ObjKindTemplateHolder: poc=poc.src
+				gmo = poc.gentype(scope,errors)
 				sgig = None
-
-				# print("-=-=-=-=-=-=-=-==-=-->>>>>>>",self.name,gmo)
 				if type(gmo) is ObjKindTypeUnion:
 					t = gmo.subs.getv(self.name)
-					# print("")
-					if t != None:
-						# print("BAMBAMBAM")
-						sgig = self.arginternal(scope,t,carry,errors)
-				# else:
-				# 	print("-=-failurefailurefailurefailure>>>>",self.name,gmo)
-
-				return ObjKindReferenceTree(src=poc,args=self.args if sgig==None else sgig,subs=self.subs,name=self.name,pos=self,verprot=int(sgig!=None))
-
-
-
+					if t != None: sgig = self.arginternal(scope,t,carry,errors)
+				return ObjKindReferenceTree(src=poc,args=self.args if sgig==None else sgig,name=self.name,pos=self,verprot=int(sgig!=None))
 			blcarry = poc.subs.get(self.name)
-
 			if blcarry == None:
 				raise errors.error("No such property exists or the property exists but was not defined.")
 			if len(blcarry.bon) > 0:
-				raise errors.error("The property accessed here is dependantly typed and refers to a variable that is unspecified. (Property cannot be used in static context.)")
-
+				raise errors.error("The property accessed here is dependently typed and refers to a variable that is unspecified. (Property cannot be used in static context.)")
 			t = blcarry.expected
 			if t == None:
 				raise errors.error("Unable to infer type for:"+str(self.name))
-			duke = self.arginternal(scope,t,carry,errors)#you sure you don't need to remember this????
+			duke = self.arginternal(scope,t,carry,errors)
 			mode = blcarry.obj.substitute(RenamerObject(),SubsObject(subsmake(blcarry.si,duke,errors)),errors)
-			# print("calling mode")
 			return mode.verify(scope,carry,errors.tack())
-
 		t = scope.get(self.name)
 		if t == None:
 			raise errors.error("Referenced variable not in scope:"+self.name)
-
 		# print("calling arginternal")
 		snot = self.arginternal(scope,t,carry,errors)
 		# snot = self.args#fix this please
 		return ObjKindReferenceTree(args=snot,name=self.name,pos=self,verprot=2)
-
 	def gentype(self,scope,errors):
 		t = scope.get(self.name)
 		if t == None:
@@ -1065,13 +995,13 @@ class ObjKindReferenceTree(ObjKind):
 					raise errors.error("Wrong number of introduced parameters. expected "+str(len(t.args[j].args))+", got "+str(len(self.args.subs[j].si)),self.args.subs[j].obj)
 			fas.append(mogol)
 
-		snot = SubsObject(fas).precompact(scope,t.args,errors,onlycomplete=True,argmode=True).subs
+		snot = SubsObject(fas).precompactsimple(scope,t.args,errors,argmode=True)
 		# assert type(snot) is SubsObject
 
 		if carry != None:
 			exptyoe = t.type.substitute(RenamerObject(),snot,errors)
-			if str(exptyoe) == "GT(ara,_)":
-				raise errors.error("locked in recursive loop...")
+			# if str(exptyoe) == "GT(ara,_)":
+			# 	raise errors.error("locked in recursive loop...")
 			exptyoe = exptyoe.verify(scope,ObjKindReferenceTree(name="U",verprot=2),errors.tack())
 
 			def recurstep(exptyoe):
@@ -1093,6 +1023,7 @@ class ObjKindReferenceTree(ObjKind):
 		return snot
 	@debugdebug
 	def substitute(self,revf,repl,errors):
+		# if len(revf.data) == 0 and len(repl) == 0: return self
 		# if self.verified: assert self.verprot != None
 
 		yobi = self.args.substitute(revf,repl,errors)
@@ -1103,13 +1034,14 @@ class ObjKindReferenceTree(ObjKind):
 			return ObjKindReferenceTree(args=yobi,name=revf[self.name],pos=self,verprot=self.verprot)
 
 		gam = i.obj.substitute(revf.alternate(),SubsObject(subsmake(i.si,yobi,errors)),errors)
-		gam.verified = False
-		gam.verprot = None
+		if type(gam) is ObjKindUnionSet:
+			if gam.verprot == 0:
+				gam = copy.copy(gam)
+				gam.verified = False
+				gam.verprot = None
 		return gam
 	def render(self,scope,carry,errors):
 		soijfasijef
-
-
 	def equate(self,cno,other):
 		if type(other) is not ObjKindReferenceTree: return False
 		if not cno.equivalen(self.name,other.name): return False
@@ -1125,13 +1057,12 @@ class ObjKindReferenceTree(ObjKind):
 		if self.src != None and self.src.refs(label): return True
 		return False
 
+
+
 class ObjKindUnionSet(ObjKind):
-	def __init__(self,subs=None,parsed=None,inherited=None,pos=None,verprot=None):
+	def __init__(self,subs=None,inherited=None,pos=None,verprot=None):
 		self.subs = SubsObject() if subs == None else subs
 		transferlines(self,pos)
-		if parsed != None:
-			# assert subs == None
-			self.subs = parsesubsfromsrc(parsed[0])
 		self.inherited = [] if inherited == None else inherited
 
 		if   verprot == None:
@@ -1142,7 +1073,6 @@ class ObjKindUnionSet(ObjKind):
 			self.verified = self.subs.verified
 		# else: assert False
 		self.verprot = verprot if self.verified else None
-
 	def __repr__(self):
 		return "("+str(self.subs)+")"
 	def wide_repr(self,depth):
@@ -1150,6 +1080,7 @@ class ObjKindUnionSet(ObjKind):
 	@debugdebug
 	def verify(self,scope,carry,errors):
 		errors.takeblame(self)
+		if self.verprot == 0 and carry == None or self.verprot == 1: return self
 		# if self.verified and self.completed: return self
 		if carry == None:
 			ewgross = copy.copy(self)
@@ -1163,48 +1094,36 @@ class ObjKindUnionSet(ObjKind):
 
 		vodof = SubsObject(self.subs.without(ScopeIntroducer(self.inherited)).subs+carry.subs.subs.subs)
 
-		return ObjKindUnionSet(subs=vodof.precompact(scope,carry.subs.variables,errors,onlycomplete=True).subs,inherited=[k.name for k in carry.subs.subs.subs],pos=self,verprot=1)
-
-
+		return ObjKindUnionSet(subs=vodof.precompactsimple(scope,carry.subs.variables,errors),inherited=[k.name for k in carry.subs.subs.subs],pos=self,verprot=1)
 	@debugdebug
 	def substitute(self,revf,repl,errors):
+		# if len(revf.data) == 0 and len(repl) == 0: return self
 		return ObjKindUnionSet(subs=self.subs.substitute(revf,repl,errors),inherited=self.inherited,pos=self,verprot=self.verprot)
 	def refs(self,label):
 		return self.subs.refs(label)
 	def render(self,scope,carry,errors):
 		union
-
 	def equate(self,cno,other):
 		if type(other) is not ObjKindUnionSet: return False
 		return self.subs.equate(cno,other.subs)
 
+
+
 class ObjKindTypeUnion(ObjKind):
 	def __init__(self,parsed=None,subs=None,variables=None,pos=None,exverified=False):
 		transferlines(self,pos)
-		if parsed != None:
-			# assert subs == None
+		if type(subs) is DualSubs:
 			# assert variables == None
-			variables = [gh.children[0] for gh in parsed]
-			argh = []
-			for n in range(len(variables)):
-				if len(parsed[n].children)==2:
-					if variables[n].name != None:
-						argh.append(IndividualSub(variables[n].name,ScopeIntroducer([j.name for j in variables[n].args]),parsed[n].children[1],[j.name for j in variables[:n] if j.name != None]))
-			self.subs = DualSubs(StratSeries(variables),SubsObject(argh))
+			self.subs = subs
 		else:
-			if type(subs) is DualSubs:
-				# assert variables == None
-				self.subs = subs
-			else:
-				subi = SubsObject() if subs == None else subs
-				vari = StratSeries() if variables == None else variables if type(variables) is StratSeries else StratSeries(variables)
-				self.subs = DualSubs(vari,subi)
+			subi = SubsObject() if subs == None else subs
+			vari = StratSeries() if variables == None else variables if type(variables) is StratSeries else StratSeries(variables)
+			self.subs = DualSubs(vari,subi)
 		self.verified = exverified and self.subs.verified
 	def __repr__(self):
 		return "{"+str(self.subs)+"}"
 	def wide_repr(self,depth):
 		return "{"+self.subs.wide_repr(depth+1)+"\n"+"\t"*depth+"}"
-
 	@debugdebug
 	def verify(self,scope,carry,errors):
 		# assert scope.verified
@@ -1216,14 +1135,12 @@ class ObjKindTypeUnion(ObjKind):
 		return ObjKindTypeUnion(subs=self.subs.compactify(scope,subs,errors),pos=self,exverified=True)
 	@debugdebug
 	def substitute(self,revf,subs,errors):
+		# if len(revf.data) == 0 and len(subs) == 0: return self
 		return ObjKindTypeUnion(subs=self.subs.substitute(revf,subs,errors),pos=self,exverified=self.verified)
 	def refs(self,label):
 		return self.subs.refs(label)
 	def render(self,scope,carry,errors):
 		oafdjosidfjoasidf
-
-
-
 	def equate(self,cno,other):
 		if type(other) is not ObjKindTypeUnion: return False
 		return self.subs.equate(cno,other.subs)
@@ -1231,10 +1148,11 @@ class ObjKindTypeUnion(ObjKind):
 
 
 oneoff = True
+totruntime = 0
 
 
 class ObjStrategy:
-	def __init__(self,args=None,parsed=None,ty=None,name=None,upcast=None,pos=None,exverified=False):
+	def __init__(self,args=None,parsed=None,ty=None,name=None,pos=None,exverified=False):
 		self.args = StratSeries() if args == None else StratSeries(args) if isinstance(args,list) else args
 		self.name = name
 		self.type = ty
@@ -1243,33 +1161,15 @@ class ObjStrategy:
 			# assert args==None
 			# assert ty==None
 			# assert name==None
-			# assert upcast==None
 			self.type = parsed[-1]
 			if len(parsed)>1 and isinstance(parsed[-2],str):
 				self.name = parsed[-2]
 				self.args = StratSeries([arg for arg in parsed[0:-2]])
 			else:
 				self.args = StratSeries([arg for arg in parsed[0:-1]])
-		if upcast != None:
-			# assert args==None
-			# assert ty==None
-			# assert name==None
-			self.column = upcast.column
-			self.row = upcast.row
-			self.name = upcast.name
-			self.type = ObjKindReferenceTree(upcast=upcast.type)
-			self.args = StratSeries([ObjStrategy(upcast=i) for i in upcast.args])
-		# print(type(self.type))
 		# assert issubclass(type(self.type),ObjKind)
 		# assert type(self.args) is StratSeries
-
-		# for h in range(len(self.args)):
-		# 	for g in self.args.data[:h]:
-		# 		if g.name != None:
-		# 			assert g.name != self.args[h].name
-
 		self.verified = exverified and self.type.verified and self.args.verified
-
 	def __repr__(self):
 		if len(self.args) != 0:
 			if self.name != None: return "["+",".join([str(k) for k in self.args])+"]"+self.name+":"+str(self.type)
@@ -1277,15 +1177,12 @@ class ObjStrategy:
 		else:
 			if self.name != None: return self.name+":"+str(self.type)
 			else: return str(self.type)
-
-
 	def refsany(self,si):
 		def minjcontains(j):
 			if isinstance(j,list):
 				return any(minjcontains(o) for o in j)
 			return self.refs(j)
 		return minjcontains(si.dat)
-
 	@debugdebug
 	def verify(self,scope,errors):
 		# assert scope.verified
@@ -1301,7 +1198,8 @@ class ObjStrategy:
 		verargs = self.args.verify(scope,errors)
 		if sarg:start = time.time()
 
-
+		# sresressres = None
+		# if not sarg:
 		sresressres = ObjStrategy(
 			args=verargs,
 			ty=self.type.verify(scope+verargs,ObjKindReferenceTree(name="U",verprot=2),errors),
@@ -1314,17 +1212,33 @@ class ObjStrategy:
 		if sarg:print("TIME TAKEN: ",end - start)
 
 		return sresressres
-
 	@debugdebug
 	def substitute(self,revf,repl,errors):
+		if len(revf.data) == 0 and len(repl) == 0: return self
 		mmn = mostmeagername(revf,self.introducer(),repl)
 		return ObjStrategy(args=self.args.substitute(revf,repl,errors),ty=self.type.substitute(mmn,repl.without(self.args.introducer()),errors),name=self.name,pos=self,exverified=self.verified)
-
 	def refs(self,label):
 		if self.args.refs(label): return True
 		return not self.args.introducer().contains(label) and self.type.refs(label)
 	def introducer(self):
 		return ScopeIntroducer([k.name for k in self.args])
+	def surfacerename(self,newname):
+		if newname == self.name: return self
+		y = copy.copy(self)
+		y.name = newname
+		return y
+	
+
+	def simplereformat(self,mog):
+		res = []
+		mmn = RenamerObject()
+		for j in range(len(self.args)):
+			res.append(self.args[j].substitute(mmn,SubsObject(),None).surfacerename(mog[j]))
+			mmn.data[self.args[j].name] = mog[j]
+
+		return ObjStrategy(name=self.name,ty=self.type.substitute(mmn,SubsObject(),None),args=StratSeries(res),exverified=True)
+
+
 
 	@debugdebug
 	def reformat(self,scope,mog,errors):
@@ -1333,10 +1247,8 @@ class ObjStrategy:
 		if len(mog) != len(self.args):
 			raise errors.error("Mechanical error (subside): Highly illegal compactify call.")
 		if len(mog) == 0: return self
-
-		# assert not self.refsany(mog)
-
-
+		if all(type(i) is str for i in mog.dat):
+			return self.simplereformat(mog.dat)
 		def minjcontains(j):
 			if isinstance(j,list):
 				mo =[minjcontains(s) for s in j]
@@ -1346,99 +1258,53 @@ class ObjStrategy:
 				try: return int(j[0])
 				except: return 0
 			return 0
-
-
 		def arbirow(depth,length):
 			return ScopeIntroducer([str(depth)+":"+str(h) for h in range(length)])
-
 		def simconvert(k,depth):
 			po=[]
 			for i in range(len(k.args)):
 				ja = arbirow(depth+1,len(k.args[i].args))
-
-				# k.args[i]
-
 				po.append(IndividualSub(None,ja,ObjKindReferenceTree(name=str(depth)+":"+str(i),args=simconvert(k.args[i],depth+1)),[]))
 			return SubsObject(po)
-
 		def croconvert(j,k,sfar):
 			if isinstance(j,list):
 				# assert len(k.args) == 0
 				# assert type(k.type) is ObjKindTypeUnion
 				availb = k.type.subs.availvariables()
 				# assert len(availb) == len(j)
-
 				shar = []
 				for i in range(len(j)):
 					nsfar  = minjcontains(j[i])
-
-					# availb[i]
-					# scope: previous subs...
-
 					shar.append(IndividualSub(None,arbirow(nsfar,len(availb[i].args)),croconvert(j[i],availb[i],nsfar),[]))
-
 				return ObjKindUnionSet(subs=SubsObject(shar))
 			return ObjKindReferenceTree(name=j,args=simconvert(k,sfar))
-
 		def populate(j,k,repl,prevs):
 			if isinstance(j,list):
 				if len(k.args) != 0:
 					raise errors.error("Mechanical error (subside): Function-to-tuple unwrapping is not supported.")
 				if type(k.type) is not ObjKindTypeUnion:
 					raise errors.error("Mechanical error (subside): non-unionset unwrapped in given paramter for eval. "+str(mog)+" , "+str(self))
-
 				availb = k.type.subs.availvariables()
-
 				if len(availb) != len(j):
 					raise errors.error("Mechanical error (subside): Illegal unwrap length.")
-
-
-				res = StratSeries()
+				res = []
 				for i in range(len(j)):
 					res = res + populate(j[i],availb[i],repl,prevs+res)
 				return res
-
-			try:
-				mold = copy.copy(k.substitute(RenamerObject(),repl,errors))
-				mold = mold.verify(prevs,errors)
-			except ErrorObject: assert False
-			mold.name = j
-			return StratSeries([mold],exverified=True)
-
-		nargs = StratSeries()
-		# assert nargs.verified
+			mold = k.substitute(RenamerObject(),repl,None).verify(scope+StratSeries(prevs),UnacceptableErrorObject()).surfacerename(j)
+			return [mold]
+		nargs = []
 		uio = []
 		for g in range(len(mog)):
-			try:
-				ays = SubsObject(uio).precompact(scope+self.args+nargs,StratSeries(self.args.data[:g],exverified=True),errors,onlycomplete=True)
-			except ErrorObject: assert False
-
-			# concatenating strategies before casting from array causes duplicate protections to fail......
-
-			# assert type(scope) is StratSeries
-			# assert type(nargs) is StratSeries
-			# assert type(nargs.data) is list
-			nargs = nargs + populate(mog.dat[g],self.args[g],ays.subs,scope+nargs)
-
-			# for k in nargs.data:
-			# 	assert k.verified
-			# assert nargs.verified
+			ays = SubsObject(uio).precompactsimple(scope+StratSeries(nargs),StratSeries(self.args.data[:g]),UnacceptableErrorObject())#+self.args
+			nargs = nargs + populate(mog.dat[g],self.args[g],ays,nargs)
 			nsfar = minjcontains(mog.dat[g])
 			moh = croconvert(mog.dat[g],self.args[g],nsfar)
 			uio.append(IndividualSub(self.args[g].name,arbirow(nsfar,len(self.args[g].args)),moh,[]))
-		try:
-			shaja = SubsObject(uio).precompact(scope+self.args+nargs,self.args,errors,onlycomplete=True)
-		except ErrorObject: assert False
-		# 	print("wassup doc",nargs)
-		# 	raise u
-
-
-		# assert shaja != None
-		shaja = shaja.subs
-		sja = self.type.substitute(RenamerObject(),shaja,errors)
-		return ObjStrategy(name=self.name,ty=sja,args=nargs).verify(scope,errors)
-
-
+		shaja = SubsObject(uio).precompactsimple(scope+StratSeries(nargs),self.args,UnacceptableErrorObject())#+self.args
+		sja = self.type.substitute(RenamerObject(),shaja,None)
+		goreturn = ObjStrategy(name=self.name,ty=sja,args=nargs).verify(scope,UnacceptableErrorObject())
+		return goreturn
 	def equate(self,cno,other):
 		if self.name != other.name: return False
 		if not self.args.equate(cno,other.args): return False
@@ -1450,53 +1316,32 @@ class ObjStrategy:
 
 
 
-#erase linononononon
-
-
-
-#already verified flags for speed
-
-
-
-# separate initfromparse() functions
-
-
-#make mostmeagername usage more graceful-> split into two, one for individual renamings, one for introducers.
-
-
-#reduce copies by checking if you'd really be changing things-> this especially concerns reformat
-#    might be nice to have a rename function on strategies...
-
-
-
-
-
-
-#turn the whole program into one objstrategy
-
-
-#research reducing copies by doing a substitution lookeahead (does not obsolete verified, because of name replacements)
-
-
-
-#forbidden(values) + repl constitute set of unusable variable names... doubleecheck that this is preserved on alternate. After all, the normal set of replacements is hidden and don't get applied to repl............. big hmm.
-#      maybe you need to double check all refs with alt... like use alt as a renamer before going to refs(label)
-
 
 
 #need to introduce a second equality relation that allows type casts. (Asymmetric, though, so it's not really equaity.)
 
 
 
-
-
-#make sure that, if an SI gets passed over, that SI.rename should leave the SI unaffected.
-
-
-
-
-
 #review comments,prints,and assertions, and try/catches, and raises, and returns
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
