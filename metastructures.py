@@ -1,5 +1,6 @@
 
 from .structures import *
+import time
 # from inspect import getframeinfo, stack
 
 
@@ -57,7 +58,7 @@ fonodepth = 0
 
 
 def debugdebug(F):
-	# return F
+	return F
 	def wrapper(*args,**kwargs):
 		global fonocolls
 		global fonodepth
@@ -65,11 +66,11 @@ def debugdebug(F):
 			fonocolls += 1
 			if fonocolls == 500000: assert False
 			janh = F.__name__
-			# if janh != "substitute" and janh != "subsmake":
-			# 	print("\t"*fonodepth+"entering: ",type(args[0]).__name__+"."+janh)
-			# fonodepth += 1
+			if janh != "substitute" and janh != "subsmake":
+				print("\t"*fonodepth+"entering: ",type(args[0]).__name__+"."+janh)
+			fonodepth += 1
 			ahjs = F(*args,**kwargs)
-			# fonodepth -= 1
+			fonodepth -= 1
 
 			if janh == "verify":
 				if not ahjs.verified:
@@ -151,7 +152,7 @@ def subsmake(lvluprow,mog,errors):
 			jog = ObjKindReferenceTree(src=jog,name=s)
 		return [IndividualSub(lvluprow,mog.si,jog,[])]
 	if type(lvluprow) is ScopeIntroducer: lvluprow = lvluprow.dat
-	assert type(errors) is ErrorObject and isinstance(lvluprow,list)
+	# assert type(errors) is ErrorObject and isinstance(lvluprow,list)
 	if len(lvluprow) != len(mog):
 		raise errors.error("mechanical: Wrong number of introduced parameters.")
 	resk = []
@@ -170,17 +171,17 @@ def meagersinglename(forbidden,intr,*repl):
 	if intr == None: return
 	if type(forbidden) is dict:
 		forbidden = [v for k,v in forbidden.items() if k!=intr]
-	assert type(intr) is str
+	# assert type(intr) is str
 	if not any(o.refs(intr) for o in repl) and intr not in forbidden: return intr
 	g = intr.split("$")
-	assert len(g) == 1 or len(g) == 2
+	# assert len(g) == 1 or len(g) == 2
 	n = int(g[1]) if len(g) == 2 else 1
 	h = g[0]
 	while any(o.refs(h+"$"+str(n)) for o in repl) or h+"$"+str(n) in forbidden: n+=1
 	return h+"$"+str(n)
 def mostmeagername(exrevf,intrs,repl):
-	assert type(exrevf) is RenamerObject
-	assert type(intrs)  is ScopeIntroducer
+	# assert type(exrevf) is RenamerObject
+	# assert type(intrs)  is ScopeIntroducer
 	repls = copy.copy(exrevf.data)
 	for intr in intrs.allvars():
 		z = meagersinglename(repls,intr,repl)
@@ -198,8 +199,8 @@ class RenamerObject:
 	def __init__(self,data=None,alt=None):
 		self.data = data if data != None else {}
 		self.alt = alt if alt != None else {}
-		assert type(self.data) is dict
-		assert type(self.alt) is dict
+		# assert type(self.data) is dict
+		# assert type(self.alt) is dict
 	def without(self,si):
 		return RenamerObject({key:data for (key,data) in self.data.items() if not si.contains(key)},self.alt)
 	def alternate(self):
@@ -260,22 +261,22 @@ class ErrorObject(BaseException):
 	def takeblame(self,obk):
 		self.blame = obk
 	def nonfatal(self,err,obk=None):
-		assert type(err) is str
+		# assert type(err) is str
 		if obk == None:
-			assert self.blame != None
+			# assert self.blame != None
 			self.rer.append((err,self.blame,self.tac))
 		else:
 			self.rer.append((err,obk,self.tac))
 	def error(self,err,obk=None):
 		# assert False
-		assert type(err) is str
+		# assert type(err) is str
 		if obk == None:
-			assert self.blame != None
+			# assert self.blame != None
 			return ErrorObject([(err,self.blame,self.tac)])
 		else:
 			return ErrorObject([(err,obk,self.tac)])
 	def tack(self):
-		assert self.blame != None
+		# assert self.blame != None
 		return ErrorObject(self.rer,self.tac+[self.blame])
 	def reports(self,window):
 		errors = list(dict.fromkeys([(o[0],o[1].row,o[1].column) for o in self.rer]))
@@ -320,7 +321,7 @@ class ScopeIntroducer:
 
 	def contains(self,label):
 		if label == None: return False
-		assert type(label) is str
+		# assert type(label) is str
 		def contains(lvluprow):
 			for h in lvluprow:
 				if h == label: return True
@@ -360,9 +361,9 @@ class ScopeIntroducer:
 
 class IndividualSub:
 	def __init__(self,name,si,obj,bon,expected=None,exverified=False,extypeverified=False):
-		assert type(name) is str or name == None
-		assert type(si) is ScopeIntroducer
-		assert issubclass(type(obj),ObjKind)
+		# assert type(name) is str or name == None
+		# assert type(si) is ScopeIntroducer
+		# assert issubclass(type(obj),ObjKind)
 
 		self.linnonono = None#getframeinfo(stack()[1][0]).lineno
 
@@ -435,9 +436,9 @@ class IndividualSub:
 	def preverify(self,scope,shah,zaku,errors):
 		if self.easyverified:
 			return (self.si,self.obj)
-		assert scope.verified
+		# assert scope.verified
 		shama = StratSeries(copy.copy(scope.data),exverified=True)
-		assert shama.verified
+		# assert shama.verified
 
 		mmnstrat = RenamerObject()
 		mmnobj = RenamerObject()
@@ -476,8 +477,8 @@ class IndividualSub:
 		return self.obj.equate(con,other.obj)
 class SubsObject:
 	def __init__(self,data=None,exverified=False):
-		if data != None:
-			for k in data: assert type(k) is IndividualSub
+		# if data != None:
+		# 	for k in data: assert type(k) is IndividualSub
 		self.subs = [] if data == None else data
 		self.verified = (exverified and all(i.verified for i in self.subs)) or self.subs == []
 
@@ -512,7 +513,7 @@ class SubsObject:
 				return t
 		return None
 	def redirect(self,a):
-		assert type(a) is ScopeSelectionObject
+		# assert type(a) is ScopeSelectionObject
 		nrepl = []
 		for i in self.subs:
 			marm = copy.copy(i)
@@ -527,9 +528,9 @@ class SubsObject:
 	@debugdebug
 	def precompact(self,scope,cars,errors,onlycomplete=False,argmode=False):
 		# print("clowning: ",len(self.subs))
-		assert type(scope) is StratSeries
-		assert type(cars) is StratSeries
-		assert type(errors) is ErrorObject
+		# assert type(scope) is StratSeries
+		# assert type(cars) is StratSeries
+		# assert type(errors) is ErrorObject
 		if argmode:
 			if len(self.subs) != len(cars): raise errors.error("Illegal argument count.")
 			gar = range(len(self.subs))
@@ -543,8 +544,8 @@ class SubsObject:
 
 		carscope = scope
 
-		for i in cars.data:
-			assert i.verified
+		# for i in cars.data:
+		# 	assert i.verified
 
 		for z in range(len(gar)):
 			zaku = cars[z].substitute(mmn,SubsObject(),None)
@@ -615,15 +616,15 @@ class SubsObject:
 			zn.append(zaku)
 		# assert False
 		fomo = DualSubs(StratSeries(zn,exverified=True),SubsObject(simpsubs,exverified=True),ScopeSelectionObject(fahg),exverified=True)
-		for j in simpsubs:
-			assert j.verified
+		# for j in simpsubs:
+		# 	assert j.verified
 
-		for z in zn:
-			assert z.verified
+		# for z in zn:
+		# 	assert z.verified
 
-		assert fomo.variables.verified
-		assert fomo.subs.verified
-		assert fomo.verified
+		# assert fomo.variables.verified
+		# assert fomo.subs.verified
+		# assert fomo.verified
 
 		fomo.availvariables()
 		return fomo
@@ -650,12 +651,12 @@ class SubsObject:
 class StratSeries:
 	def __init__(self,data=None,exverified=False):
 		self.data = [] if data == None else data
-		for k in self.data: assert type(k) is ObjStrategy
+		# for k in self.data: assert type(k) is ObjStrategy
 		self.verified = exverified and all(k.verified for k in self.data) or self.data == []
-		for h in range(len(self.data)):
-			for g in self.data[:h]:
-				if g.name != None:
-					assert g.name != self.data[h].name
+		# for h in range(len(self.data)):
+		# 	for g in self.data[:h]:
+		# 		if g.name != None:
+		# 			assert g.name != self.data[h].name
 
 	def __repr__(self):
 		return ",".join([str(i) for i in self.data])
@@ -663,7 +664,7 @@ class StratSeries:
 		return (",\n"+"\t"*depth).join([str(i) for i in self.data])
 	@debugdebug
 	def verify(self,scope,errors):
-		assert scope.verified
+		# assert scope.verified
 		if self.verified: return self
 		zn = []
 		for k in range(len(self.data)):
@@ -682,7 +683,7 @@ class StratSeries:
 	def introducer(self):
 		return ScopeIntroducer([k.name for k in self.data])
 	def refs(self,label):
-		if label != None: assert type(label) is str
+		# if label != None: assert type(label) is str
 		for k in self.data:
 			if k.refs(label): return True
 			if k.name == label: return False
@@ -696,7 +697,7 @@ class StratSeries:
 				return t
 		return None
 	def __add__(self,other):
-		assert type(other) is StratSeries
+		# assert type(other) is StratSeries
 
 		j = []
 		mmn = RenamerObject()
@@ -730,24 +731,24 @@ class StratSeries:
 		return all(self[i].equate(cno,other[i]) for i in range(len(self)))
 class DualSubs:
 	def __init__(self,variables,subs=None,bon=None,exverified=False):
-		assert type(variables) is StratSeries
-		if subs != None: assert type(subs) is SubsObject
+		# assert type(variables) is StratSeries
+		# if subs != None: assert type(subs) is SubsObject
 		self.variables = variables
 		self.subs = subs if subs != None else SubsObject()
 
 		self.bon = ScopeSelectionObject([k.name for k in variables.data if k.name != None]) if bon == None else bon
-		assert type(self.bon) is ScopeSelectionObject
+		# assert type(self.bon) is ScopeSelectionObject
 
-		for k in self.subs.subs:
-			for j in k.bon.bon():
-				if not self.variables.introducer().contains(j):
-					assert False
+		# for k in self.subs.subs:
+		# 	for j in k.bon.bon():
+		# 		if not self.variables.introducer().contains(j):
+		# 			assert False
 
-		for h in self.variables:
-			if h.name != None:
-				assert h.name in [p[1] for p in self.bon.data]
-		for h in self.bon.data:
-			assert h[1] in [p.name for p in self.variables]
+		# for h in self.variables:
+		# 	if h.name != None:
+		# 		assert h.name in [p[1] for p in self.bon.data]
+		# for h in self.bon.data:
+		# 	assert h[1] in [p.name for p in self.variables]
 
 		self.verified = exverified and self.subs.verified and self.variables.verified
 
@@ -781,7 +782,7 @@ class DualSubs:
 
 	@debugdebug
 	def verify(self,scope,errors):
-		assert scope.verified
+		# assert scope.verified
 		if self.verified: return self
 		shash = self.subs.precompact(scope,self.variables.verify(scope,errors),errors)
 		shash.bon = self.bon.rename(shash.bon.asrenamer())
@@ -814,11 +815,11 @@ class DualSubs:
 		return self.variables.equate(vno,other.variables) and self.subs.equate(vno,other.subs)
 	def availvariables(self):
 
-		for k in range(len(self.variables)):
-			if self.variables[k].name in [j.name for j in self.subs.subs]:
-				for o in self.variables.data[k+1:]:
-					if o.refs(self.variables[k].name):
-						assert False
+		# for k in range(len(self.variables)):
+		# 	if self.variables[k].name in [j.name for j in self.subs.subs]:
+		# 		for o in self.variables.data[k+1:]:
+		# 			if o.refs(self.variables[k].name):
+		# 				assert False
 
 		return StratSeries([k for k in self.variables.data if k.name not in [j.name for j in self.subs.subs]])
 
@@ -838,7 +839,7 @@ class DualSubs:
 
 class ObjKindTemplateHolder(ObjKind):
 	def __init__(self,src,subs,pos=None,exverified=False):
-		assert issubclass(type(src),ObjKind) and type(subs) is SubsObject
+		# assert issubclass(type(src),ObjKind) and type(subs) is SubsObject
 		self.src = src
 		self.subs = subs
 		transferlines(self,pos)
@@ -877,41 +878,41 @@ class ObjKindReferenceTree(ObjKind):
 	def __init__(self,lvlup=None,args=None,subs=None,src=None,upcast=None,name=None,pos=None,verprot=None):
 		if args == None:
 			self.args = SubsObject()
-			assert lvlup == None
+			# assert lvlup == None
 		elif type(args) is SubsObject:
 			self.args = args
-			assert lvlup == None
+			# assert lvlup == None
 		else:
 			ijuh = []
 			if lvlup == None:
 				for z in range(len(args)):
 					ijuh.append(IndividualSub(None,ScopeIntroducer([]),args[z],[]))
 			else:
-				assert len(lvlup) == len(args)
+				# assert len(lvlup) == len(args)
 				for z in range(len(args)):
 					ijuh.append(IndividualSub(None,ScopeIntroducer(lvlup[z]),args[z],[]))
 			self.args = SubsObject(ijuh)
 
-		if subs != None: assert type(subs) is SubsObject
-		if src != None: assert issubclass(type(src),ObjKind)
-		if name != None: assert type(name) is str or (src != None and type(name) is int)
+		# if subs != None: assert type(subs) is SubsObject
+		# if src != None: assert issubclass(type(src),ObjKind)
+		# if name != None: assert type(name) is str or (src != None and type(name) is int)
 		self.forgiveLvlup = False
 		self.name = name
 		self.subs = subs if subs != None else SubsObject()
 		self.src = src
 		transferlines(self,pos)
 		if upcast != None:
-			assert args == None
-			assert subs == None
-			assert src == None
-			assert lvlup == None
-			assert name == None
+			# assert args == None
+			# assert subs == None
+			# assert src == None
+			# assert lvlup == None
+			# assert name == None
 
 			self.column = upcast.column
 			self.row = upcast.row
 			self.name = upcast.name
 
-			assert len(upcast.lvlup) <= len(upcast.args)
+			# assert len(upcast.lvlup) <= len(upcast.args)
 			dfji = []
 			for z in range(len(upcast.args)):
 				dfji.append(IndividualSub(None,
@@ -919,8 +920,8 @@ class ObjKindReferenceTree(ObjKind):
 					ObjKindReferenceTree(upcast=upcast.args[z]),[]))
 			self.args = SubsObject(dfji)
 			self.forgiveLvlup = True
-		assert type(self.args) is SubsObject
-		assert type(self.subs) is SubsObject
+		# assert type(self.args) is SubsObject
+		# assert type(self.subs) is SubsObject
 
 
 
@@ -931,14 +932,14 @@ class ObjKindReferenceTree(ObjKind):
 		elif verprot == 1:
 			self.verified = self.src.verified and self.args.verified
 		elif verprot == 2:
-			assert self.src == None
+			# assert self.src == None
 			self.verified = self.args.verified
-		else: assert False
+		# else: assert False
 
 
 		self.verprot = verprot if self.verified else None
 
-		if self.verified: assert self.verprot != None
+		# if self.verified: assert self.verprot != None
 
 
 	def __repr__(self):
@@ -968,21 +969,24 @@ class ObjKindReferenceTree(ObjKind):
 		return lab
 	@debugdebug
 	def verify(self,scope,carry,errors):
-		assert scope.verified
+		# assert scope.verified
 		errors.takeblame(self)
 
 		# print("VERIFYING:",self)
 
-		if self.verified: assert self.verprot != None
+		# if self.verified: assert self.verprot != None
 		if self.verified: return self
 		# if self.verified: return self
 		# errors.nonfatal("X")
 
 		if self.src == None and len(self.args) == 0 and self.name == "U":
 			if carry.src == None and len(carry.args) == 0 and carry.name == "U":
-				mogumogu = ObjKindReferenceTree(name="U",verprot=2)
-				assert mogumogu.verified
-				return mogumogu
+				return ObjKindReferenceTree(name="U",verprot=2)
+
+		if self.src == None and len(self.args) == 0 and self.name == "~":
+			return ObjKindReferenceTree(name="~",verprot=2)
+
+
 
 		if self.src != None:
 			# print("calling src")
@@ -993,7 +997,7 @@ class ObjKindReferenceTree(ObjKind):
 
 				if type(poc) is ObjKindTemplateHolder:
 					root = poc.src
-					assert type(root) is ObjKindReferenceTree
+					# assert type(root) is ObjKindReferenceTree
 				if type(poc) is ObjKindReferenceTree:
 					root = poc
 
@@ -1011,9 +1015,9 @@ class ObjKindReferenceTree(ObjKind):
 				# else:
 				# 	print("-=-failurefailurefailurefailure>>>>",self.name,gmo)
 
-				smomomo = ObjKindReferenceTree(src=poc,args=self.args if sgig==None else sgig,subs=self.subs,name=self.name,pos=self,verprot=int(sgig!=None))
-				assert smomomo.verified
-				return smomomo
+				return ObjKindReferenceTree(src=poc,args=self.args if sgig==None else sgig,subs=self.subs,name=self.name,pos=self,verprot=int(sgig!=None))
+
+
 
 			blcarry = poc.subs.get(self.name)
 
@@ -1037,9 +1041,8 @@ class ObjKindReferenceTree(ObjKind):
 		# print("calling arginternal")
 		snot = self.arginternal(scope,t,carry,errors)
 		# snot = self.args#fix this please
-		smomomo = ObjKindReferenceTree(args=snot,name=self.name,pos=self,verprot=2)
-		assert smomomo.verified
-		return smomomo
+		return ObjKindReferenceTree(args=snot,name=self.name,pos=self,verprot=2)
+
 	def gentype(self,scope,errors):
 		t = scope.get(self.name)
 		if t == None:
@@ -1050,7 +1053,7 @@ class ObjKindReferenceTree(ObjKind):
 	def arginternal(self,scope,t,carry,errors):
 		if len(self.args) != len(t.args): raise errors.error("Wrong argument count.")
 
-		if self.verified: assert self.verprot != None
+		# if self.verified: assert self.verprot != None
 
 		fas = []
 		for j in range(len(self.args)):
@@ -1063,7 +1066,7 @@ class ObjKindReferenceTree(ObjKind):
 			fas.append(mogol)
 
 		snot = SubsObject(fas).precompact(scope,t.args,errors,onlycomplete=True,argmode=True).subs
-		assert type(snot) is SubsObject
+		# assert type(snot) is SubsObject
 
 		if carry != None:
 			exptyoe = t.type.substitute(RenamerObject(),snot,errors)
@@ -1090,7 +1093,7 @@ class ObjKindReferenceTree(ObjKind):
 		return snot
 	@debugdebug
 	def substitute(self,revf,repl,errors):
-		if self.verified: assert self.verprot != None
+		# if self.verified: assert self.verprot != None
 
 		yobi = self.args.substitute(revf,repl,errors)
 		if self.src != None:
@@ -1115,7 +1118,7 @@ class ObjKindReferenceTree(ObjKind):
 		return self.args.equate(cno,other.args)
 	def refs(self,label):
 
-		if self.verified: assert self.verprot != None
+		# if self.verified: assert self.verprot != None
 
 		if self.src == None and self.name == label: return True
 		if self.args.refs(label): return True
@@ -1127,7 +1130,7 @@ class ObjKindUnionSet(ObjKind):
 		self.subs = SubsObject() if subs == None else subs
 		transferlines(self,pos)
 		if parsed != None:
-			assert subs == None
+			# assert subs == None
 			self.subs = parsesubsfromsrc(parsed[0])
 		self.inherited = [] if inherited == None else inherited
 
@@ -1137,7 +1140,7 @@ class ObjKindUnionSet(ObjKind):
 			self.verified = True
 		elif verprot == 1:
 			self.verified = self.subs.verified
-		else: assert False
+		# else: assert False
 		self.verprot = verprot if self.verified else None
 
 	def __repr__(self):
@@ -1154,16 +1157,15 @@ class ObjKindUnionSet(ObjKind):
 			ewgross.verprot = 0
 			return ewgross
 
-		assert issubclass(type(carry),ObjKind)
+		# assert issubclass(type(carry),ObjKind)
 		if type(carry) is not ObjKindTypeUnion:
 			raise errors.error("Can't pair keyword arguments to static type.")
 
 		vodof = SubsObject(self.subs.without(ScopeIntroducer(self.inherited)).subs+carry.subs.subs.subs)
 
-		gorf = ObjKindUnionSet(subs=vodof.precompact(scope,carry.subs.variables,errors,onlycomplete=True).subs,inherited=[k.name for k in carry.subs.subs.subs],pos=self,verprot=1)
+		return ObjKindUnionSet(subs=vodof.precompact(scope,carry.subs.variables,errors,onlycomplete=True).subs,inherited=[k.name for k in carry.subs.subs.subs],pos=self,verprot=1)
 
-		assert gorf.verified
-		return gorf
+
 	@debugdebug
 	def substitute(self,revf,repl,errors):
 		return ObjKindUnionSet(subs=self.subs.substitute(revf,repl,errors),inherited=self.inherited,pos=self,verprot=self.verprot)
@@ -1180,8 +1182,8 @@ class ObjKindTypeUnion(ObjKind):
 	def __init__(self,parsed=None,subs=None,variables=None,pos=None,exverified=False):
 		transferlines(self,pos)
 		if parsed != None:
-			assert subs == None
-			assert variables == None
+			# assert subs == None
+			# assert variables == None
 			variables = [gh.children[0] for gh in parsed]
 			argh = []
 			for n in range(len(variables)):
@@ -1191,7 +1193,7 @@ class ObjKindTypeUnion(ObjKind):
 			self.subs = DualSubs(StratSeries(variables),SubsObject(argh))
 		else:
 			if type(subs) is DualSubs:
-				assert variables == None
+				# assert variables == None
 				self.subs = subs
 			else:
 				subi = SubsObject() if subs == None else subs
@@ -1205,7 +1207,7 @@ class ObjKindTypeUnion(ObjKind):
 
 	@debugdebug
 	def verify(self,scope,carry,errors):
-		assert scope.verified
+		# assert scope.verified
 		errors.takeblame(self)
 		if self.verified: return self
 		return ObjKindTypeUnion(subs=self.subs.verify(scope,errors),pos=self,exverified=True)
@@ -1227,6 +1229,10 @@ class ObjKindTypeUnion(ObjKind):
 		return self.subs.equate(cno,other.subs)
 
 
+
+oneoff = True
+
+
 class ObjStrategy:
 	def __init__(self,args=None,parsed=None,ty=None,name=None,upcast=None,pos=None,exverified=False):
 		self.args = StratSeries() if args == None else StratSeries(args) if isinstance(args,list) else args
@@ -1234,10 +1240,10 @@ class ObjStrategy:
 		self.type = ty
 		transferlines(self,pos)
 		if parsed != None:
-			assert args==None
-			assert ty==None
-			assert name==None
-			assert upcast==None
+			# assert args==None
+			# assert ty==None
+			# assert name==None
+			# assert upcast==None
 			self.type = parsed[-1]
 			if len(parsed)>1 and isinstance(parsed[-2],str):
 				self.name = parsed[-2]
@@ -1245,17 +1251,17 @@ class ObjStrategy:
 			else:
 				self.args = StratSeries([arg for arg in parsed[0:-1]])
 		if upcast != None:
-			assert args==None
-			assert ty==None
-			assert name==None
+			# assert args==None
+			# assert ty==None
+			# assert name==None
 			self.column = upcast.column
 			self.row = upcast.row
 			self.name = upcast.name
 			self.type = ObjKindReferenceTree(upcast=upcast.type)
 			self.args = StratSeries([ObjStrategy(upcast=i) for i in upcast.args])
 		# print(type(self.type))
-		assert issubclass(type(self.type),ObjKind)
-		assert type(self.args) is StratSeries
+		# assert issubclass(type(self.type),ObjKind)
+		# assert type(self.args) is StratSeries
 
 		# for h in range(len(self.args)):
 		# 	for g in self.args.data[:h]:
@@ -1282,17 +1288,33 @@ class ObjStrategy:
 
 	@debugdebug
 	def verify(self,scope,errors):
-		assert scope.verified
+		# assert scope.verified
+		global oneoff
+		sarg = oneoff
+		oneoff = False
+
 		errors.takeblame(self)
 		if self.verified: return self
+
+		if sarg:print("I MEAN ALRIGHT")
+		if sarg:prestart = time.time()
 		verargs = self.args.verify(scope,errors)
-		return ObjStrategy(
+		if sarg:start = time.time()
+
+
+		sresressres = ObjStrategy(
 			args=verargs,
 			ty=self.type.verify(scope+verargs,ObjKindReferenceTree(name="U",verprot=2),errors),
 			name=self.name,
 			pos=self,
 			exverified=True
 		)
+		if sarg:end = time.time()
+		if sarg:print("TIME TAKEN: ",start - prestart)
+		if sarg:print("TIME TAKEN: ",end - start)
+
+		return sresressres
+
 	@debugdebug
 	def substitute(self,revf,repl,errors):
 		mmn = mostmeagername(revf,self.introducer(),repl)
@@ -1307,12 +1329,12 @@ class ObjStrategy:
 	@debugdebug
 	def reformat(self,scope,mog,errors):
 		errors.takeblame(self)
-		assert scope.verified
+		# assert scope.verified
 		if len(mog) != len(self.args):
 			raise errors.error("Mechanical error (subside): Highly illegal compactify call.")
 		if len(mog) == 0: return self
 
-		assert not self.refsany(mog)
+		# assert not self.refsany(mog)
 
 
 		def minjcontains(j):
@@ -1341,10 +1363,10 @@ class ObjStrategy:
 
 		def croconvert(j,k,sfar):
 			if isinstance(j,list):
-				assert len(k.args) == 0
-				assert type(k.type) is ObjKindTypeUnion
+				# assert len(k.args) == 0
+				# assert type(k.type) is ObjKindTypeUnion
 				availb = k.type.subs.availvariables()
-				assert len(availb) == len(j)
+				# assert len(availb) == len(j)
 
 				shar = []
 				for i in range(len(j)):
@@ -1384,7 +1406,7 @@ class ObjStrategy:
 			return StratSeries([mold],exverified=True)
 
 		nargs = StratSeries()
-		assert nargs.verified
+		# assert nargs.verified
 		uio = []
 		for g in range(len(mog)):
 			try:
@@ -1393,14 +1415,14 @@ class ObjStrategy:
 
 			# concatenating strategies before casting from array causes duplicate protections to fail......
 
-			assert type(scope) is StratSeries
-			assert type(nargs) is StratSeries
-			assert type(nargs.data) is list
+			# assert type(scope) is StratSeries
+			# assert type(nargs) is StratSeries
+			# assert type(nargs.data) is list
 			nargs = nargs + populate(mog.dat[g],self.args[g],ays.subs,scope+nargs)
 
-			for k in nargs.data:
-				assert k.verified
-			assert nargs.verified
+			# for k in nargs.data:
+			# 	assert k.verified
+			# assert nargs.verified
 			nsfar = minjcontains(mog.dat[g])
 			moh = croconvert(mog.dat[g],self.args[g],nsfar)
 			uio.append(IndividualSub(self.args[g].name,arbirow(nsfar,len(self.args[g].args)),moh,[]))

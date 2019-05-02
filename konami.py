@@ -229,7 +229,7 @@ class BuildAxiomCommand(sublime_plugin.ViewEventListener,sublime_plugin.TextComm
 				# cheat = cheat.verify(StratSeries([],exverified=True),errors)
 				try:
 					nobh = task.verify(StratSeries(),errors)
-					print(nobh.wide_repr(0))
+					print(nobh)
 					print("--=-=-=-=--=-=-=-=-=-=-==--=>>>>>>")
 				except ErrorObject as u:
 					errors = u
