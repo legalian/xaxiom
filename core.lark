@@ -14,10 +14,11 @@ strategy    : ["["multistrat(","multistrat)*"]"][label":"]statement
 
 
 scopemop : label -> label
-         | "("scopemop(","scopemop)*")"
+         | "["scopemop (","scopemop)* "]"
+introducer : "|"scopemop(","scopemop)*"|" -> scopemop
 
 
-objargument      : ["["scopemop[","scopemop]*"]"]object
+objargument      : introducer? object
 objargumentnamed : [label"="]objargument
                  | "="label
 
@@ -45,13 +46,13 @@ objargumentseries : objargument(","objargument)*
 objargumentnamedseries : objargumentnamed(","objargumentnamed)*
 
 objectatom : [objectatom"."]label["("objargumentseries")"]["<"objargumentnamedseries">"] -> treeref
-           | "("objargumentnamedseries")" -> union
-           | "{"declaration (","declaration)*"}"                           -> andtype
+           | "("objargumentnamedseries")"                                                -> union
+           | "{"declaration (","declaration)*"}"                                         -> andtype
 
 
 
 
-objstrategy : ["["objstrategy("," objstrategy)*"]"][label":"]object
+objstrategy : (label":"|introducer":")? ("["objstrategy("," objstrategy)*"]")? object
 
 declaration : objstrategy["="object]
 

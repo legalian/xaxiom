@@ -11,12 +11,51 @@ import re
 
 
 
+
+
+def parsesubsfromsrc(parsed):
+	if parsed.data == 'objargumentseries':
+		jarf = []
+		for k in range(len(parsed.children)):
+			if len(parsed.children[k].children)>1:
+				jarf.append(IndividualSub(None,ScopeIntroducer(parsed.children[k].children[0]),parsed.children[k].children[1],[]))
+			else:
+				jarf.append(IndividualSub(None,ScopeIntroducer([]),parsed.children[k].children[0],[]))
+		return SubsObject(jarf)
+	if parsed.data == 'objargumentnamedseries':
+		ij = []
+		for n in range(len(parsed.children)):
+			m = parsed.children[n]
+			if len(m.children) == 1 and type(m.children[0]) is str:continue
+			moch = m.children[0 if len(m.children)==1 else 1]
+			nname = m.children[0] if len(m.children)==2 else None
+
+			nobj = moch.children[-1]
+			if len(moch.children)>1:
+				nsi = ScopeIntroducer(moch.children[0])
+			else:
+				nsi = ScopeIntroducer([])
+			nbon = [s.children[0] for s in parsed.children[:n] if type(s.children[0]) is str]
+			ij.append(IndividualSub(nname,nsi,nobj,nbon))
+		return SubsObject(ij)
+	assert False
+
+
+
+
 @v_args(meta=True)
 class MyTransformer(Transformer):
-	def objstrategy(self,children,meta):
+	def objstrategy(self,parsed,meta):
 		# print(type(meta))
 		# assert False
-		return ObjStrategy(parsed=children,pos=meta)
+		def chedme(u):
+			if isinstance(u,str): return True
+			if isinstance(u,list): return all(chedme(i) for i in u)
+			return False
+		if chedme(parsed[0]):
+			return ObjStrategy(pos=meta,args=StratSeries([arg for arg in parsed[1:-1]]),name=parsed[0],ty=parsed[-1])
+		else:
+			return ObjStrategy(pos=meta,args=StratSeries([arg for arg in parsed[0:-1]]),ty=parsed[-1])
 	def treeref(self,children,meta):
 		src = None
 		if issubclass(type(children[0]),ObjKind):
@@ -36,15 +75,25 @@ class MyTransformer(Transformer):
 		return ObjKindTemplateHolder(src=ObjKindReferenceTree(src=src,name=name,args=args,pos=meta),subs=subs)
 		
 	def union(self,children,meta):
-		return ObjKindUnionSet(subs=parsesubsfromsrc(children[0]),pos=meta)
+		jar = parsesubsfromsrc(children[0])
+		if len(jar.subs) == 1:
+			if len(jar.subs[0].si.dat) == 0 and jar.subs[0].name == None:
+				return jar.subs[0].obj
+		return ObjKindUnionSet(subs=jar,pos=meta)
 	def andtype(self,parsed,meta):
+
+		# assert False
+
+
 		variables = [gh.children[0] for gh in parsed]
 		argh = []
+		runjam = []
 		for n in range(len(variables)):
 			if len(parsed[n].children)==2:
 				if variables[n].name != None:
-					argh.append(IndividualSub(variables[n].name,ScopeIntroducer([j.name for j in variables[n].args]),parsed[n].children[1],[j.name for j in variables[:n] if j.name != None]))
-		return ObjKindTypeUnion(subs=DualSubs(StratSeries(variables),SubsObject(argh)),pos=meta)
+					argh.append((variables[n].name,variables[n].args.introducer(),parsed[n].children[1],runjam))
+			if variables[n].name != None: runjam = runjam + ScopeIntroducer(variables[n].name).allvars()
+		return ObjKindTypeUnion(subs=DualSubs(StratSeries(variables),sphsubs=argh),pos=meta)
 
 
 	def object(self,children,meta):
@@ -67,9 +116,12 @@ class MyTransformer(Transformer):
 			if   sym == "ltsym":   start = ObjKindReferenceTree(pos=meta,name="GT",args=[children[g+2],children[g+0]])
 			elif sym == "lteqsym": start = ObjKindReferenceTree(pos=meta,name="NOT",args=[ObjKindReferenceTree(pos=meta,name="GT",args=[children[g+0],children[g+2]])])
 			elif sym == "eqsym":   start = ObjKindReferenceTree(pos=meta,name="EQ",args=[ObjKindReferenceTree(pos=meta,name="AFF"),children[2],children[0]])
+			elif sym == "neqsym":  start = ObjKindReferenceTree(pos=meta,name="NOT",args=[ObjKindReferenceTree(pos=meta,name="EQ",args=[ObjKindReferenceTree(pos=meta,name="AFF"),children[2],children[0]])])
 			elif sym == "gteqsym": start = ObjKindReferenceTree(pos=meta,name="NOT",args=[ObjKindReferenceTree(pos=meta,name="GT",args=[children[g+2],children[g+0]])])
 			elif sym == "gtsym":   start = ObjKindReferenceTree(pos=meta,name="GT",args=[children[g+0],children[g+2]])
-			else: assert False
+			else: 
+				print(sym)
+				assert False
 			svart.append(start)
 			g = g + 2
 
@@ -94,7 +146,7 @@ class MyTransformer(Transformer):
 		return a
 	def objectprod(self,children,meta):
 		a = children[0]
-		for b in children[1:]: a = ObjKindReferenceTree(pos=meta,name="MULT",args=[a,b])
+		for b in children[1:]: a = ObjKindReferenceTree(pos=meta,name="MULTIPLY",args=[a,b])
 		return a
 	# def sub(self,children,meta):
 	# 	return ObjKindReferenceTree(pos=tree,name="ADD",args=[tree.children[0],ObjKindReferenceTree(pos=tree,name="AINVERSE",args=[tree.children[1]])])
@@ -117,7 +169,11 @@ class MyTransformer(Transformer):
 		# print(the,"opopop")
 		return Statement(pos=meta,parsed=children)
 	def strategy(self,children,meta):
-		return Strategy(pos=meta,parsed=children)
+		assert False#implement this later
+		# if len(parsed)>1 and isinstance(parsed[-2],str):
+		# 	return Strategy(pos=meta,args=StratSeries([arg for arg in parsed[0:-2]]),name=parsed[-2],ty=parsed[-1])
+		# else:
+		# 	return Strategy(pos=meta,args=StratSeries([arg for arg in parsed[0:-1]]),ty=parsed[-1])
 	def multistrat(self,children,meta):
 		return multistrat(children)
 
@@ -233,12 +289,13 @@ class BuildAxiomCommand(sublime_plugin.ViewEventListener,sublime_plugin.TextComm
 				errors = ErrorObject()
 				# cheat = StratSeries([ObjStrategy(upcast=b) for b in bank])
 				# cheat = cheat.verify(StratSeries([],exverified=True),errors)
+				print("--=-=-=-=--momomomo=-=-=-=-=-=-==--=>>>>>>")
 				try:
 					nobh = task.verify(StratSeries(),errors)
 					print(nobh)
 					print("--=-=-=-=--=-=-=-=-=-=-==--=>>>>>>")
 				except ErrorObject as u:
-					errors = u
+					errors.rer = errors.rer + u.rer
 				# except RuntimeError:
 				# 	print("RECURSION DEPTH EXCEEDED")
 

@@ -1,58 +1,90 @@
 
 
 [
-U:U,       
-AFF:U,
-ZERO:AFF,
+
+U:U,#U is special. It is the type that all types and predicates have.
+AFF:U,#AFF represents the real numbers
+ZERO:AFF,#Only zero and one are initialized this way because they are identities.
 ONE:AFF,
 
-[A:U,A,A]EQ:U,
-[A:U,a:A]IDENTITY:EQ(A,a,a),
-[A:U,B:U,A,EQ(U,A,B)]EQUIVALENCE:B,
-[A:U,B:U,[A]B,[B]A]HOMOMORPH:EQ(U,A,B),
-[A:U,a:A,b:A,EQ(A,b,a)]REFLEXIVITY:EQ(A,a,b),
-[A:U,B:U,[A]f:B,a:A,b:A,EQ(A,a,b)]PRESERVATION:EQ(B,f(a),f(b)),
+EQ:          [A:U,A,A]U,#EQ gets its own special syntax: 1 =(A)= 2, or just 1 == 2 if 1 and 2 have type AFF.
+IDENTITY:    [A:U,a:A]a=(A)=a,#IDENTITY -> "all elements of all types are equal to themselves."
+EQUIVALENCE: [A:U,B:U,A,A=(U)=B]B,#EQUIVALENCE -> "if A is true, and B is true, and A is equal to B, then B is true." it also has its own syntax: A->(1)
+HOMOMORPH:   [A:U,B:U,[A]B,[B]A]A=(U)=B,#HOMOMORPH is a misnomer; functions from A to B and from B to A do not garuntee that A and B are homomorphic, but it does imply that they symmetrically imply each other.
+REFLEXIVITY: [A:U,a:A,b:A,b=(A)=a]a=(A)=b,
+PRESERVATION:[A:U,B:U,f:[A]B,a:A,b:A,a=(A)=b]f(a) =(B)= f(b),
 
-[A:U,[A]B:U]AND:U,
-[A:U,[A]B:U,c:AND(A,[a]B(a))]ANDACC:A,
-[A:U,[A]B:U,c:AND(A,[a]B(a))]ANDACCB:B(ANDACC(A,[a]B(a),c)),
-[A:U,[A]B:U,a:A,b:B(a)]UNION:AND(A,[a]B(a)),
-[A:U,[A]B:U,a:A,b:B(a)]MEMBERB:EQ(B(a),ANDACCB(A,[e]B(e),UNION(A,[c]B(c),a,b)),b),
+#Types may be nested and unraveled.
+|AND,[ANDACC,ANDACCB],[UNION,MEMBER,MEMBERB,_]|:[A:U,B:[A]U]{#For all (types) and (types derived from the first type)...
+    and:U,#...there exists a type which represents the union of the two types.
+    |acc,accb|:[c:and]{#Given an element of the type representing the union...
+        acc:A,#you may retrieve an element of the first type.
+        B(acc)#you may retrieve an element of the second type as well.
+    },
+    [a:A,b:B(a)]{#Given elements of each type...
+        union:and,#you may construct an element of the type representing the union of two types.
+        member:acc(union) =(A)= a,#accessing the first element from the union gives you back the same element that you used to construct the union.
+        memberb:accb(union) =(B(acc(union)))= b,
+        membere:accb(union) =( B(a) )= b
+    }
+},
+#The above block of code is mostly equivalent to the following:
+#   AND:[A:U,B:[A]U]U,
+#   ANDACC:[A:U,B:[A]U,c:AND(A,|a|B(a))]A,
+#   ANDACCB:[A:U,B:[A]U,c:AND(A,|a|B(a))]B(ANDACC(A,|a|B(a),c)),
+#   UNION:[A:U,B:[A]U,a:A,b:B(a)]AND(A,|a|B(a)),
+#   MEMBER:EQ(A,ANDACC(A,[e]B(e),UNION(A,[c]B(c),a,b)),a),
+#   MEMBERB:[A:U,B:[A]U,a:A,b:B(a)]EQ(B(a),ANDACCB(A,|e|B(e),UNION(A,|c|B(c),a,b)),b),
 
-[A:U]NOT:U,
-[A:U]DOUBLENEG:EQ(U,NOT(NOT(A)),A),
-   
-[AFF,AFF]ADD:AFF,
-[AFF]AINVERSE:AFF,
-[a:AFF,b:AFF]ADD_COMMUTATIVE:EQ(AFF,ADD(a,b),ADD(b,a)),
-[a:AFF,b:AFF,c:AFF]ADD_ASSOCIATIVE:EQ(AFF,ADD(ADD(a,b),c),ADD(a,ADD(b,c))),
-[a:AFF]ADD_IDENTITY:EQ(AFF,ADD(a,ZERO),a),
-[a:AFF]ADD_IDENTITY_ANNIHALATE:EQ(AFF,ADD(a,AINVERSE(a)),ZERO),
-[AFF,AFF]MULTIPLY:AFF,
-[a:AFF,NOT(EQ(AFF,a,ZERO))]MINVERSE:AFF,
-[a:AFF,b:AFF]MULTIPLY_COMMUTATIVE:EQ(AFF,MULTIPLY(a,b),MULTIPLY(b,a)),
-[a:AFF,b:AFF,c:AFF]MULTIPLY_ASSOCIATIVE:EQ(AFF,MULTIPLY(MULTIPLY(a,b),c),MULTIPLY(a,MULTIPLY(b,c))),
-[a:AFF]MULTIPLY_IDENTITY:EQ(AFF,MULTIPLY(a,ONE),a),
-[a:AFF,g:NOT(EQ(AFF,a,ZERO))]MULTIPLY_IDENTITY_ANNIHALATE:EQ(AFF,MULTIPLY(a,MINVERSE(a,g)),ONE),
-[a:AFF,b:AFF,c:AFF]DISTRIBUTIVE:EQ(AFF,MULTIPLY(a,ADD(b,c)),ADD(MULTIPLY(a,b),MULTIPLY(a,c))),
 
-[a:AFF,b:AFF]GT:U,
-[a:AFF,b:AFF,NOT(GT(b,a))    ,NOT(GT(a,b))]TRICHOTOMY_E:EQ(AFF,b,a),
-[a:AFF,b:AFF,NOT(EQ(AFF,b,a)),NOT(GT(b,a))]TRICHOTOMY_G:GT(a,b),
-[a:AFF,b:AFF,GT(b,a)]    TRICHOTOMY_NE:NOT(EQ(AFF,b,a)),
-[a:AFF,b:AFF,EQ(AFF,b,a)]TRICHOTOMY_NG:NOT(GT(b,a)),
-[a:AFF,b:AFF,c:AFF,d:AFF,GT(a,b),NOT(GT(d,c))]ADDITIVE:GT(ADD(a,c),ADD(b,d)),
-[a:AFF,b:AFF,c:AFF,GT(a,b),GT(c,ZERO)]       MULTIPLICATIVE:GT(MULTIPLY(a,c),MULTIPLY(b,c)),
-[a:AFF,b:AFF,c:AFF,GT(a,b),GT(ZERO,c)]FLIPPEDMULTIPLICATIVE:GT(MULTIPLY(b,c),MULTIPLY(a,c)),
 
-[T:U,K:U,[K]a:T,[NOT(K)]b:T]DEC:T,
-[T:U,K:U,[K]a:T,[NOT(K)]b:T,k:K]     DEC_POSITIVE:EQ(T,DEC(T,K,[c]a(c),[c]b(c)),a(k)),
-[T:U,K:U,[K]a:T,[NOT(K)]b:T,k:NOT(K)]DEC_NEGATIVE:EQ(T,DEC(T,K,[c]a(c),[c]b(c)),b(k)),
+NOT:[A:U]U,#
+DOUBLENEG:[A:U]!!A =(U)= A,
 
-[A:U,[A]B:U,[A]L:AFF,a:A,[b:A,[c:A,NOT(GT(ADD(L(c),ONE),L(b))),GT(L(b),ZERO)]B(c)]B(b)]INDUCTION:B(a)
-]
+ADD:     [AFF,AFF]AFF,
+AINVERSE:[AFF]AFF,
+MULTIPLY:[AFF,AFF]AFF,
+MINVERSE:[a:AFF,a!=ZERO]AFF,
+ADD_IDENTITY:                [a:AFF]a+ZERO==a,
+ADD_IDENTITY_ANNIHALATE:     [a:AFF]a-a==ZERO,
+MULTIPLY_IDENTITY:           [a:AFF]a*ONE==a,
+MULTIPLY_IDENTITY_ANNIHALATE:[a:AFF,g:a!=ZERO]a*MINVERSE(a,g) == ONE,
+ADD_COMMUTATIVE:             [a:AFF,b:AFF]a+b==b+a,
+MULTIPLY_COMMUTATIVE:        [a:AFF,b:AFF]a*b==b*a,
+ADD_ASSOCIATIVE:             [a:AFF,b:AFF,c:AFF](a+b)+c == a+(b+c),
+MULTIPLY_ASSOCIATIVE:        [a:AFF,b:AFF,c:AFF](a*b)*c == a*(b*c),
+DISTRIBUTIVE:                [a:AFF,b:AFF,c:AFF]a*(b+c) == a*b+a*c,
 
-{
+GT:[a:AFF,b:AFF]U,
+#the following logic may not seem neccessary or complete without knowing how it translates behind the scenes.
+|TRICHOTOMY_E,TRICHOTOMY_G,TRICHOTOMY_NE,TRICHOTOMY_NG|:[a:AFF,b:AFF]{
+    [a=>>b,a<<=b]a==b,
+    [a!=b,a=>>b]a>>b,
+    [a>>b]a!=b,
+    [a==b]a=>>b
+},
+|ADDITIVE,MULTIPLICATIVE,FLIPPEDMULTIPLICATIVE|:[a:AFF,b:AFF,a>>b] {
+    [c:AFF,d:AFF,c=>>d]a+c>>b+d,
+    [c:AFF,c>>ZERO]a*c>>b*c,
+    [c:AFF,c<<ZERO]a*c<<b*c
+},
+|DEC,DEC_POSITIVE,DEC_NEGATIVE|:[T:U,K:U,a:[K]T,b:[NOT(K)]T]{
+    dec:T,#<--- This is the definition of a conditional.
+    [k:K]     dec=(T)=a(k),#<--- When the conditional's predicate is true, the conditional's result is equal to its first argument.
+    [k:NOT(K)]dec=(T)=b(k)#<--- When the conditional's predicate is false, the conditional's result is equal to its second argument.
+},
+|INDUCTION,INDUCTIONPRED|:[A:U,B:[A]U,L:[A]AFF,f:[b:A,[c:A,L(c)+ONE<<=L(b),L(b)>>ZERO]B(c)]B(b)]{
+    res:[a:A]B(a),#<--- This is the definition of well-formed induction/recursion.
+    [a:A]res(a) =(B(a))= f(a,|e,_,_|res(e))#<--- a recursive function is equal to itself called on itself.
+},
+
+HEAP:U,
+ACC:[HEAP]AFF
+
+#NAT:U <--- this is an excellent test
+
+]{
+
 
 
 #INT:U = {a:AFF,},
@@ -66,32 +98,34 @@ NAT:U = AFF,
 Array:U = {
     J:U,
     ara:NAT,
-    [n:NAT,n << ara]f:J,
-    [
-        [J,n:NAT,n << ara]P:U
-    ] each:U = {
-        [n:NAT,q:n << ara]q:P(f(n,q),n,q)
+    f:[n:NAT,n << ara]J,
+    each:[
+        P:[J,n:NAT,n << ara]U
+    ]U = {
+        q:[n:NAT,q:n << ara]P(f(n,q),n,q)
     }
 },
+
+
 
 Tree:U = {
     J:U,
     root:J,
-    [J]f:Array<J>,
-    [J]l:NAT,
-    [j:J]q1:f(j).each([g,_,_]l(g)+ONE <<= l(j)),
-    [j:J,l(j) =(AFF)= ZERO]q2:f(j).ara =(AFF)= ZERO,
+    f:[J]Array<J>,
+    l:[J]NAT,
+    q1:[j:J]f(j).each(|g,_,_|l(g)+ONE <<= l(j)),
+    q2:[j:J,l(j) =(AFF)= ZERO]f(j).ara =(AFF)= ZERO,
 
-    [
+    each: [
         K:U,
-        [J,K]P:U,
+        P:[J,K]U,
         k:K,
 
-        [j:J,k:K,P(j,k)]r:Array<K,f(j).ara>
-    ] each:U = {
-        INDUCTION({J,K},[_]U,[(j,_)]l(j),(root,k),[(j,k),R]{
+        r:[j:J,k:K,P(j,k)]Array<K,f(j).ara>
+    ]U = {
+        INDUCTION({J,K},|_|U,|[j,_]|l(j),(root,k),|[j,k],R|{
             p:P(j,k),
-            f(j).each([g,q3,q4]
+            f(j).each(|g,q3,q4|
                 R(
                     (g,r(j,k,p).f(q3,q4)),
                     ~,#q1(q3,q4),
@@ -102,8 +136,6 @@ Tree:U = {
         })
     }
 }
-
-
 
 
 
