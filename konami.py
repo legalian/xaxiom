@@ -38,6 +38,17 @@ def parsesubsfromsrc(parsed):
 			nbon = [s.children[0] for s in parsed.children[:n] if type(s.children[0]) is str]
 			ij.append(IndividualSub(nname,nsi,nobj,nbon))
 		return SubsObject(ij)
+	if parsed.data == 'objargumentstratseries':
+		variables = [gh.children[0] for gh in parsed.children]
+		argh = []
+		runjam = []
+		for n in range(len(variables)):
+			if len(parsed.children[n].children)==2:
+				if variables[n].name != None:
+					argh.append(IndividualSub(variables[n].name,variables[n].args.semavail(),parsed.children[n].children[1],runjam,slamsubs=variables[n].args.subs))
+			if variables[n].name != None: runjam = runjam + ScopeIntroducer(variables[n].name).allvars()
+		return DualSubs(StratSeries(variables),subs=SubsObject(argh))
+
 	assert False
 
 
@@ -46,16 +57,16 @@ def parsesubsfromsrc(parsed):
 @v_args(meta=True)
 class MyTransformer(Transformer):
 	def objstrategy(self,parsed,meta):
-		# print(type(meta))
-		# assert False
-		def chedme(u):
-			if isinstance(u,str): return True
-			if isinstance(u,list): return all(chedme(i) for i in u)
-			return False
-		if chedme(parsed[0]):
-			return ObjStrategy(pos=meta,args=StratSeries([arg for arg in parsed[1:-1]]),name=parsed[0],ty=parsed[-1])
-		else:
-			return ObjStrategy(pos=meta,args=StratSeries([arg for arg in parsed[0:-1]]),ty=parsed[-1])
+		mna = None
+		args = None
+		sl = 0
+		if isinstance(parsed[sl],str) or isinstance(parsed[sl],list):
+			mna = parsed[sl]
+			sl += 1
+		if isinstance(parsed[sl],Tree) and parsed[sl].data == 'objargumentstratseries':
+			args = parsesubsfromsrc(parsed[sl])
+			sl += 1
+		return ObjStrategy(pos=meta,args=args,name=mna,ty=parsed[-1])
 	def treeref(self,children,meta):
 		src = None
 		if issubclass(type(children[0]),ObjKind):
@@ -82,21 +93,12 @@ class MyTransformer(Transformer):
 		return ObjKindUnionSet(subs=jar,pos=meta)
 	def andtype(self,parsed,meta):
 
-		# assert False
-
-
-		variables = [gh.children[0] for gh in parsed]
-		argh = []
-		runjam = []
-		for n in range(len(variables)):
-			if len(parsed[n].children)==2:
-				if variables[n].name != None:
-					argh.append((variables[n].name,variables[n].args.introducer(),parsed[n].children[1],runjam))
-			if variables[n].name != None: runjam = runjam + ScopeIntroducer(variables[n].name).allvars()
-		return ObjKindTypeUnion(subs=DualSubs(StratSeries(variables),sphsubs=argh),pos=meta)
+		return ObjKindTypeUnion(subs=parsesubsfromsrc(parsed[0]) ,pos=meta)
 
 
 	def object(self,children,meta):
+		assert False
+	def objectun(self,children,meta):
 		return ObjKindReferenceTree(pos=meta,name="NOT",args=[ObjKindTypeUnion(pos=meta,variables=[ObjStrategy(pos=meta,ty=ObjKindReferenceTree(pos=meta,name="NOT",args=[a])) for a in children])])
 	def objectinter(self,children,meta):
 		return ObjKindTypeUnion(pos=meta,variables=[ObjStrategy(pos=meta,ty=a,name=a.name.lower() if a.name != None and a.name[0].isupper() else None) for a in children])
@@ -286,16 +288,17 @@ class BuildAxiomCommand(sublime_plugin.ViewEventListener,sublime_plugin.TextComm
 
 				task = ahah.children[0]
 
-				errors = ErrorObject()
+				# errors = ErrorObject()
+
 				# cheat = StratSeries([ObjStrategy(upcast=b) for b in bank])
 				# cheat = cheat.verify(StratSeries([],exverified=True),errors)
 				print("--=-=-=-=--momomomo=-=-=-=-=-=-==--=>>>>>>")
 				try:
-					nobh = task.verify(StratSeries(),errors)
+					nobh = task.verify(StratSeries())
 					print(nobh)
 					print("--=-=-=-=--=-=-=-=-=-=-==--=>>>>>>")
 				except ErrorObject as u:
-					errors.rer = errors.rer + u.rer
+					pass
 				# except RuntimeError:
 				# 	print("RECURSION DEPTH EXCEEDED")
 
@@ -304,7 +307,7 @@ class BuildAxiomCommand(sublime_plugin.ViewEventListener,sublime_plugin.TextComm
 				print()
 				print()
 				print(task)
-				print(errors.rer)
+				print(ErrorObject.rer)
 
 				# print(parseobjkind(ahah.children[1]))
 				# attempt = Strategy(parsed=ahah)
@@ -312,7 +315,7 @@ class BuildAxiomCommand(sublime_plugin.ViewEventListener,sublime_plugin.TextComm
 				self.curtree = None
 
 				#syntaxreports(self.curtree,self)
-				self.syntaxphantoms = errors.reports(self)
+				self.syntaxphantoms = ErrorObject.reports(self)
 
 				# self.curtree = attempt
 			except UnexpectedInput as u:

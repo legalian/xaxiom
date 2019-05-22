@@ -22,9 +22,9 @@ objargument      : introducer? object
 objargumentnamed : [label"="]objargument
                  | "="label
 
+?object : objectun ("->("object")")*
 
-
-?object : objectinter ("|" objectinter)*
+?objectun : objectinter ("|" objectinter)*
 
 ?objectinter : objectnot ("^" objectnot)*
 
@@ -44,15 +44,16 @@ compsymbol: ">>" -> gtsym | "=>>" -> gteqsym | "==" -> eqsym | "!=" -> neqsym | 
 
 objargumentseries : objargument(","objargument)*
 objargumentnamedseries : objargumentnamed(","objargumentnamed)*
+objargumentstratseries : declaration (","declaration)*
 
 objectatom : [objectatom"."]label["("objargumentseries")"]["<"objargumentnamedseries">"] -> treeref
            | "("objargumentnamedseries")"                                                -> union
-           | "{"declaration (","declaration)*"}"                                         -> andtype
+           | "{"objargumentstratseries"}"                                                -> andtype
 
 
 
 
-objstrategy : (label":"|introducer":")? ("["objstrategy("," objstrategy)*"]")? object
+objstrategy : (label":"|introducer":")? ("["objargumentstratseries"]")? object
 
 declaration : objstrategy["="object]
 
