@@ -48,6 +48,16 @@ contexts:
       scope: invalid.illegal.stray-bracket-end
     - match: \}
       scope: invalid.illegal.stray-bracket-end
+
+    # - match: '\?\!\s*\b(\w+)\b\s*\:'
+    #   scope: entity.name.function
+    # - match: '\!\?\s*\b(\w+)\b\s*\:'
+    #   scope: constant.character
+
+    - match: '\?\s*\b(\w+)\b\s*\:'
+      scope: entity.name.function
+    - match: '\!\s*\b(\w+)\b\s*\:'
+      scope: constant.character
     - match: '\b(\w+)\b\s*\:'
       scope: variable.function
 
@@ -61,7 +71,7 @@ contexts:
       push: inc_introlist
     - match: '[(){}|]'
       scope: invalid.illegal.stray-bracket-end
-    - match: '\b(\w+)\b'
+    - match: '\b(\.?\w+)\b'
       scope: variable.function
 
   introlist:

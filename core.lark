@@ -1,10 +1,14 @@
 
 
 
-label     : /[a-zA-Z0-9_]+|[~]/
+label     : /[a-zA-Z0-9_]+/
+opsymbol  : /[~!?@$%^&*<>\-+=/]{1,3}/
+acclabel  : label ("." label)*
+declabel  : ("." label)* | label ("." label)* -> acclabel
+
+
 argument  : ["["label(","label)*"]"]statement
 statement : label["("argument[","argument]*")"]
-
 
 
 labsgar     : "{"multistrat(","multistrat)*"}"
@@ -19,32 +23,39 @@ introducer : "|"scopemop(","scopemop)*"|" -> scopemop
 
 
 objargument      : introducer? object
-objargumentnamed : [label"="]objargument
-                 | "="label
+objargumentnamed : (label"="|introducer"=")? objargument
+                 | "@" introducer? label -> objargumentplaceholder
 
 ?object : objectun ("->("object")")*
 
-?objectun : objectinter ("|" objectinter)*
+// ?object : objectun ("->("object")")*
 
-?objectinter : objectnot ("^" objectnot)*
+// ?objectun : objectinter ("|" objectinter)*
 
-?objectnot : "!" objectnot -> lognot
-           | objectlogop
+// ?objectinter : objectnot ("^" objectnot)*
 
-compsymbol: ">>" -> gtsym | "=>>" -> gteqsym | "==" -> eqsym | "!=" -> neqsym | "<<" -> ltsym | "<<=" -> lteqsym
+// ?objectnot : "!" objectnot -> lognot
+//            | objectlogop
 
-?objectlogop : objectsum
-             | objectsum (compsymbol objectsum)+    -> compchain
-             | objectsum"=("object")="objectsum     -> customeq
-             | objectsum"=!("object")="objectsum    -> customneq
 
-!objectsum : "-"? objectprod [("+"|"-") objectprod]
+// urnarysymbol: "^" -> carrot | "~" -> tilde | "" -> eqsym | "!=" -> neqsym | "<<" -> ltsym | "<<=" -> lteqsym
 
-?objectprod : objectatom ("*" objectatom)*
+// compsymbol: ">>" -> gtsym | "=>>" -> gteqsym | "==" -> eqsym | "!=" -> neqsym | "<<" -> ltsym | "<<=" -> lteqsym
+
+// ?objectlogop : objectsum
+//              | objectsum (compsymbol objectsum)+    -> compchain
+
+// compsymbol: ">>" -> gtsym | "=>>" -> gteqsym | "==" -> eqsym | "!=" -> neqsym | "<<" -> ltsym | "<<=" -> lteqsym
+
+
+// !objectsum : "-"? objectprod (("+"|"-") objectprod)?
+
+// ?objectprod : objectatom ("*" objectatom)*
 
 objargumentseries : objargument(","objargument)*
 objargumentnamedseries : objargumentnamed(","objargumentnamed)*
 objargumentstratseries : declaration (","declaration)*
+objargumentsilentstratseries : silentdeclaration (","silentdeclaration)*
 
 objectatom : [objectatom"."]label["("objargumentseries")"]["<"objargumentnamedseries">"] -> treeref
            | "("objargumentnamedseries")"                                                -> union
@@ -53,45 +64,11 @@ objectatom : [objectatom"."]label["("objargumentseries")"]["<"objargumentnamedse
 
 
 
-objstrategy : (label":"|introducer":")? ("["objargumentstratseries"]")? object
+objstrategy : (label":"|introducer":")? ("["objargumentsilentstratseries"]")? object
 
+infermarker : "?" -> silentmarker | "!" -> downwardsmarker// | "!?" -> interrobang | "?!" -> interrobang
 declaration : objstrategy["="object]
-
-
-
-
-
-
-
-
-//?or_test: and_test ("or" and_test)*
-//?and_test: not_test ("and" not_test)*
-//?not_test: "not" not_test | comparison
-//?comparison: expr (comp_op expr)*
-//comp_op: "<"|">"|"=="|">="|"<="|"<>"|"!="
-//?expr: xor_expr ("|" xor_expr)*
-//?xor_expr: and_expr ("^" and_expr)*
-//?and_expr: shift_expr ("&" shift_expr)*
-//?shift_expr: arith_expr (("<<"|">>") arith_expr)*
-//?arith_expr: term (("+"|"-") term)*
-//?term: factor (("*"|"/"|"%"|"//") factor)*
-//?factor: ("+"|"-"|"~") factor | power
-//?power: molecule ["**" factor]
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+silentdeclaration : infermarker? objstrategy["="object]
 
 
 

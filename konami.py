@@ -2,184 +2,27 @@ import sublime, sublime_plugin
 from lark import Lark, UnexpectedInput, Transformer, v_args, InlineTransformer, Tree
 import os
 import sys
-from .structures import *
-from .metastructures import *
+
+
+# from .transformer import MyTransformer
+
+# from .nexus import MyTransformer
+from .nexus import *
+
 import functools
 
 import copy
 import re
 
 
+# reloadself()
 
+# from myplugin.transformer
 
+# print("\n".join([i for i in vars(nexus).keys()]))
+# print(vars(nexus))
 
-def parsesubsfromsrc(parsed):
-	if parsed.data == 'objargumentseries':
-		jarf = []
-		for k in range(len(parsed.children)):
-			if len(parsed.children[k].children)>1:
-				jarf.append(IndividualSub(None,ScopeIntroducer(parsed.children[k].children[0]),parsed.children[k].children[1],[]))
-			else:
-				jarf.append(IndividualSub(None,ScopeIntroducer([]),parsed.children[k].children[0],[]))
-		return SubsObject(jarf)
-	if parsed.data == 'objargumentnamedseries':
-		ij = []
-		for n in range(len(parsed.children)):
-			m = parsed.children[n]
-			if len(m.children) == 1 and type(m.children[0]) is str:continue
-			moch = m.children[0 if len(m.children)==1 else 1]
-			nname = m.children[0] if len(m.children)==2 else None
-
-			nobj = moch.children[-1]
-			if len(moch.children)>1:
-				nsi = ScopeIntroducer(moch.children[0])
-			else:
-				nsi = ScopeIntroducer([])
-			nbon = [s.children[0] for s in parsed.children[:n] if type(s.children[0]) is str]
-			ij.append(IndividualSub(nname,nsi,nobj,nbon))
-		return SubsObject(ij)
-	if parsed.data == 'objargumentstratseries':
-		variables = [gh.children[0] for gh in parsed.children]
-		argh = []
-		runjam = []
-		for n in range(len(variables)):
-			if len(parsed.children[n].children)==2:
-				if variables[n].name != None:
-					argh.append(IndividualSub(variables[n].name,variables[n].args.semavail(),parsed.children[n].children[1],runjam,slamsubs=variables[n].args.subs))
-			if variables[n].name != None: runjam = runjam + ScopeIntroducer(variables[n].name).allvars()
-		return DualSubs(StratSeries(variables),subs=SubsObject(argh))
-
-	assert False
-
-
-
-
-@v_args(meta=True)
-class MyTransformer(Transformer):
-	def objstrategy(self,parsed,meta):
-		mna = None
-		args = None
-		sl = 0
-		if isinstance(parsed[sl],str) or isinstance(parsed[sl],list):
-			mna = parsed[sl]
-			sl += 1
-		if isinstance(parsed[sl],Tree) and parsed[sl].data == 'objargumentstratseries':
-			args = parsesubsfromsrc(parsed[sl])
-			sl += 1
-		return ObjStrategy(pos=meta,args=args,name=mna,ty=parsed[-1])
-	def treeref(self,children,meta):
-		src = None
-		if issubclass(type(children[0]),ObjKind):
-			src = children[0]
-			name = children[1]
-		else:
-			name = children[0]
-		subs = None
-		args = SubsObject([])
-		for u in children:
-			if hasattr(u,'data') and u.data == 'objargumentseries':
-				args = parsesubsfromsrc(u)
-			if hasattr(u,'data') and u.data == 'objargumentnamedseries':
-				subs = parsesubsfromsrc(u)
-		if subs == None:
-			return ObjKindReferenceTree(src=src,name=name,args=args,pos=meta)
-		return ObjKindTemplateHolder(src=ObjKindReferenceTree(src=src,name=name,args=args,pos=meta),subs=subs)
-		
-	def union(self,children,meta):
-		jar = parsesubsfromsrc(children[0])
-		if len(jar.subs) == 1:
-			if len(jar.subs[0].si.dat) == 0 and jar.subs[0].name == None:
-				return jar.subs[0].obj
-		return ObjKindUnionSet(subs=jar,pos=meta)
-	def andtype(self,parsed,meta):
-
-		return ObjKindTypeUnion(subs=parsesubsfromsrc(parsed[0]) ,pos=meta)
-
-
-	def object(self,children,meta):
-		assert False
-	def objectun(self,children,meta):
-		return ObjKindReferenceTree(pos=meta,name="NOT",args=[ObjKindTypeUnion(pos=meta,variables=[ObjStrategy(pos=meta,ty=ObjKindReferenceTree(pos=meta,name="NOT",args=[a])) for a in children])])
-	def objectinter(self,children,meta):
-		return ObjKindTypeUnion(pos=meta,variables=[ObjStrategy(pos=meta,ty=a,name=a.name.lower() if a.name != None and a.name[0].isupper() else None) for a in children])
-
-
-	def lognot(self,children,meta):
-		return ObjKindReferenceTree(pos=meta,name="NOT",args=[children[0]])
-
-
-
-
-	def compchain(self,children,meta):
-		svart = []
-		g=0
-		while g < len(children)-1:
-			sym = str(children[g+1].data)
-			if   sym == "ltsym":   start = ObjKindReferenceTree(pos=meta,name="GT",args=[children[g+2],children[g+0]])
-			elif sym == "lteqsym": start = ObjKindReferenceTree(pos=meta,name="NOT",args=[ObjKindReferenceTree(pos=meta,name="GT",args=[children[g+0],children[g+2]])])
-			elif sym == "eqsym":   start = ObjKindReferenceTree(pos=meta,name="EQ",args=[ObjKindReferenceTree(pos=meta,name="AFF"),children[2],children[0]])
-			elif sym == "neqsym":  start = ObjKindReferenceTree(pos=meta,name="NOT",args=[ObjKindReferenceTree(pos=meta,name="EQ",args=[ObjKindReferenceTree(pos=meta,name="AFF"),children[2],children[0]])])
-			elif sym == "gteqsym": start = ObjKindReferenceTree(pos=meta,name="NOT",args=[ObjKindReferenceTree(pos=meta,name="GT",args=[children[g+2],children[g+0]])])
-			elif sym == "gtsym":   start = ObjKindReferenceTree(pos=meta,name="GT",args=[children[g+0],children[g+2]])
-			else: 
-				print(sym)
-				assert False
-			svart.append(start)
-			g = g + 2
-
-		assert len(svart) > 0
-		if len(svart) == 1: return svart[0]
-		return ObjKindTypeUnion(pos=meta,variables=[ObjStrategy(pos=meta,ty=svar) for svar in svart])
-
-	def scopemop(self,children,meta):
-		return children
-
-
-	def objectsum(self,children,meta):
-		sumo = []
-		nexneg = False
-		for z in children:
-			if   str(z) == "-": nexneg = True
-			elif str(z) == "+": nexneg = False
-			elif nexneg: sumo.append(ObjKindReferenceTree(pos=meta,name="AINVERSE",args=[z]))
-			else: sumo.append(z)
-		a = sumo[0]
-		for b in sumo[1:]: a = ObjKindReferenceTree(pos=meta,name="ADD",args=[a,b])
-		return a
-	def objectprod(self,children,meta):
-		a = children[0]
-		for b in children[1:]: a = ObjKindReferenceTree(pos=meta,name="MULTIPLY",args=[a,b])
-		return a
-	# def sub(self,children,meta):
-	# 	return ObjKindReferenceTree(pos=tree,name="ADD",args=[tree.children[0],ObjKindReferenceTree(pos=tree,name="AINVERSE",args=[tree.children[1]])])
-	# def prod(self,children,meta):
-	# 	return ObjKindReferenceTree(pos=tree,name="MULT",args=[tree.children[0],tree.children[1]])
-	def customeq(self,children,meta):
-		return ObjKindReferenceTree(pos=meta,name="EQ",args=[children[1],children[0],children[2]])
-	def customneq(self,children,meta):
-		return ObjKindReferenceTree(pos=meta,name="NOT",args=[ObjKindReferenceTree(pos=meta,name="EQ",args=[children[1],children[0],children[2]])])
-
-	def label(self,children,meta):
-		# print(tree)
-		# return str(tree)
-		# return tree
-		return str(children[0])
-
-
-	def statement(self,children,meta):
-		# print(tree,"opopop")
-		# print(the,"opopop")
-		return Statement(pos=meta,parsed=children)
-	def strategy(self,children,meta):
-		assert False#implement this later
-		# if len(parsed)>1 and isinstance(parsed[-2],str):
-		# 	return Strategy(pos=meta,args=StratSeries([arg for arg in parsed[0:-2]]),name=parsed[-2],ty=parsed[-1])
-		# else:
-		# 	return Strategy(pos=meta,args=StratSeries([arg for arg in parsed[0:-1]]),ty=parsed[-1])
-	def multistrat(self,children,meta):
-		return multistrat(children)
-
-
+# print(vars(sys.modules["myplugin.transformer"]))
 
 
 # class BuildAxiomCommand(sublime_plugin.TextCommand):
@@ -197,6 +40,35 @@ class BuildAxiomCommand(sublime_plugin.ViewEventListener,sublime_plugin.TextComm
 			self.phantom_set.update([])
 
 	def on_post_save(self):
+		# if 'myplugin.metametastructures' in sys.modules:
+		# 	del sys.modules["myplugin.metametastructures"]
+		# if 'myplugin.metastructures' in sys.modules:
+		# 	del sys.modules["myplugin.metastructures"]
+		# if 'myplugin.structures' in sys.modules:
+		# 	del sys.modules["myplugin.structures"]
+		# if 'myplugin.transformer' in sys.modules:
+		# 	del sys.modules["myplugin.transformer"]
+		# if "myplugin.nexus" in sys.modules:
+		# 	del sys.modules["myplugin.nexus"]
+		global MyTransformer, StratSeries, ErrorObject
+
+		# print(vars(sys.modules["myplugin.nexus"]).keys())
+		reloadself()
+		MyTransformer = vars(sys.modules["myplugin.transformer"])["MyTransformer"]
+		StratSeries = vars(sys.modules["myplugin.metastructures"])["StratSeries"]
+		ErrorObject = vars(sys.modules["myplugin.metastructures"])["ErrorObject"]
+
+		
+		# sys.modules["myplugin.nexus"]
+		# print(vars(sys.modules["myplugin.transformer"]).keys())
+		# vars(sys.modules["myplugin.transformer"])["SubsObject"] = None
+		# vars(sys.modules["myplugin.transformer"])["ObjKind"] = None
+
+		# importOrReload("myplugin.transformer", "MyTransformer")
+		# print(importlib.__dict__)
+		# imp.reload()
+		# importlib.reload(module)
+		# importlib.reload(module)
 		self.update_syntax_phantoms()
 
 
@@ -226,14 +98,14 @@ class BuildAxiomCommand(sublime_plugin.ViewEventListener,sublime_plugin.TextComm
 		syntax = settings.get('syntax')
 		return syntax == 'Packages/myplugin/axiom.sublime-syntax'
 	   
-	def on_query_completions(self, prefix, locations):
-		# elements = ET.parse(
-		#     urllib.request.urlopen(GOOGLE_AC % prefix)
-		# ).getroot().findall("./CompleteSuggestion/suggestion")
+	# def on_query_completions(self, prefix, locations):
+	# 	# elements = ET.parse(
+	# 	#     urllib.request.urlopen(GOOGLE_AC % prefix)
+	# 	# ).getroot().findall("./CompleteSuggestion/suggestion")
 
-		sugs = [["hoe","wak"],["asda","wawejk"],["hrhr","ohoh"]]
+	# 	sugs = [["hoe","wak"],["asda","wawejk"],["hrhr","ohoh"]]
 
-		return (sugs,sublime.INHIBIT_WORD_COMPLETIONS|sublime.INHIBIT_EXPLICIT_COMPLETIONS)
+	# 	return (sugs,sublime.INHIBIT_WORD_COMPLETIONS|sublime.INHIBIT_EXPLICIT_COMPLETIONS)
 
 
 	def update_selector_phantoms(self):
@@ -283,7 +155,8 @@ class BuildAxiomCommand(sublime_plugin.ViewEventListener,sublime_plugin.TextComm
 			# self.insertpoints = [0] + self.insertpoints + [len(document)]
 			# document = '\xA5'.join([document[self.insertpoints[i]:self.insertpoints[i+1]] for i in range(len(self.insertpoints)-1)])
 			try:
-				ahah = MyTransformer().transform(self.l.parse(document))
+				wclist = []
+				ahah = MyTransformer(wclist).transform(self.l.parse(document))
 				#ahah = self.l.parse(document)
 
 				task = ahah.children[0]
@@ -315,7 +188,7 @@ class BuildAxiomCommand(sublime_plugin.ViewEventListener,sublime_plugin.TextComm
 				self.curtree = None
 
 				#syntaxreports(self.curtree,self)
-				self.syntaxphantoms = ErrorObject.reports(self)
+				self.syntaxphantoms = ErrorObject.reports(self,wclist)
 
 				# self.curtree = attempt
 			except UnexpectedInput as u:
