@@ -11,22 +11,10 @@ from .debugging import debugdebug
 #         globals()[name] = getattr(sys.modules[module_name], name)
 
 
-class ObjKind:
-	def wildcardprep(self):
-		return self
+class ObjKind: pass
 
 
-def upcast_statement(inop):
-	dfji = []
-	for z in range(len(inop.args)):
-		dfji.append(IndividualSub(None,
-			ScopeIntroducer([] if z>=len(inop.lvlup) else inop.lvlup[z]),
-			upcast_statement(inop.args[z])))
-	mod = ObjKindReferenceTree(name=inop.name,pos=inop,args=dfji)
-	mod.forgiveLvlup = True
-def upcast_strategy(inop):
-	pass
-	return ObjStrategy(pos=inop,name=inop.name,ty=upcast_statement(inop.type),args=StratSeries([upcast_strategy(i) for i in inop.args]))
+
 def transferlines(self,pos):
 	if pos == None:
 		self.column = 0
@@ -41,156 +29,6 @@ def transferlines(self,pos):
 
 
 
-class WildCardInternalObject:
-	def __init__(self,pos):
-		transferlines(self,pos)
-		self.srow = None
-		self.possib = None
-		self.carry = None
-	def inputtypes(self,dicts,carry):
-		if self.srow != None:
-			self.possib = dict([(k,v) for k,v in dicts.items() if k in self.srow])
-			self.srow = None
-		else:
-			self.possib = dicts
-		self.carry = carry
-	def inputcompares(self,comps):
-		if self.srow == None:
-			self.srow = comps
-		else:
-			self.srow = [k for k in self.srow if k in comps]
-		if self.possib != None:
-			self.possib = dict([(k,v) for k,v in dicts.items() if k in self.srow])
-			self.srow = None
-
-
-
-class ObjKindWildcard(ObjKind):
-	def __init__(self,pos=None,captured=None,exverified=False,unobject=None):#,precapture=None
-		transferlines(self,pos)
-		self.unobject = unobject
-		self.captured=SubsObject() if captured == None else captured
-		# self.precapture={} if precapture == None else precapture
-		self.verified = exverified or unobject == None
-	def __repr__(self):
-		return "~"
-	def wide_repr(self,depth):
-		return "~"
-	@debugdebug
-	def substitute(self,revf,repl):
-		# concat = {}
-		# for k,v in revf.data.items():
-		# 	concat[v] = k
-		# for k,v in self.precapture.items():
-		# 	concat[revf.data.get(k,k)] = v
-
-		# 	is there really a need for precapture? you can just take the ending tags off.
-
-
-		oust = [k for k in repl.subs if type(k) is not DowngradeSub]
-		for jy in self.captured.substitute(revf,repl).subs:
-			yj = copy.copy(jy)
-			yj.name = revf.data.get(yj.name,yj.name)
-			oust.append(yj)
-
-		#,precapture=concat
-		return ObjKindWildcard(pos=self,captured=SubsObject(oust),exverified=self.verified,unobject=self.unobject)
-	@debugdebug
-	def verify(self,scope,carry,force=True):
-		if self.unobject == None: return self
-		if self.unobject.possib != None: self.verified = True
-		if self.verified: return self
-		if carry == None: return self
-
-		print("\n"*3,"---"*19,">","\n\n\n")
-
-		matches = {}
-		if type(carry) is ObjKindTypeUnion:
-			matches[("()",)]=carry.subs.semavail().astring(carry.subs)
-
-		if type(carry) is ObjKindReferenceTree and carry.src == None and len(carry.args) == 0 and carry.name == "U":
-			matches[("{"+"}",)]="{"+"..."+"}"
-
-
-
-		def searchmatch(ll,lobg,loig):
-			for g in range(len(ll)):
-
-				zuk = (lobg+".") if lobg != None else ""
-				sname = "<>" if ll[g].name == None else ll[g].name if ll[g].name not in [p.name for p in ll[g+1:]] else "<"+ll[g].name+">"
-				if len(ll[g].si.dat): zuk = zuk + sname + ll[g].si.astring(ll[g].expected.args if ll[g].expected != None else None)
-				else: zuk = zuk + sname
-				loigg = loig + [sname]
-
-
-				heh,mmn = RenamerObject(scope).integrate(ll[g].si)
-				ouk = ll[g].obj.substitute(mmn,SubsObject([EmptyWildcardSub(k) for k in heh.allvars()]))
-				# fuk = ouk.gentype(scope)
-
-				ErrorObject.absorb()
-				# print("")
-				try:
-					ij = ouk.wildcardprep().verify(scope,carry,force=False)
-					matches[tuple(loigg)] = (zuk,ll[g].expected)
-				except ErrorObject:
-					pass
-				ErrorObject.unabsorb()
-
-				# if type(ouk) is ObjKindUnionSet:
-				# 	yom = ouk.subs.triangulate([k.name for k in scope.flat]).onlyreal()
-				# 	searchmatch(yom.unwrapsubs([k.name for k in yom.subs]),zuk,loigg)
-
-				# if type(ouk) is ObjKindTypeUnion:
-				# 	yom = ouk.subs.subs.triangulate([k.name for k in scope.flat]).onlyreal()
-				# 	searchmatch(yom.unwrapsubs([k.name for k in yom.subs]),zuk,loigg) #    <---- compute semscope for triangulate. remember equate so you can do the same. figure out algorithm tomorrow i guess.
-
-
-		mmn = RenamerObject(scope)
-
-		jarsofar = []
-		jsof = []
-		for ayt in scope.flat:
-			jsof = jsof + allvars(ayt.name)
-			jarsofar.append(ayt.bgroup(jsof,ayt.name,ovname=ayt.name.split("$")[0]))
-		for byt in self.captured.subs:
-			jn = copy.copy(byt)
-			jn.name = byt.name.split("$")[0]
-			jarsofar.append(jn)
-		print(self.captured)
-		searchmatch(jarsofar,None,[])
-
-		self.unobject.inputtypes(matches,carry)
-
-		return ObjKindWildcard(pos=self,captured=self.captured,exverified=True,unobject=self.unobject)
-	@debugdebug
-	def equate(self,cno,other,force=False):
-		# if force and type(other) is not ObjKindWildcard:
-		# 	matches = []
-		# 	if type(other) is ObjKindUnionSet:
-		# 		matches.append(("()",))
-		# 	if type(other) is ObjKindTypeUnion or type(other) is ObjKindTemplateHolder:
-		# 		matches.append(("{"+"}",))
-		# 	if type(other) is ObjKindReferenceTree:
-		# 		jh = [copy.copy(other)]
-		# 		jh[0].name = jh[0].name.split("$")[0]
-		# 		while jh[-1].src != None: jh.append(jh[-1].src)
-		# 		matches.append(tuple([l.name for l in reversed(jh)]))
-		# 	def searchmatch(ll,loig):
-		# 		for g in range(len(ll)):
-		# 			loig = loig + [sname]
-		# 			heh,mmn = RenamerObject(scope).integrate(ll[g].si)
-		# 			ouk = ll[g].obj.substitute(mmn,SubsObject([EmptyWildcardSub(k) for k in heh.allvars()]))
-		# 			if other.equate(CrossNameObject(),ouk,force=False): matches.append(tuple(loig))
-		# 			if type(ouk) is ObjKindUnionSet:
-		# 				yom = ouk.subs.triangulate().onlyreal()
-		# 				searchmatch(yom.unwrapsubs([k.name for k in yom]),zuk,loig)
-
-		# 			if type(ouk) is ObjKindTypeUnion:
-		# 				yom = ouk.subs.subs.triangulate().onlyreal()
-		# 				searchmatch(yom.unwrapsubs([k.name for k in yom]),zuk,loig)
-		# 	searchmatch(self.captured.subs,[])
-		# 	self.unobject.inputcompares(matches)
-		return True
 
 
 
@@ -463,8 +301,6 @@ class ObjKindReferenceTree(ObjKind):
 		if l: return l
 		if self.src != None: return self.src.refs(label)
 
-	def wildcardprep(self):
-		return ObjKindReferenceTree(self.args,self.src,self.name,self)
 
 class ObjKindUnionSet(ObjKind):
 	def __init__(self,subs=None,pos=None,verprot=None):
@@ -510,15 +346,15 @@ class ObjKindUnionSet(ObjKind):
 	def get(self,lab):
 		# assert self.verified#safemode
 		return self.subs.get(lab)
-	def wildcardprep(self):
-		gh = copy.copy(self.subs)
-		gh.verified = False
-		return ObjKindUnionSet(gh,self)
+
 	@debugdebug
 	def equate(self,cno,other,force=False):
 		if type(other) is ObjKindWildcard: return other.equate(cno.flip(),self,force=force)
 		if type(other) is not ObjKindUnionSet: return False
 		return self.subs.equate(cno,other.subs,force=force)
+
+
+
 class ObjKindTypeUnion(ObjKind):
 	def __init__(self,parsed=None,subs=None,variables=None,pos=None,exverified=False):
 		transferlines(self,pos)

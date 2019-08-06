@@ -147,7 +147,8 @@ def debugdebug(F):
 
 
 
-		# if janh == "substitute":
+		if janh == "substitute":
+			assert args[0].verified
 		# 	if type(args[1]) is RenamerObject:
 		# 		try:
 		# 			args[0].substitute(DebuggerRenamerObject(args[1].s),SubsObject())#even this gives some leyway...

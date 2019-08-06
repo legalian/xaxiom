@@ -1,78 +1,53 @@
 
 
-
-label     : /[a-zA-Z0-9_]+/
-opsymbol  : /[~!?@$%^&*<>\-+=/]{1,3}/
-acclabel  : label ("." label)*
-declabel  : ("." label)* | label ("." label)* -> acclabel
+opsymbol  : /[!?@$%^&*\-+]{1,3}/
+label     : /(('\.')?[a-zA-Z0-9_]+)|'[!?@$%^&*\-+]{1,3}'/
 
 
-argument  : ["["label(","label)*"]"]statement
-statement : label["("argument[","argument]*")"]
+acclabel  : label ("." label)+
 
 
-labsgar     : "{"multistrat(","multistrat)*"}"
-            | [label":"]statement
-multistrat  : ["["multistrat(","multistrat)*"]"]labsgar
-strategy    : ["["multistrat(","multistrat)*"]"][label":"]statement
+
+multilabel : label
+           | "["multilabel(","multilabel)*"]"
+introducer : "|"multilabel(","multilabel)*"|"
 
 
-scopemop : label -> label
-         | "["scopemop (","scopemop)* "]"
-introducer : "|"scopemop(","scopemop)*"|" -> scopemop
+accmlabel : acclabel
+           | "["accmlabel (","accmlabel)* "]"
+specintroducer : acclabel
+               | "|"accmlabel(","accmlabel)*"|"
+
+
+
+
+?object : opsymbol* objectatom (opsymbol+ objectatom)* opsymbol*
+
+
+
+objargumentseries      : objargument(","objargument)*
+objargumentnamedseries : objargumentnamed(","objargumentnamed)*
+objargumentstratseries : declaration (","declaration)*
+
+objectatom : (objectatom".")? label ("("objargumentseries")")   -> treeref
+           | objectatom"<"objargumentnamedseries">"              -> template
+           | "("objargumentseries")"                        -> union
+           | "{"objargumentstratseries"}"                        -> andtype
+           | "["objargumentstratseries"]"objectatom              -> functype
+
+
 
 
 objargument      : introducer? object
-objargumentnamed : (label"="|introducer"=")? objargument
-                 | "@" introducer? label -> objargumentplaceholder
+objargumentnamed : (introducer"=")? objargument
+                 // | "@" introducer? label -> objargumentplaceholder
 
-?object : objectun ("->("object")")*
-
-// ?object : objectun ("->("object")")*
-
-// ?objectun : objectinter ("|" objectinter)*
-
-// ?objectinter : objectnot ("^" objectnot)*
-
-// ?objectnot : "!" objectnot -> lognot
-//            | objectlogop
-
-
-// urnarysymbol: "^" -> carrot | "~" -> tilde | "" -> eqsym | "!=" -> neqsym | "<<" -> ltsym | "<<=" -> lteqsym
-
-// compsymbol: ">>" -> gtsym | "=>>" -> gteqsym | "==" -> eqsym | "!=" -> neqsym | "<<" -> ltsym | "<<=" -> lteqsym
-
-// ?objectlogop : objectsum
-//              | objectsum (compsymbol objectsum)+    -> compchain
-
-// compsymbol: ">>" -> gtsym | "=>>" -> gteqsym | "==" -> eqsym | "!=" -> neqsym | "<<" -> ltsym | "<<=" -> lteqsym
-
-
-// !objectsum : "-"? objectprod (("+"|"-") objectprod)?
-
-// ?objectprod : objectatom ("*" objectatom)*
-
-objargumentseries : objargument(","objargument)*
-objargumentnamedseries : objargumentnamed(","objargumentnamed)*
-objargumentstratseries : declaration (","declaration)*
-objargumentsilentstratseries : silentdeclaration (","silentdeclaration)*
-
-objectatom : [objectatom"."]label["("objargumentseries")"]["<"objargumentnamedseries">"] -> treeref
-           | "("objargumentnamedseries")"                                                -> union
-           | "{"objargumentstratseries"}"                                                -> andtype
+infermarker : "?" -> silentmarker | "!" -> contractmarker// | "!?" -> interrobang | "?!" -> interrobang
+declaration : (infermarker? (label":"|introducer":"|"::"))? object ("="object)?
 
 
 
-
-objstrategy : (label":"|introducer":")? ("["objargumentsilentstratseries"]")? object
-
-infermarker : "?" -> silentmarker | "!" -> downwardsmarker// | "!?" -> interrobang | "?!" -> interrobang
-declaration : objstrategy["="object]
-silentdeclaration : infermarker? objstrategy["="object]
-
-
-
-start : objstrategy
+start : object
 
 
 

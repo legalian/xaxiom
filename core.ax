@@ -17,17 +17,59 @@ IDENTITY:    [?A:U,a:A]a==a,#IDENTITY -> "all elements of all types are equal to
 SUBSTITUTION:[?A:U,?a:A,?b:A,J:[c:A,a==c]U,q:a==b,J(a,IDENTITY(a))]J(b,q),#this is path induction.
 SUBSTITUTE_GARUNTEE:[?A:U,?a:A,J:[c:A,a==c]U,k:J(a,IDENTITY(a))]SUBSTITUTION(|w,y|J(w,y),IDENTITY(a),k) == k,
 
-'^': [?A:U,?a:A,?b:A,q:b==a]a==b                     = SUBSTITUTION(|w,_|w==b,q,IDENTITY(b)),
+'^':         [?A:U,?a:A,?b:A,q:b==a]a==b                     = SUBSTITUTION(|w,_|w==b,q,IDENTITY(b)),
 EQUIVALENCE: [?A:U,?B:U,a:A,q:A==B]B                         = SUBSTITUTION(|w,_|w,q,a),
-PRESERVATION:[?A:U,?B:U,?a:A,?b:A,f:[A]B,q:a==b]f(a) == f(b) = SUBSTITUTION(|w,_|f(a) == f(w),q,IDENTITY(f(a))),
-'->':  [?J:U,?a:J,?b:J,?c:J,q1:a==b,q2:b==c]a==c       = SUBSTITUTION(|w,_|a==w,q2,q1),
+PRESERVATION:[?A:U,?B:U,?a:A,?b:A,f:[A]B,q:a==b]f(a) == f(b) = SUBSTITUTION(|w,_|f(a)==f(w),q,IDENTITY(f(a))),
+'->':        [?J:U,?a:J,?b:J,?c:J,q1:a==b,q2:b==c]a==c       = SUBSTITUTION(|w,_|a==w,q2,q1),
+.chain:      [?J:U,?a:J,?b:J,?c:J,q1:a==b,q2:[J]b==c]a==c    = SUBSTITUTION(|w,_|a==w,q2(b),q1),
 
 
 
+
+
+
+
+
+
+
+when making type assumption plan:
+    establish a parameter evaluation order such that:
+        each given [] has already been completely inferred.
+        each thing you're trying to infer may only have introduced variables at the root of their arguments.
+
+if no plan can be established, the declaration is invalid.
+plans don't neccessarily work for all inputs; () constructions don't give types and functions sometimes don't place their arguments.
+
+
+first match, moving upwards:
+    name must match. operators become names.
+    attempt to match number of parameters:
+        number of parameters must be:
+            1. the reduced number (run this as an entire plan. if it fails or does not have that number of parameters, pass thru.)
+            2. The full plan.
+            3. no parameters.
+        run the plan. if the plan passes but leaves elements unbound then an error is thrown.
+        if type errors are generated, move to the next one and try again.
+
+
+
+
+berid of putting placeholders in function calls to extract shit. you dont use it and it's a huge performance sink.
+
+?          make variable part of the optional plan.
+!          mark variable as contractible. (you need an extra plan for designating which contractibility function to use.)
+
+
+?-         all parameters up until now are made optional.
+'+'        operator overload.
+.prop      type property (substitution is safe.)
+func.prop  unwrap parameters and recall (upon substituting func out, func.prop should be gotten too.)
+
+autocast to func when there are insufficient parameters.
 
 
 #Types may be nested and unraveled.
-|AND,[.acc,.accb],[UNION,MEMBER,MEMBERB],.equal,FUNC,.eval,[MAKEFUNC,FUNCASSURANCE],.equal|:[A:U,B:[A]U]{#For all (types) and (types derived from the first type)...
+|AND,[.acc,.accb],[UNION,MEMBER,MEMBERB],AND.equal,FUNC,.eval,[MAKEFUNC,FUNCASSURANCE],FUNC.equal|:[A:U,B:[A]U]{#For all (types) and (types derived from the first type)...
     and:U,
     ?-|acc,accb|:[c:and]{#Given an element of the type representing the union...
         acc:A,#you may retrieve an element of the first type.
@@ -38,28 +80,16 @@ PRESERVATION:[?A:U,?B:U,?a:A,?b:A,f:[A]B,q:a==b]f(a) == f(b) = SUBSTITUTION(|w,_
         member:a == acc(union),#accessing the first element from the union gives you back the same element that you used to construct the union.
         memberb:SUBSTITUTION(|w,_|B(w),member,b) == accb(union)#gives you back the second element except a becomes acc(union)
     },
-    ?-[au:and,bu:and,q:acc(au)==acc(bu),SUBSTITUTION(|w,_|B(w),q,accb(au))==accb(bu)]au==bu,#this is special
+    [au:and,bu:and,q:acc(au)==acc(bu),SUBSTITUTION(|w,_|B(w),q,accb(au))==accb(bu)]au==bu,#this is special
     func:U,
     ?-eval:[func,a:A]B(a),
     [b:[a:A]B(a)] {
         make:func,
         [a:A]eval(make,a) == b(a)
     },
-    ?-[af:func,bf:func,[a:A]eval(af,a)==eval(bf,a)]af==bf #this is special
+    [af:func,bf:func,[a:A]eval(af,a)==eval(bf,a)]af==bf #this is special
     # ^^^---- apparently this comes from univalence...
 },
-
-
-
-
-
-
-f1:[!:BOUNDNAT(n)]B
-f2:[!:BOUNDNAT(m)]B
-
-
-
-SUBSTITUTION()
 
 
 
@@ -78,7 +108,10 @@ SUBSTITUTION()
 UNION_TOOLS: {
     |distributive_contractability|:[A:U,B:[A]U]{
         [q1:[x:A,y:A]x==y,q2:[z:A,u:B(z),v:B(z)]u==v,c:AND(A,|a|B(a)),d:AND(A,|a|B(a))]c==d = 
-            UNION_EXTENSIONALITY(A,|a|B(a),c,d,q1(c.acc,d.acc),q2(SUBSTITUTION(|w,_|B(w),q1(c.acc,d.acc),c.accb),d.accb))
+            AND(A,|a|B(a)).equal(
+                c,d
+                q1(c.acc,d.acc),q2(SUBSTITUTION(|w,_|B(w),q1(c.acc,d.acc),c.accb),d.accb)
+            )
     }
 }
 
@@ -347,21 +380,20 @@ UNIVALENCE_TOOLS:{
 
 
 
-    transitive_concat:[?A:U,?B:U,?C:U,
-        q1:A==B,qh1:homomorph_body(A,B):uni(A,B).eq_implies(q1),
-        q2:B==C,qh2:homomorph_body(B,C):uni(B,C).eq_implies(q2),
-        ac:[a:A]C = qh2.f(qh1.f(a)),
-        ca:[c:C]A = qh1.g(qh2.g(c)),
-        TRANSITIVE(qh2.)
+    # transitive_concat:[?A:U,?B:U,?C:U,
+    #     q1:A==B,qh1:homomorph_body(A,B):uni(A,B).eq_implies(q1),
+    #     q2:B==C,qh2:homomorph_body(B,C):uni(B,C).eq_implies(q2),
+    #     ac:[a:A]C = qh2.f(qh1.f(a)),
+    #     ca:[c:C]A = qh1.g(qh2.g(c)),
+    #     TRANSITIVE(qh2.)
 
-        reconstruct:uni(A,C).implies_eq()
-    ]uni(A,C).implies_eq()
+    #     reconstruct:uni(A,C).implies_eq()
+    # ]uni(A,C).implies_eq()
 
-    eq_implies()
-    transitive_concat:[q1:A==b]
+    # eq_implies()
+    # transitive_concat:[q1:A==b]
 
 
-    in the scope of U, reflexivity is equal to ~, and identity is equal to ~...
 
 }
 
@@ -426,18 +458,6 @@ review positive and negative.
 .predicate:[?A:U,?L:[A]{a:AFF,a=>>0},?f:[b:A,[c:A,L(c).a+1<<=L(b).a]U]U,coc:U = INDUCTION(A,|_|U,|a|L(a),|a,R|f(a,|x,y|R(x,y))),ind:coc]f(a,|e,_|res(e)) = EQUIVALENCE(ind,coc.PREDICATE)
 
 
-review :U = {}
-
-
-|INDUCTION.PREDPOSITIVE,INDUCTION.PREDNEGATIVE|:
-
-
-|.positive,.negative|:[?K:U,?a:[K]U,?b:[NOT(K)]U,coc:U = DEC(K,|x|a(x),|x|b(x)),dec:coc]{
-    [pos:K]a(pos) = EQUIVALENCE(dec,coc.POSITIVE(pos)),
-    [neg:!K]b(neg) = EQUIVALENCE(dec,coc.NEGATIVE(neg)),
-}
-
-
 
 review predicate
 
@@ -467,6 +487,7 @@ overload nat addition and positive addition.
 
 INV_CONTRACTIBLE:[?J:U,q1:!J,q2:!J]q1==q2 =
     (!J).equal(
+        q1,q2,
         |n|CONTRADICTION(q1.eval(n),q1.eval(n)==q2.eval(n))
     ),
 AFFINE_CONTRACTIBLE:[?a:AFF,?b:AFF,q1:a==b,q2:a==b]q1==q2 = 
@@ -705,41 +726,39 @@ NAT_TOOLS: {
             )),
             (a,g)
         ),
-    isnat_positive:[a:AFF,g:a=>>0,s:a<<1] isnat(a,g)  == (a==0) = 
-        isnat(a,g).predicate -> isnat(a,g).predicate..b.positive(s)
-    isnat_negative:[a:AFF,g:a=>>0,s:a=>>1] isnat(a,g) == isnat(a-1,ALGEBRA_TOOLS.trico_translate(s)) = 
-        isnat(a,g).predicate -> isnat(a,g).predicate.b.negative(s)
-    isnat_occ_positive:[?a:AFF,?g:a=>>0,q:isnat(a,g),s:a<<1]a==0 = 
-        EQUIVALENCE(q,isnat_positive(a,g,s))
-    isnat_occ_negative:[?a:AFF,?g:a=>>0,q:isnat(a,g),s:a=>>1]isnat(a-1,ALGEBRA_TOOLS.trico_translate(s)) = 
-        EQUIVALENCE(q,isnat_negative(a,g,s))
+    # isnat_positive:[a:AFF,g:a=>>0,s:a<<1] isnat(a,g)  == (a==0) = 
+    #     isnat(a,g).predicate -> isnat(a,g).predicate..b.positive(s)
+    # isnat_negative:[a:AFF,g:a=>>0,s:a=>>1] isnat(a,g) == isnat(a-1,ALGEBRA_TOOLS.trico_translate(s)) = 
+    #     isnat(a,g).predicate -> isnat(a,g).predicate.b.negative(s)
+    # isnat_occ_positive:[?a:AFF,?g:a=>>0,q:isnat(a,g),s:a<<1]a==0 = 
+    #     EQUIVALENCE(q,isnat_positive(a,g,s))
+    # isnat_occ_negative:[?a:AFF,?g:a=>>0,q:isnat(a,g),s:a=>>1]isnat(a-1,ALGEBRA_TOOLS.trico_translate(s)) = 
+    #     EQUIVALENCE(q,isnat_negative(a,g,s))
 
     isnat_contractible:[?a:AFF,?g:a=>>0,u:isnat(a,g),v:isnat(a,g)]u==v = 
         INDUCTION({a:AFF,g:a=>>0,u:isnat(a,g),v:isnat(a,g)},|[a,g,u,v]|u==v,|[a,g,u,v]|(a,g),|[a,g,u,v],R|
             DEC(a<<1,
                 |s|
-                new_u ~= SUBSTITUTION(|w,wq|w,isnat_positive(s),u);
-                new_v ~= SUBSTITUTION(|w,wq|w,isnat_positive(s),v);
+                new_u ~= SUBSTITUTION(|w,wq|w,isnat(a,g).POSITIVE(s),u);
+                new_v ~= SUBSTITUTION(|w,wq|w,isnat(a,g).POSITIVE(s),v);
                 substitute_injective(
                     |w,wq|w,
                     u,v,
-                    isnat_positive(s),
+                    isnat(a,g).POSITIVE(s),
                     AFFINE_CONTRACTIBLE(new_u,new_v)
                 ),
                 |s|
-                new_u ~= SUBSTITUTION(|w,wq|w,isnat_negative(s),u);
-                new_v ~= SUBSTITUTION(|w,wq|w,isnat_negative(s),v);
+                new_u ~= SUBSTITUTION(|w,wq|w,isnat(a,g).NEGATIVE(s),u);
+                new_v ~= SUBSTITUTION(|w,wq|w,isnat(a,g).NEGATIVE(s),v);
                 substitute_injective(
                     |w,wq|w,
                     u,v,
-                    isnat_negative(s),
+                    isnat(a,g).NEGATIVE(s),
                     R((a-1,ALGEBRA_TOOLS.trico_translate(s),new_u,new_v),ALGEBRA_TOOLS.minus_one_lteq(a))
                 )
             ),
             (a,g,u,v)
         ),
-    isnat.positive ~= isnat_positive
-    isnat.negative ~= isnat_negative
     # isnat.generic:[?a:AFF,?b:AFF,q:a==b,g:a=>>0,j:b=>>0,p:isnat(a,g)]isnat(b,j) ~= 
 
     #     SUBSTITUTION(
@@ -772,21 +791,18 @@ NAT_TOOLS: {
         n:NAT,
         !q:n.a << e.a
     },
-    nat_minus_one:[n:NAT,s:n.a=>>1]:NAT = 
+    .minus_one:[n:NAT,s:n.a=>>1]:NAT = 
         inner ~= EQUIVALENCE(n.q,n.q.predicate); (
             n.a-1,
             ALGEBRA_TOOLS.trico_translate(s),
-            EQUIVALENCE(inner,inner.negative(s))
+            inner.negative(s)
         ),
-    NAT.minus_one ~= nat_minus_one;
 
-
-    boundnat_minus_one:[?e:NAT,bn:BOUNDNAT(e),s:n.a=>>1]:BOUNDNAT = 
+    .minus_one:[?e:NAT,bn:BOUNDNAT(e),s:n.a=>>1]:BOUNDNAT = 
         (
             bn.n.minus_one(s),
             compare_transitive_g(bn.b,minus_one_less(bn.n.a))
         )
-    BOUNDNAT.minus_one ~= boundnat_minus_one;
 
 
     nat0:NAT = (
@@ -794,7 +810,7 @@ NAT_TOOLS: {
         g=TRICHOTOMY_NG(IDENTITY(0)),
         EQUIVALENCE(
             IDENTITY(0),
-            ^isnat(0,g).positive(ONE_GT_ZERO)
+            ^isnat(0,g).POSITIVE(ONE_GT_ZERO)
         )
     ),
     nat1:NAT = (
@@ -806,12 +822,13 @@ NAT_TOOLS: {
                 ^ADD_IDENTITY_ANNHIALATE(1),
                 nat0.q
             ),
-            ^isnat(1,g).negative(TRICHOTOMY_NG(IDENTITY(1)))
+            ^isnat(1,g).NEGATIVE(TRICHOTOMY_NG(IDENTITY(1)))
         )
     ),
 
     nats_be_equal:[a:NAT,b:NAT,q:a.a==b.a]a==b = 
         NAT.equal(
+            a,b,
             q,
             IDENTITY({g:w=>>0,isnat(w,g)},(b.g,b.q))
             # an ~= SUBSTITUTION(|w,_|{!g:w=>>0,!q:isnat(w,g)},q,(a.g,a.q));
@@ -825,6 +842,7 @@ NAT_TOOLS: {
 
     boundnats_be_equal:[?s:NAT,a:BOUNDNAT(s),b:BOUNDNAT(s),q:a.n.a==b.n.a]a==b = 
         BOUNDNAT.equal(
+            a,b,
             nats_be_equal(a.n,b.n,q),
             IDENTITY(b.q)
         ),
@@ -861,7 +879,7 @@ NAT_TOOLS: {
                     ^ADD_ASSOCIATIVE(a.a,n.a,-1),
                     p
                 ),
-                ^isnat(a.a+n.a,ALGEBRA_TOOLS.both_greater_zero_add(a.g,n.g)).negative(s)
+                ^isnat(a.a+n.a,ALGEBRA_TOOLS.both_greater_zero_add(a.g,n.g)).NEGATIVE(s)
             )
         )
     ),
@@ -917,7 +935,7 @@ NAT_TOOLS: {
                     assoc_eliminate_add_ref(a.a*n.a,a.a),
                     added
                 ),
-                ^isnat(a.a-n.a,ALGEBRA_TOOLS.both_greater_zero_mult(a.g,n.g)).negative(s)
+                ^isnat(a.a-n.a,ALGEBRA_TOOLS.both_greater_zero_mult(a.g,n.g)).NEGATIVE(s)
             )
         )
     ),
@@ -948,7 +966,7 @@ Array:U = {
 },
 # array_each:[a:Array,P:[b:BOUNDNAT(a.ara),a.J(b)]U]U = ([b:BOUNDNAT(a.ara)]P(b,a.f(b))),
 # Array.each ~= array_each;
-array_append_simple:[?vla:U,a:Array<J=|_|vla>,new:vla]
+.append:[?vla:U,a:Array<J=|_|vla>,new:vla]
     Array<
         a.ara+1,
         |_|vla,
@@ -957,21 +975,21 @@ array_append_simple:[?vla:U,a:Array<J=|_|vla>,new:vla]
             |_|new
         )
     > = (),
-Array.append ~= array_append_simple;
-array_map:[a:Array,B:[BOUNDNAT(a.ara)]U,f:[bn:BOUNDNAT(a.ara),a.J(bn)]B(bn)]
+# Array.append ~= array_append_simple;
+.map:[a:Array,B:[BOUNDNAT(a.ara)]U,f:[bn:BOUNDNAT(a.ara),a.J(bn)]B(bn)]
     Array<
         a.ara,
         |bn|B(bn),
         |bn|f(a.f(bn))
     > = (),
-Array.map ~= array_map;
-array_truncate:[a:Array,|n,b|:BOUNDNAT(a.ara)]#b:a.ara>>n
+# Array.map ~= array_map;
+.truncate:[a:Array,|n,b|:BOUNDNAT(a.ara)]#b:a.ara>>n
     Array<
         n,
         |n2,b2|a.J((n2,compare_transitive_g(b,b2))),
         |n2,b2|a.f((n2,compare_transitive_g(b,b2)))
     > = (),
-Array.truncate ~= array_truncate;
+# Array.truncate ~= array_truncate;
 # array_delete_simple:[?vla:U,a:Array<J=|_|vla>,kill:BOUNDNAT(a.ara)]
 #     Array<
 #         nat_minus_one(a.ara),
@@ -988,7 +1006,7 @@ Array.truncate ~= array_truncate;
 #         )
 #     > = (),
 # Array.delete ~= array_delete_simple;
-array_concatenate_simple:[?vla:U,a:Array<J=|_|vla>,b:Array<J=|_|vla>]
+Array.concatenate:[?vla:U,a:Array<J=|_|vla>,b:Array<J=|_|vla>]
     Array<
         nat_add(a.ara,b.ara),
         |_|vla,
@@ -1003,7 +1021,7 @@ array_concatenate_simple:[?vla:U,a:Array<J=|_|vla>,b:Array<J=|_|vla>]
             ))
         )
     > = (),
-Array.concatenate ~= array_concatenate_simple;
+# Array.concatenate ~= array_concatenate_simple;
 empty_array:[typ:[BOUNDNAT(nat0)]U]
     Array<
         nat0,
@@ -1074,7 +1092,7 @@ positivesum:[l:Array<J=|_|{a:AFF,g:a=>>0}>]{a:{a:AFF,a=>>0},f:[bn:BOUNDNAT(l.ara
 
 
 Tree:U = {
-    J:U = {
+    J:{
         S:U,
         J:[S]U,
         araget:[s:S,J(s)]NAT,
@@ -1106,14 +1124,14 @@ Tree:U = {
     )
 }
 
-tree_unwrap:[t:Tree]t.r.predicate.b = EQUIVALENCE(t.r,t.r.predicate)
-Tree.unwrap ~= tree_unwrap;
-tree_root:[t:Tree]t.J.J(t.s) = t.unwrap.j
-Tree.root ~= tree_root;
-tree_ara:[t:Tree]NAT = t.J.araget(t.root)
-Tree.ara ~= tree_ara;
+.unwrap:[t:Tree]t.r.predicate.b = EQUIVALENCE(t.r,t.r.predicate)
+# Tree.unwrap ~= tree_unwrap;
+.root:[t:Tree]t.J.J(t.s) = t.unwrap.j
+# Tree.root ~= tree_root;
+.ara:[t:Tree]NAT = t.J.araget(t.root)
+# Tree.ara ~= tree_ara;
 
-tree_children:[t:Tree]
+.children:[t:Tree]
     Array<
         t.ara,
         |[n,b]|Tree<
@@ -1130,9 +1148,9 @@ tree_children:[t:Tree]
         >,
         |_|()
     > = (),
-Tree.children ~= tree_children;
+# Tree.children ~= tree_children;
 
-tree_map:[t:Tree,K:Tree.J,s:K.S,f:[s:t.J.S,t.J.J(s),c:K.S]K.J(c)]
+.map:[t:Tree,K:Tree.J,s:K.S,f:[s:t.J.S,t.J.J(s),c:K.S]K.J(c)]
     Tree<
         J=K,
         e=t.e,
@@ -1156,12 +1174,12 @@ tree_map:[t:Tree,K:Tree.J,s:K.S,f:[s:t.J.S,t.J.J(s),c:K.S]K.J(c)]
             (t,s)
         )
     > = (),
-Tree.map ~= tree_map;
+# Tree.map ~= tree_map;
 
 
 
 
-tree_heighten:[t:Tree,e:AFF,q:e=>>t.e.a]Tree<
+.heighten:[t:Tree,e:AFF,q:e=>>t.e.a]Tree<
     J=t.J,
     s=t.s,
     e=(e,compare_transitive_e(q,t.e.g)),
@@ -1191,7 +1209,7 @@ tree_heighten:[t:Tree,e:AFF,q:e=>>t.e.a]Tree<
         (t,e,q)
     )
 >
-tree.heighten ~= tree_heighten;
+# tree.heighten ~= tree_heighten;
 
 
 
@@ -1245,7 +1263,7 @@ untyped_statement:[s:untyped_stack]U = Tree<{
 
 
 
-nat_pinch:[a:NAT,bn:BOUNDNAT(a)]a.a-1=>>bn.n.a = 
+nat_pinch:[n:NAT,a:AFF,b:a<<n.a]a<<=n.a-1 = 
 
 
 
@@ -1290,12 +1308,18 @@ array_vla_equal:[
 
 ] a == b =
     Array<J=|_|vla>.equal(
+        a,b,
         v,
+
+        subaf ~= SUBSTITUTION(|w,_|FUNC(BOUNDNAT(w),|_|vla),v,a.f);
+
+
         FUNC(BOUNDNAT(b.ara),|_|vla).equal(
+            subaf,b.f,
             |bn|
             an ~= SUBSTITUTION(|w,_|BOUNDNAT(w),^v,bn);
             PRESERVATION(
-                |w|SUBSTITUTION(|w,_|FUNC(BOUNDNAT(w),|_|vla),v,a.f).eval(w)
+                |w|subaf.eval(w)
                 ^substitute_annhialate(v,|w|BOUNDNAT(w),bn),
             ) ->
             FUNC_SUB_DISTRIB(|w,_|BOUNDNAT(w),|_,_|vla,v,a.f,an) ->#-> SUBSTITUTION(|w,_|vla,q,a.f(an))
@@ -1408,7 +1432,7 @@ untyped_statement_cushion:[
 
 
 Lambda_argument:U = {
-    |localara,share,parsh,locrow|:U = {
+    |localara,share,parsh,locrow|:{
         localara:NAT,#localara
         share:{a:AFF,g:a=>>0},#
         parsh:[BOUNDNAT(localara)]share.a-1=>>0#

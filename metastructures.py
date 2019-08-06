@@ -8,6 +8,42 @@ fonocolls = 0
 fonodepth = 0
 
 
+class DescendObject:
+	def __init__(self,remap,repl,scope):#empty constructor
+		self.mmn
+		self.subs
+		self.scope
+
+
+
+	def append(self,newscope):
+
+	def substitute(self,revf,repl):
+
+		match up scope and shizz.
+
+
+
+		concat = {}
+		for k,v in revf.data.items():
+			concat[v] = k
+		for k,v in self.precapture.items():
+			concat[revf.data.get(k,k)] = v
+
+		# 	is there really a need for precapture? you can just take the ending tags off.
+
+
+		oust = [k for k in repl.subs if type(k) is not DowngradeSub]
+		for jy in self.captured.substitute(revf,repl).subs:
+			yj = copy.copy(jy)
+			yj.name = revf.data.get(yj.name,yj.name)
+			oust.append(yj)
+
+		return DescendObject()
+		#,precapture=concat
+		return ObjKindWildcard(pos=self,captured=SubsObject(oust),exverified=self.verified,unobject=self.unobject)
+
+
 class RenamerObject:
 	def __init__(self,scope,data=None):
 		if type(scope) is StratSeries:
@@ -58,10 +94,6 @@ class RenamerObject:
 			# assert False#safemode
 			# ErrorObject.fatal("not found: "+key)#safemode
 		return self.data.get(key,key)
-
-
-
-
 
 
 class CrossNameObject:
@@ -162,13 +194,6 @@ class DownBonObject:
 class SubRow:
 	pass
 
-class EmptyWildcardSub(SubRow):
-	def __init__(self,name):
-		self.name = name
-		# assert type(name) is str#safemode
-	def unwrapsubs(self,mog,prep=None,onlyavailable=None):
-		# assert type(mog) is str#safemode
-		return [EmptyWildcardSub(mog)]
 
 class PlaceholderSub(SubRow):
 	def __init__(self,label,si=None):
@@ -304,7 +329,7 @@ class DowngradeSub(SubRow):
 		return "DOWNGRADE:"+self.name+str(len(self.cap))
 
 class SubsObject:
-	def __init__(self,data=None,exverified=False):
+	def __init__(self,data=None,exverified=False,pos=None):
 		# if data != None:#safemode
 			# for k in data: assert issubclass(type(k),SubRow)#safemode
 
@@ -315,6 +340,10 @@ class SubsObject:
 			# if type(self.subs[k]) is not IndividualSub: continue#safemode
 			# if self.subs[k].bon != None:#safemode
 				# assert len(self.subs[k].bon.dat) == k#safemode
+
+		transferlines(self,pos)
+
+		
 	def __repr__(self):
 		return ",".join([str(k) for k in self.subs])
 	def wide_repr(self,depth):
@@ -453,119 +482,132 @@ class SubsObject:
 		# 	b+=1
 		# return True
 
-class StratSeries:
-	def __init__(self,data=None,flatdata=None,original=None):
-		self.data = [] if data == None else data
-		if self.data == []: flatdata = []
-		# for k in self.data: assert type(k) is ObjStrategy#safemode
-		self.verified = all(k.verified for k in self.data) and flatdata != None
+# class StratSeries:
+	# def __init__(self,data=None,flatdata=None,original=None):
+	# 	self.data = [] if data == None else data
+	# 	if self.data == []: flatdata = []
+	# 	# for k in self.data: assert type(k) is ObjStrategy#safemode
+	# 	self.verified = all(k.verified for k in self.data) and flatdata != None
 
-		self.flat = flatdata
-		# if self.flat != None:#safemode
-			# for k in self.flat:#safemode
-				# assert type(k) is ObjStrategy#safemode
-				# assert type(k.name) is str#safemode
-
-
-
-		# assert (self.flat == None) != (self.verified) #safemode
-		# if self.verified:#safemode
-			# for h in range(len(self.data)):#safemode
-				# for g in self.data[:h]:#safemode
-					# if g.name != None:#safemode
-						# if g.name == self.data[h].name:#safemode
-							# assert False#safemode
-		# if self.flat != None:#safemode
-			# for j in self.flat: assert j.verified#safemode
-			# for h in range(len(self.flat)):#safemode
-				# for g in self.flat[:h]:#safemode
-					# if g.name != None:#safemode
-						# assert g.name != self.flat[h].name#safemode
+	# 	self.flat = flatdata
+	# 	# if self.flat != None:#safemode
+	# 		# for k in self.flat:#safemode
+	# 			# assert type(k) is ObjStrategy#safemode
+	# 			# assert type(k.name) is str#safemode
 
 
-		self.original = self.introducer() if original == None else original
 
-	def __repr__(self):
-		return ",".join([str(i) for i in self.data])
-	def wide_repr(self,depth):
-		return (",\n"+"\t"*depth).join([str(i) for i in self.data])
-	@debugdebug
-	def verify(self,scope,force=True):
-		if self.verified: return self
-		zvn = []
-		zn = []
-		mmn = RenamerObject(scope)
-		for k in range(len(self.data)):
-			nm,nmmn = mmn.integrate(ScopeIntroducer(self.data[k].name))
-			pscope = StratSeries(zn,zvn,original=ScopeIntroducer(self.original.dat[:k]))
-			p = self.data[k].surfacerename(nm.dat).substitute(mmn,SubsObject()).verify(scope+pscope,force=force)
-			mmn=nmmn
-			zn.append(p)
-			zvn = zvn + p.split([k.name for k in scope.flat]+[k.name for k in zvn])
-		return StratSeries(zn,zvn,original=self.original)
-	@debugdebug
-	def substitute(self,revf,repl):
-		zn = []
-		zvn = []
-		mmn = revf
+	# 	# assert (self.flat == None) != (self.verified) #safemode
+	# 	# if self.verified:#safemode
+	# 		# for h in range(len(self.data)):#safemode
+	# 			# for g in self.data[:h]:#safemode
+	# 				# if g.name != None:#safemode
+	# 					# if g.name == self.data[h].name:#safemode
+	# 						# assert False#safemode
+	# 	# if self.flat != None:#safemode
+	# 		# for j in self.flat: assert j.verified#safemode
+	# 		# for h in range(len(self.flat)):#safemode
+	# 			# for g in self.flat[:h]:#safemode
+	# 				# if g.name != None:#safemode
+	# 					# assert g.name != self.flat[h].name#safemode
 
-		for k in range(len(self.data)):
-			zk = self.data[k].substitute(mmn,repl)
-			nname,mmn = mmn.integrate(ScopeIntroducer(self.data[k].name))
-			zn.append(zk.surfacerename(nname.dat))
 
-		if self.flat == None: return StratSeries(zn,original=self.original)
+	# 	self.original = self.introducer() if original == None else original
 
-		mmn = revf
+	# def __repr__(self):
+	# 	return ",".join([str(i) for i in self.data])
+	# def wide_repr(self,depth):
+	# 	return (",\n"+"\t"*depth).join([str(i) for i in self.data])
+	# @debugdebug
+	# def verify(self,indesc):
+	# 	if self.verified: return self
+	# 	zvn = []
+	# 	zn = []
+	# 	mmn = RenamerObject(scope)
+	# 	for k in range(len(self.data)):
+	# 		nm,nmmn = mmn.integrate(ScopeIntroducer(self.data[k].name))
+	# 		pscope = StratSeries(zn,zvn,original=ScopeIntroducer(self.original.dat[:k]))
 
-		for k in range(len(self.flat)):
-			zk = self.flat[k].substitute(mmn,repl)
-			nname,mmn = mmn.integrate(ScopeIntroducer(self.flat[k].name))
-			zvn.append(zk.surfacerename(nname.dat))
 
-		return StratSeries(zn,zvn,original=self.original)
+	# 		p = self.data[k].surfacerename(nm.dat).substitute(mmn,SubsObject()).verify(scope+pscope,force=force)
+	# 		mmn=nmmn
+	# 		zn.append(p)
+	# 		zvn = zvn + p.split([k.name for k in scope.flat]+[k.name for k in zvn])
+	# 	return StratSeries(zn,zvn,original=self.original)
+	# @debugdebug
+	# def substitute(self,revf,repl):
+	# 	zn = []
+	# 	zvn = []
+	# 	mmn = revf
 
-	def get(self,label):
-		for t in reversed(range(len(self.flat))):
-			if self.flat[t].name == label:
-				return self.flat[t]
-		return None
+	# 	for k in range(len(self.data)):
+	# 		zk = self.data[k].substitute(mmn,repl)
+	# 		nname,mmn = mmn.integrate(ScopeIntroducer(self.data[k].name))
+	# 		zn.append(zk.surfacerename(nname.dat))
 
-	def introducer(self):
-		return ScopeIntroducer([k.name for k in self.data])
-	def refs(self,label):
-		# if label != None: assert type(label) is str#safemode
-		for k in self.data:
-			l = k.refs(label)
-			if l: return l
-			if ScopeIntroducer(k.name).contains(label): return False
-		return False
-	def __add__(self,other):
-		# assert type(other) is StratSeries#safemode
-		return StratSeries(self.data+other.data,self.flat+other.flat,original=ScopeIntroducer(self.original.dat+other.original.dat))
+	# 	if self.flat == None: return StratSeries(zn,original=self.original)
 
-	@debugdebug
-	def equate(self,cno,other,force=False):
-		if len(self.data) != len(other.data): return False
-		for i in range(len(self.data)):
-			if not self.data[i].equate(cno,other.data[i],force=force): return False
-			cno = cno.sertequiv(ScopeIntroducer(self.data[i].name),ScopeIntroducer(other.data[i].name))
-			if cno == None: return False
-		return True
+	# 	mmn = revf
+
+	# 	for k in range(len(self.flat)):
+	# 		zk = self.flat[k].substitute(mmn,repl)
+	# 		nname,mmn = mmn.integrate(ScopeIntroducer(self.flat[k].name))
+	# 		zvn.append(zk.surfacerename(nname.dat))
+
+	# 	return StratSeries(zn,zvn,original=self.original)
+
+	# def get(self,label):
+	# 	for t in reversed(range(len(self.flat))):
+	# 		if self.flat[t].name == label:
+	# 			return self.flat[t]
+	# 	return None
+
+	# def introducer(self):
+	# 	return ScopeIntroducer([k.name for k in self.data])
+	# def refs(self,label):
+	# 	# if label != None: assert type(label) is str#safemode
+	# 	for k in self.data:
+	# 		l = k.refs(label)
+	# 		if l: return l
+	# 		if ScopeIntroducer(k.name).contains(label): return False
+	# 	return False
+	# def __add__(self,other):
+	# 	# assert type(other) is StratSeries#safemode
+	# 	return StratSeries(self.data+other.data,self.flat+other.flat,original=ScopeIntroducer(self.original.dat+other.original.dat))
+
+	# @debugdebug
+	# def equate(self,cno,other,force=False):
+	# 	if len(self.data) != len(other.data): return False
+	# 	for i in range(len(self.data)):
+	# 		if not self.data[i].equate(cno,other.data[i],force=force): return False
+	# 		cno = cno.sertequiv(ScopeIntroducer(self.data[i].name),ScopeIntroducer(other.data[i].name))
+	# 		if cno == None: return False
+	# 	return True
+
+visit each dualsubs constructor
+and each .data adn each .flat and each .original
+and each stratseries constructor.
+and prolly .variables
+
 class DualSubs:
-	def __init__(self,variables,subs=None,exverified=False):
-		# assert type(variables) is StratSeries#safemode
+	def __init__(self,variables,original=None,subs=None,exverified=False,pos=None):
+		# for sp in variables:#safemode
+			# assert type(sp) is ObjStrategy#safemode
 		# if subs != None: assert type(subs) is SubsObject#safemode
 		self.variables = variables
-		self.subs = subs if subs != None else SubsObject([PlaceholderSub(variables.original.dat[n]) for n in range(len(variables.data))],exverified=True)
+		self.subs = subs if subs != None else SubsObject([PlaceholderSub(original.dat[n]) for n in range(len(variables.data))],exverified=True)
+		self.original = self.introducer() if original == None else original
 		# assert len(self.subs) == len(variables.data)#safemode
 		# for j in range(len(self.subs)):#safemode
 			# assert type(self.subs.subs[j]) is PlaceholderSub or not self.subs.subs[j].inherited#safemode
 			# assert self.subs.subs[j].name == variables.original.dat[j]#safemode
-
-
-
 		self.verified = exverified and self.subs.verified and self.variables.verified
+
+
+		transferlines(self,pos)
+
+
+
 	def __repr__(self):
 		dh = ""
 		for i in range(len(self.variables.data)):
@@ -1031,26 +1073,6 @@ class DualSubs:
 	def __add__(self,other):
 		# assert type(other) is DualSubs#safemode
 		return DualSubs(self.variables+other.variables,self.subs+other.subs,exverified=self.verified and other.verified)
-	# def getv(self,label):
-
-	# 				if type(self.name) is tuple:
-	# 					ha = fulob.onlyreal().subs
-	# 					if len(ha) != self.name[1]: ErrorObject.fatal("Incorrect unwrap length...")
-	# 					t = ha[self.name[0]]
-	# 				else:
-	# 					for nas in reversed(fulob.seekstrat(poc.subs.variables.original)):
-	# 						if nas.name == self.name: return nas
-	# 							t=nas
-	# 				if t == None: ErrorObject.fatal("Property not found:"+str(self.name))
-	# 	if type(label) is tuple:
-	# 		if label[1]!=self.lenavail(): ErrorObject.fatal("mechanical: Wrong number of introduced parameters.")
-	# 		return self.availvariables()[label[0]]
-	# 	jjak = self.variables.original.allvars()
-	# 	for t in reversed(range(len(jjak))):
-	# 		if jjak[t] == label:
-	# 			return self.variables.flat[t]
-	# 	return None
-
 
 	@debugdebug
 	def equate(self,cno,other,force=False):
@@ -1167,7 +1189,7 @@ class ObjStrategy:
 			if self.name != None: return str(self.name)+":"+str(self.type)
 			else: return str(self.type)
 	@debugdebug
-	def verify(self,scope,force=True):
+	def verify(self,indesc):
 		global oneoff
 		sarg = oneoff
 		oneoff = False
@@ -1177,16 +1199,13 @@ class ObjStrategy:
 
 		if sarg:print("I MEAN ALRIGHT")
 		if sarg:prestart = time.time()
-		verargs = self.args.verify(scope,force=force)
+		verargs = self.args.verify(indesc)
 		if sarg:start = time.time()
-
-		shap = RenamerObject(scope)
-		nar,shap = shap.integrate(self.args.variables.introducer())
 
 
 		sresressres = ObjStrategy(
 			args=verargs,
-			ty=self.type.substitute(shap,verargs.subs.onlyreal()).verify(scope+verargs.variables,ObjKindReferenceTree(name="U",verprot=2),force=force),
+			ty=self.type.verify(indesc.append(verargs),ObjKindReferenceTree(name="U",verprot=2)),
 			name=self.name,
 			pos=self,
 			exverified=True
