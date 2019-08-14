@@ -13,7 +13,6 @@ contexts:
     - include: comments
 
   main:
-    - include: strategy
     - include: statement
 
 
@@ -23,7 +22,6 @@ contexts:
       pop: true
     - match: \,
       scope: keyword.control
-    - include: strategy
     - include: statement
 
   inside_strategy_list:
@@ -32,34 +30,9 @@ contexts:
       pop: true
     - match: \,
       scope: keyword.control
-    - include: strategy
     - include: statement
 
 
-
-  strategy:
-    - match: \[
-      push: inside_strategy
-      scope: keyword.control
-    - match: \{
-      push: inside_strategy_list
-      scope: keyword.control
-    - match: \]
-      scope: invalid.illegal.stray-bracket-end
-    - match: \}
-      scope: invalid.illegal.stray-bracket-end
-
-    # - match: '\?\!\s*\b(\w+)\b\s*\:'
-    #   scope: entity.name.function
-    # - match: '\!\?\s*\b(\w+)\b\s*\:'
-    #   scope: constant.character
-
-    - match: '\?\s*\b(\w+)\b\s*\:'
-      scope: entity.name.function
-    - match: '\!\s*\b(\w+)\b\s*\:'
-      scope: constant.character
-    - match: '\b(\w+)\b\s*\:'
-      scope: variable.function
 
 
   inc_introlist:
@@ -100,9 +73,6 @@ contexts:
     - match: \{
       scope: keyword.control
       push: inside_strategy_list
-    - match: \|
-      scope: variable.parameter
-      push: introlist
     - match: \)
       scope: keyword.control
       pop: true
@@ -125,6 +95,32 @@ contexts:
 
     - match: \)
       scope: invalid.illegal.stray-bracket-end
+
+
+
+    - match: \[
+      push: inside_strategy
+      scope: keyword.control
+    - match: \{
+      push: inside_strategy_list
+      scope: keyword.control
+    - match: \]
+      scope: invalid.illegal.stray-bracket-end
+    - match: \}
+      scope: invalid.illegal.stray-bracket-end
+
+    # - match: '\?\!\s*\b(\w+)\b\s*\:'
+    #   scope: entity.name.function
+    # - match: '\!\?\s*\b(\w+)\b\s*\:'
+    #   scope: constant.character
+
+    - match: '\?\s*\b(\w+)\b\s*\:'
+      scope: entity.name.function
+    - match: '\!\s*\b(\w+)\b\s*\:'
+      scope: constant.character
+    - match: '\b(\w+)\b\s*\:'
+      scope: variable.function
+
 
 
   comments:

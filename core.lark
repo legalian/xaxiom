@@ -13,41 +13,34 @@ multilabel : label
 introducer : "|"multilabel(","multilabel)*"|"
 
 
-accmlabel : acclabel
-           | "["accmlabel (","accmlabel)* "]"
-specintroducer : acclabel
-               | "|"accmlabel(","accmlabel)*"|"
+
+?outerobject : ("["objargumentstratseries"]")? object
+
+
+?object : opsymbol* objectatom (opsymbol+ objectatom)*
 
 
 
-
-?object : opsymbol* objectatom (opsymbol+ objectatom)* opsymbol*
-
-
-
-objargumentseries      : objargument(","objargument)*
-objargumentnamedseries : objargumentnamed(","objargumentnamed)*
+objargumentseries      : objargumentnamed(","objargumentnamed)*
 objargumentstratseries : declaration (","declaration)*
 
-objectatom : (objectatom".")? label ("("objargumentseries")")   -> treeref
-           | objectatom"<"objargumentnamedseries">"              -> template
+objectatom : (objectatom".")? label ("("objargumentseries")")*   -> treeref
+           | objectatom"<"objargumentseries">"              -> template
            | "("objargumentseries")"                        -> union
-           | "{"objargumentstratseries"}"                        -> andtype
-           | "["objargumentstratseries"]"objectatom              -> functype
+           | "{"objargumentstratseries"}"                   -> andtype
 
 
 
-
-objargument      : introducer? object
-objargumentnamed : (introducer"=")? objargument
+objargument      : introducer? outerobject
+objargumentnamed : (acclabel"=")? objargument
                  // | "@" introducer? label -> objargumentplaceholder
 
 infermarker : "?" -> silentmarker | "!" -> contractmarker// | "!?" -> interrobang | "?!" -> interrobang
-declaration : (infermarker? (label":"|introducer":"|"::"))? object ("="object)?
+declaration : (infermarker? (label":"|introducer":"|"::"))? outerobject? ("="outerobject)?
 
 
 
-start : object
+start : outerobject
 
 
 
