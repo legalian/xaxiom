@@ -7,7 +7,9 @@ import sys
 # from .transformer import MyTransformer
 
 # from .nexus import MyTransformer
-from .nexus import *
+# from .nexus import *
+
+from .simplifier import *
 
 import functools
 
@@ -45,35 +47,13 @@ class BuildAxiomCommand(sublime_plugin.ViewEventListener,sublime_plugin.TextComm
 			self.phantom_set.update([])
 
 	def on_post_save(self):
-		# if 'myplugin.metametastructures' in sys.modules:
-		# 	del sys.modules["myplugin.metametastructures"]
-		# if 'myplugin.metastructures' in sys.modules:
-		# 	del sys.modules["myplugin.metastructures"]
-		# if 'myplugin.structures' in sys.modules:
-		# 	del sys.modules["myplugin.structures"]
-		# if 'myplugin.transformer' in sys.modules:
-		# 	del sys.modules["myplugin.transformer"]
-		# if "myplugin.nexus" in sys.modules:
-		# 	del sys.modules["myplugin.nexus"]
-		global MyTransformer, StratSeries, ErrorObject
-
-		# print(vars(sys.modules["myplugin.nexus"]).keys())
-		reloadself()
-		MyTransformer = vars(sys.modules["myplugin.transformer"])["MyTransformer"]
-		StratSeries = vars(sys.modules["myplugin.metastructures"])["StratSeries"]
-		ErrorObject = vars(sys.modules["myplugin.metastructures"])["ErrorObject"]
+		# global MyTransformer, StratSeries, ErrorObject
+		# reloadself()
+		# MyTransformer = vars(sys.modules["myplugin.transformer"])["MyTransformer"]
+		# StratSeries = vars(sys.modules["myplugin.metastructures"])["StratSeries"]
+		# ErrorObject = vars(sys.modules["myplugin.metastructures"])["ErrorObject"]
 
 		
-		# sys.modules["myplugin.nexus"]
-		# print(vars(sys.modules["myplugin.transformer"]).keys())
-		# vars(sys.modules["myplugin.transformer"])["SubsObject"] = None
-		# vars(sys.modules["myplugin.transformer"])["ObjKind"] = None
-
-		# importOrReload("myplugin.transformer", "MyTransformer")
-		# print(importlib.__dict__)
-		# imp.reload()
-		# importlib.reload(module)
-		# importlib.reload(module)
 		self.update_syntax_phantoms()
 
 

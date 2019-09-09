@@ -36,11 +36,16 @@ objargumentnamed : (acclabel"=")? objargument
                  // | "@" introducer? label -> objargumentplaceholder
 
 infermarker : "?" -> silentmarker | "!" -> contractmarker// | "!?" -> interrobang | "?!" -> interrobang
-declaration : (infermarker? (label":"|introducer":"|"::"))? outerobject? ("="outerobject)?
+declaration : (infermarker? (label":"|introducer":"|"::"))? outerobject ("="outerobject)?
 
+opwithflags : "binary("opsymbol")" -> binary
+            | "urnary("opsymbol")" -> urnary
 
+precrowflags : "left-assoc"->leftassoc |"right-assoc"->rightassoc
 
-start : outerobject
+precrow : opsymbol* precrowflags? ";"
+
+start : precrow* outerobject
 
 
 
