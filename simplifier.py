@@ -59,7 +59,13 @@ def trimlongcount(car,jj):
 	return longcount(untrim(car,jj))
 
 
-
+def striphuman(limit,h):
+	flim = limit
+	def strip(h):
+		if type(h) is list: return [strip(k) for k in h]
+		flim = flim + 1
+		return flim - 1
+	return strip(h)
 
 
 
@@ -234,7 +240,7 @@ class Tobj:
 		return Strategy(args,self,pos=self)
 	def addlambdas(self,args):
 		if len(args) == 0: return self
-		return Lambda(args.semavail(),self,longcount([k.name for k in args.rows]),pos=self)
+		return Lambda(args.semavail(),self,longcount(args),pos=self)
 	def claimlambda(self,indesc,tyargs,args):
 		if len(args) == 0: return self
 		shra = copy.copy(self)
@@ -271,7 +277,13 @@ class DualSubs(Tobj):
 		return True
 
 
-
+	def unulimit(self,momin):
+		tmomi = -1
+		mopass = 0
+		while mopass<=momin:
+			tmomi += 1
+			if self.rows[tmomi].obj == None: mopass += 1
+		return tmomi
 
 
 	def append(self,other):
@@ -334,12 +346,7 @@ class DualSubs(Tobj):
 		return cu
 
 	def emptyinst(self,limit,mog=None,prep=None):
-		flim = limit
-		def striphuman(h):
-			if type(h) is list: return [striphuman(k) for k in h]
-			flim = flim + 1
-			return flim - 1
-		if mog == None: mog = [striphuman(k.name) for k in self.rows]
+		if mog == None: mog = striphuman(limit,[k.name for k in self.rows])
 		if type(mog) is not list: return super(Tobj,self).emptyinst(limit,mog,prep)
 		assert len(self.rows) == len(mog)
 		mog = [mog[i] for i in range(len(mog)) if self.rows[i].obj == None]
@@ -531,12 +538,6 @@ class Lambda(Tobj):
 		self.sc = sc
 		transferlines(self,pos)
 
-
-
-
-
-
-
 	def dpush(self,dsc,amt,lim,repls=None):
 		return Lambda(self.si,self.obj.dpush(dsc+self.sc,amt,lim,repls),self.sc,self)
 	def compare(self,dsc,other,odsc=None,thot=None,extract=None):
@@ -551,33 +552,35 @@ class Lambda(Tobj):
 		return conservative(self.si,other.si) and self.obj.compare(dsc+self.sc,other.obj,odsc,thot,extract)
 
 
-
-
 	def needscarry(self):
 		if len(self.si) == 0: return self.obj.needscarry()
 		return True
+
 	def verify(self,indesc,carry=None,reqtype=False):
-
-		how many pass-along vars? simplify them.
-
-		reqtype.emptyinst(len(),self.si)
-
-
-
-
 		if len(self.si) == 0: return self.obj.verify(indesc,carry,reqtype)
 		if carry==None: ErrorObject.fatal(self,"type of arguments could not be inferred.")
 		if type(carry) is not Strategy: ErrorObject.fatal(self,"lambda provided to non-lambda type.")
-		return Lambda(self.si,self.obj.verify(indesc.addflat(carry.args.flatten(indesc.reroll(),self.si,trim=True))),longcount([k.name for k in carry.args.rows]))
-
+		if len(self.si) > len(carry.args): ErrorObject.fatal(self,"too many lambda arguments provided.")
+		tmomi = carry.args.unulimit(len(self.si))
+		truncargs = DualSubs(carry.args.rows[:tmomi])
+		ntype = Strategy(DualSubs(carry.args.rows[tmomi:]),carry.type)
+		fid = self.obj.verify(indesc.addflat(truncargs.flatten(indesc.reroll(),self.si,trim=True)),ntype)
+		allpassalong = truncargs.emptyinst(len(indesc),striphuman(untrim(self.si)))
+		elim = 0
+		if type(fid) is RefTree:
+			nks = copy.copy(fid.args.subs)
+			while elim<len(allpassalong.subs) and len(nks):
+				if not nks[-1].compare(None,allpassalong.subs[len(allpassalong.subs)-1-elim]): break
+				elim+=1
+				nks = nks[:-1]
+			fid = copy.copy(fid)
+			fid.args = SubsObject(nks)
+		if len(self.si) == elim: return fid
+		return Lambda(self.si[:len(self.si)-elim],fid,longcount(truncargs),pos=self)
 
 	def claimlambda(self,indesc,tyargs,args):
 		momin = min(len(self.si),len(args))
-		tmomi = -1
-		mopass = 0
-		while mopass<=momin:
-			tmomi += 1
-			if tyargs.args.rows[tmomi].obj == None: mopass += 1
+		tmomi = tyargs.args.unulimit(momin)
 		brac = DualSubs(tyargs.args.rows[:tmomi])
 		brac1 = DualSubs(tyargs.args.rows[tmomi:])
 		sard = indesc.addflat(brac.flatten(self.si[:momin],trim=True,obj=SubsObject(args.subs[:momin]))).postpush(-trimlongcount(brac,trim),len(indesc))
@@ -593,13 +596,12 @@ class Lambda(Tobj):
 		if len(args) == 0: return self
 		return Lambda(self.si+args.semavail(),self.obj,None if self.sc == None else self.sc+longcount([k.name for k in args.rows]),pos=self)
 
-ouf; flatten needs to know human and computer names for each.
-visit each function usage for each function.
+
+
+
 
 need to reimplement sc...
 each Lambda construction.
-
-make flatten's initial opoulation w/ scope.
 
 
 
@@ -662,6 +664,9 @@ class Strategy(Tobj):
 		return Strategy(args=verargs,type=vertype,pos=self)
 
 
+
+
+make sure no emptyinst is called when trim is expected.
 
 review compactify's overflow protocol-> compare itself checks that its not overriding none, so en\sure that that is respected.
 
@@ -786,16 +791,28 @@ class OperatorSet(Tobj):
 
 
 
+	DSC CANNOT BE NONE
+
+
+comparing dualsubs needs to be much much better.
+
+dualsubs objs never get compared, also remove typerow compare function entirely.
+
+
+	completely separate mappings for what is considered equal... need to keep track of some sort of push objects.
+
+	then when you are comparing to extract something... it just goes back to odsc anyway, so you dont have to worry about the pushes.
 
 
 
 
-game(animation editor)
-hackathon
-this
 
-minecraft server
-hackathon(eric)
+# game(animation editor)
+# hackathon
+# this
+
+# minecraft server
+# hackathon(eric)
 
 
 #bring back pos system and get better error tracking.
@@ -805,7 +822,21 @@ hackathon(eric)
 
 
  # have multiple channels for refferring back to a specific caller.
-# build depth pushes into the scope obejct.
+
+
+
+
+#list of mangles:
+#mangle 1: de morgan negation buitin
+#mangle 2: compact variables (tracked through attached object.)
+#mangle 3: when type is Strategy<DualSubs>, wrap self in singleton to try to match it.
+	#applies to symextract and lambda
+	#when too many lambda arguments are provided, the remainder is wrapped in a singleton and the match is attempted.
+#mangle 4: when type is equality in space of DualSubs, accept tuple of equalities.
+#mangle 5: when type is [k:K]P and you provide P it should just assume constant.
+
+
+
 
 
 
