@@ -2,91 +2,77 @@
 
 
 
-	you assume type is Array, then you provide an introduced one... this is impossible, no?
-	not neccessarily. you just need to be careful.
-
-
-homomorphism =/= homotopy (isomporphism)
-
-homomorphism -> specific to group theory structure
-
-
-
-homotopy ->function with a perfect inverse
+# homomorphism =/= homotopy (isomporphism)
+# 	homomorphism -> specific to group theory structure
+# 	homotopy ->function with a perfect inverse
 
 [
 	::'builtin.ax'
-
-	groupcore:U = {
+]{
+	Semigroup := {
 		A:U,
 		J:[A,A]U,
 		J:U = {l:A,r:A,j:[l,r]U},
 		0:[a:A]J(a),
 		'+':[l:J,r:J<l.r>]J<l.l,r.r>,
-		'==':[?a:J,?b:J<a.l,a.r>]a.j==b.j
+		'==':[a?:J,b?:J<a.l,a.r>]a.j==b.j,
 		ASSOCIATIVE:    [a:J,b:J<a.r>,c:J<b.r>](a+b)+c == a+(b+c),
-		'-+-':[?a:J,?b:J<a.l,a.r>,?c:J<a.r>,?d:J<c.l,c.r>,q1:a==b,q2:c==d]a+c==b+d = EQUIVALENCE(PRESERVATION(|r|r+c,q1),PRESERVATION(|g|a+c==b+g,q2)),
+		'-+-':[a?:J,b?:J<a.l,a.r>,c?:J<a.r>,d?:J<c.l,c.r>,q1:a==b,q2:c==d]a+c==b+d = EQUIVALENCE(PRESERVATION(|r|r+c,q1),PRESERVATION(|g|a+c==b+g,q2)),
 		R_IDENTITY:     [a:J]a+0(a.r)==a,
-	}
-]
-{
-	semigroup:U = {
-		::groupcore,
-		L_IDENTITY:[a:J]0(a.l)+a==a,
-
-	}
-	group:U = {
-		g_core:groupcore,
-		::groupcore = g_core,
-
+		L_IDENTITY:[a:J]0(a.l)+a==a
+	},
+	Group := Semigroup<
+		|J,0,'+','==',ASSOCIATIVE,'-+-',R_IDENTITY|->,
 		'-':[j:J]J<j.r,j.l>,
-		'-':[a:J,b:J<j.r=a.r>]J = a+(-b),#language consideration here.
+		'-':[a:J,b:J<j.r=a.r>]J = a+(-b),
 		A_IDENTITY:     [a:J]a-a==0(a.l),
 		assoc_eliminate:[a:J,b:J<a.r>](a+b)-b == a =
 			ASSOCIATIVE(a,b,-b) ->
 			PRESERVATION(|g|a+g,A_IDENTITY(b)) ->#a+0 == a+(b-b)
 			R_IDENTITY(a),#a+0=a
-		elim:[?b:J,?a:J<b.l,b.l>,q:a+b == b]a == 0(b.l) =
+		elim:[b?:J,a?:J<b.l,b.l>,q:a+b == b]a == 0(b.l) =
 			^assoc_eliminate(a,b) ->
 			PRESERVATION(|g|g-b,q) ->
-			A_IDENTITY(b)
-		elim:[?a:J,?b:J<a.l>,?c:J<a.l,a.r>,q:a+b == c+b]a == c = 
+			A_IDENTITY(b),
+		elim:[a?:J,b?:J<a.l>,c?:J<a.l,a.r>,q:a+b == c+b]a == c = 
 			^assoc_eliminate(a,b) ->
 			PRESERVATION(|g|g-b,q) ->
-			assoc_eliminate(c,b)
-		'-+-':[?a:J,?b:J<a.l,a.r>,?c:J<a.r,a.r>,q1:a==b,q2:c==0(a.r)]a+c==b = q1 -+- q2 -> R_IDENTITY(b),
+			assoc_eliminate(c,b),
+		'-+-':[a?:J,b?:J<a.l,a.r>,c?:J<a.r,a.r>,q1:a==b,q2:c==0(a.r)]a+c==b = q1 -+- q2 -> R_IDENTITY(b),
 		B_IDENTITY:     [a:J]-a+a==0(a.r) = elim(assoc_eliminate(-a,a)),
 		assoc_eliminate_rev:[a:J,b:J](a-b)+b == a =
 			ASSOCIATIVE(a,-b,b) ->
 			PRESERVATION(|g|a+g,B_IDENTITY(b)) ->#a+0 == a+(b-b)
 			R_IDENTITY(a),#a+0=a
-		L_IDENTITY:     [a:J]0(a.l)+a==a  =
+		L_IDENTITY =
 			PRESERVATION(|g|g+a,^A_IDENTITY(a)) ->#(a-a)+a
 			assoc_eliminate_rev(a,a),
-		'-+-':[?c:J,?a:J<c.l,c.l>,?d:J<c.l,c.r>,q1:a==0(c.l),q2:c==d]a+c==d = q1 -+- q2 -> L_IDENTITY(d),
+		'-+-':[c?:J,a?:J<c.l,c.l>,d?:J<c.l,c.r>,q1:a==0(c.l),q2:c==d]a+c==d = q1 -+- q2 -> L_IDENTITY(d),
 	    nzero_eq_zero:[z:A] -0(z) == 0(z) = elim(L_IDENTITY(0(z))),
-	    ::semigroup<g_core,L_IDENTITY>
-	}
-
-	abelian_group:U = {
-		::group<A={}>,
-		COMMUTATIVE:[a:J,b:J]a+b==b+a,
-	}
-
-	ring:U = {
-
-
-
-	}
-
-
-
-	ring,
-	module,
-	vector space,
-
-
-	field:U = {
+        negnegative:[a:J] -(-a) == a = 
+	        elim(#a-a == -(-a)-a
+	            A_IDENTITY(a)->#a-a == 0(a.l)
+	            ^B_IDENTITY(-a)#0(a.l) == -(-a)-a
+	        ),
+	    neg_distributes:[a:J,b:J<a.r>] -(a+b) == -b-a =
+	    	elim(
+		    	B_IDENTITY(a+b) -> #-(a+b)+(a+b) == 0(b.r)
+		    	^B_IDENTITY(b) ->
+		    	PRESERVATION(|g|-b+g,
+		    		^L_IDENTITY(b) ->
+			    	PRESERVATION(|g|g+b,
+			    		^B_IDENTITY(a)
+			    	) ->
+			    	ASSOCIATIVE(-a,a,b)
+		    	) ->#-b+(-a+(a+b))
+		    	^ASSOCIATIVE(-b,-a,a+b)#(-b-a)+(a+b)
+	    	)
+	>,
+	Abelian_group := group<
+		A={},
+		COMMUTATIVE:[a:J,b:J]a+b==b+a
+	>,
+	Ring := {
 		J:U,
 		0:J,
 		1:J,
@@ -96,19 +82,23 @@ homotopy ->function with a perfect inverse
 		add:abelian_group<J=J,0=0,'-'='-','+'='+'>,
 		'-':[a:J,b:J]J = a+(-b),
 		'*':[J,J]J,
+		DISTRIBUTIVE:        [a:J,b:J,c:J]a*(b+c) == a*b+a*c,
+		times_zero_is_zero:  [a:J]a*0 == 0 = 
+			add.elim(
+				^DISTRIBUTIVE(a,0,0) ->#a*0+a*0 == a*(0+0)
+				PRESERVATION(|r|a*r,add.R_IDENTITY(0))#a*(0+0) == a*0
+			),
+		mult:semigroup<A={},J=J,0=1,'+'='*'>
+	},
+	Field := Ring<
+		|J,0,1,q,'+','-','-','*',add,DISTRIBUTIVE,times_zero_is_zero|->,
 		MINVERSE: [j:J,j!=0]J,
 		MULTIPLY_R_IDENTITY: [a:J]a*1==a,
 		MULTIPLY_A_IDENTITY: [a:J,g:a!=0]a*MINVERSE(a,g) == 1,
 		MULTIPLY_COMMUTATIVE:[a:J,b:J]a*b==b*a,
 		MULTIPLY_ASSOCIATIVE:[a:J,b:J,c:J](a*b)*c == a*(b*c),
-		DISTRIBUTIVE:        [a:J,b:J,c:J]a*(b+c) == a*b+a*c,
-		times_zero_is_zero:  [a:J]a*0 == 0 = 
-			add.elim(
-	            ^DISTRIBUTIVE(a,0,0) ->#a*0+a*0 == a*(0+0)
-	            PRESERVATION(|r|a*r,add.R_IDENTITY(0))#a*(0+0) == a*0
-	        ),
 		mult:abelian_group<
-			J={j:J,!i:j!=0},
+			J={j:J,i!:j!=0},
 			0=(1,q),
 			'+'=|[a,ag],[b,bg]|(
 				DEC(a*b==0,
@@ -119,8 +109,8 @@ homotopy ->function with a perfect inverse
 						PRESERVATION(|g|g*MINVERSE(b,bg),s) -> #(a*b)/b == 0/b
 						MULTIPLY_COMMUTATIVE(0,MINVERSE(b,bg)) ->#0/b == /b*0
 						times_zero_is_zero(MINVERSE(b,bg)),#/b*0 == 0
-						a*b!=0,
-					)
+						a*b!=0
+					),
 					|s|s
 				)
 			),
@@ -128,95 +118,143 @@ homotopy ->function with a perfect inverse
 				MINVERSE(a,ag),
 				DEC(MINVERSE(a,ag) == 0,
 					|s|q(
-						^times_zero_is_zero(a) -> #a*0=0
-	                    PRESERVATION(|r|a*r,^s) ->#a*1/a=a*0
-	                    MULTIPLY_A_IDENTITY(a,s),#1=a*1/a
-	                    MINVERSE(a,ag) != 0
-	                ),
-	                |s|s
-		        ),
+					^times_zero_is_zero(a) -> #a*0=0
+					PRESERVATION(|r|a*r,^s) ->#a*1/a=a*0
+					MULTIPLY_A_IDENTITY(a,s),#1=a*1/a
+					MINVERSE(a,ag) != 0
+					),
+					|s|s
+				)
 			),
 			COMMUTATIVE=|[a,ag],[b,bg]|MULTIPLY_COMMUTATIVE(a,b),
 			ASSOCIATIVE=|[a,ag],[b,bg],[c,cg]|MULTIPLY_ASSOCIATIVE(a,b,c),
 			A_IDENTITY=|[a,ag]|MULTIPLY_A_IDENTITY(a,ag),
 			R_IDENTITY=|[a,ag]|MULTIPLY_R_IDENTITY(a)
-		>
-	}
+		>,
+		mult = mult.group.semigroup
+	},
+
+	#abelian + semigroup = ring
+	#abelian + abelian   = field
+	#abelian + ring      = module
+	#abelian + field     = vector space
+
+	#distributive, associative, identity.
+	# module := {
+	# 	abelian + ring
+
+	# },
+	# vector_space := {
+	# 	abelian + field
+
+	# },
 
 
-	alg_closed_field:U = {
-		::field,
 
 
-	}
+#project euler
+
+
+# make an structure thats just for releasable memory objects.
 
 
 
 
-
-
-total_order:U = {
+Relation := {
 	J:U,
 	'=>':[J,J]U,
 	'>>':[a:J,b:J]U = !(b=>a),
 	'<=':[a:J,b:J]U = b=>a,
 	'<<':[a:J,b:J]U = !(a=>b),
-	[a:J,b:J,a=>b,b=>a]a==b,
-	[a:J,b:J,c:J,a=>b,b=>c]a=>c,
-	[a:J,b:J]!{a>>b,b>>a},
-}
-
-
-ordered?
-discrete? cannot be discrete if not (strongly) ordered
-complete? cannot be complete if not (strongly) ordered or discrete
-
-discrete_domain:U = {
-	::total_order,
-	h:J,
-	h>>0,
-	[k:J,k>>0]k=>h,
-}
-
-
-|induction,induction.predicate|:[
-	A:U,
-	discrete_domain(A),
-	B:[A]U,
-	L:[A]{a:J,a=>>0},
-	f:[b:A,[c:A,L(c).a<<L(b).a]B(c)]B(b)
-]{
-    res:[a:A]B(a),#<--- This is the definition of well-formed induction/recursion.
-    [a:A]res(a) == f(a,|e,_|res(e))#<--- a recursive function is equal to itself called on itself.
-}
-
-
-
-complete_domain:U = {
-	::total_order,
-	|supremum,supremum.under,supremum.over|:[
+	transitive:[a?:J,b?:J,c?:J,a=>b,b=>c]a=>c,
+	reflex:[a:J]a=>a,
+},
+Connex_relation := Relation<
+	|J,'=>','<=','<<','>>'|->,
+	connex:[a?:J,b?:J,a>>b]a=>b,
+	reflex = |a|DEC(a=>a,|s|s,|s|s(connex(x)))
+>,
+Complete_relation := Connex_relation<
+	|J,'=>','<=','<<','>>'|->,
+	infimum:[
+		P:[J]U,
+		a:J,
+		b:[x:J,P(x)]x=>a,
+		j:J,
+		p:P(j)
+	]{
+		inf:J,
+		under:[x:J,P(x)]x=>inf,
+		over:[al:J,[x:J,P(x)]x=>al]al<=inf
+	},
+	supremum:[
 		P:[J]U,
 		a:J,
 		b:[x:J,P(x)]x<=a,
 		j:J,
 		p:P(j),
+		sup := infimum(|j|[x:J,px:P(x)]x<=j,j,|x,px|px(j,p),a,|x,px|b(x,px))
 	]{
-		sup:J
-		[x:J,P(x)]x<=sup,
-		[x:J,x>>sup]!P(x)
-	},
-	|infimum,infimum.under,infimum.over|:[
-		P:[J]U,
-		a:J,
-		b:[x:J,P(x)]x=>a,
-		j:J,
-		p:P(j),
-	]{
-		inf:J,
-		[x:J,P(x)]x=>inf,
-		[x:J,x<<inf]!P(x)
+		J = sup.inf,
+		[x:J,px:P(x)]x<=sup = |x,px|sup.over(x,|_,z|z(x,px)),
+		[al:J,[x:J,P(x)]x<=al]al=>sup = |x,bx|sup.under(x,bx)
 	}
-}
+>,
+Noether_relation := Complete_relation<
+	|J,'=>','<=','<<','>>'|->,
+	noether:[P:[J]U,Pj:={j:J,p:P(j)},Pj]{
+		l:Pj,
+		p:[k:Pj]k.j=>l.j
+	},
+	connex = |a,b,q|[
+		P:[x:J]U = OR(x==a,x==b),
+		Pj:U = {j?:J,p:P(j)},
+		pa:Pj = P(a).construct(IDENTITY(a)),
+		pb:Pj = P(b).construct(IDENTITY(b)),
+		min:= noether(P,a)
+	]DEC(min.l.j==a,
+		|s|SUBSTITUTION(|w|a=>w,min.l.p.extract(s),min.p(pa)),
+		|s|q(SUBSTITUTION(|w|b=>w,s,min.p(pb)))#b=>a
+	),
+	infimum = |P,a,b,j,p|(
+		noether(P,(j,p)).l.j,
+		|x,px|noether(P,(j,p)).p((x,px)),
+		|al,bou|bou(noether(P,(j,p)).l.j,noether(P,(j,p)).l.p)
+	),
+	noetherian_induction:[
+		P:[J]U,
+		f:[y:J,[z:J,z<<y]P(z)]P(y),
+		x:J
+	]P(x) = 
+		DEC({j:J,p:!P(j)},
+			|s|[min = noether(|j|!P(j),s)]min.l.p(f(min.l.j,|k,p|DEC(P(k),|h|h,|h|p(min.p((k,h)),P(k))))),#contradiction
+			|s|negate_union(s,x)
+		),
+	noetherian_recursion:[
+		P:[J]U,
+		f:[y:J,[z:J,z<<y]P(z)]P(y),
+	]{
+		r?:[x:J]P(x),
+		pred:[x:J]r(x) == f(x,|z,_|r(z))
+	} = |u|noetherian_induction(
+			|j|{
+				r?:[x:J]P(x),
+				pred:[x:J,q:x<=j]r(x) == f(x,|z,_|r(z))
+			},
+			|j,R||x,q|PRESERVATION(
+				A=[z:J,z<<j]P(z),
+				|w|f(x,|z,q2|w(z,DEC(z=>j|s|q2(transitive(s,q),z<<j)|s|s))),
+				|z,q3|R(z,q3).pred(z,connex(q3))
+			),
+			u
+		).pred(u,reflex(u))
+>,
+
+
+
+
+
+antisym:[a?:J,b?:J,a=>b,b=>a]a==b,
 
 
 
@@ -224,24 +262,11 @@ complete_domain:U = {
 
 
 
-supremum(|j|[x:J,P(x)]x=>j,j,|x,px|px(j,p),j,p)
-|x,px|
-
-px:[y:J,P(y)]y=>x
-
-inf.over:[x:J,x>>sup]!P(x)
-
-produce:x=>inf
-
-negate(inf.over(x,px()))
-
-
-|x,bou|
 
 
 
 
-a group's type can have an ordering operation, but the group itself not be ordered
+
 
 
 
@@ -283,6 +308,10 @@ l:J
 	s>>0,
 	[x:J,abs(x-c)<<s]abs(f(x)-l)<<e
 }
+
+
+
+positive values closed under addition and multiplication
 
 
 

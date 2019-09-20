@@ -4,7 +4,7 @@ import os
 import sys
 
 
-# from .transformer import MyTransformer
+from .transformer import MyTransformer
 
 # from .nexus import MyTransformer
 # from .nexus import *
@@ -140,23 +140,23 @@ class BuildAxiomCommand(sublime_plugin.ViewEventListener,sublime_plugin.TextComm
 			# self.insertpoints = [0] + self.insertpoints + [len(document)]
 			# document = '\xA5'.join([document[self.insertpoints[i]:self.insertpoints[i+1]] for i in range(len(self.insertpoints)-1)])
 			try:
-				wclist = []
-				ahah = MyTransformer(wclist).transform(self.l.parse(document))
+				ahah = MyTransformer().transform(self.l.parse(document))
 				#ahah = self.l.parse(document)
 
-				task = ahah.children[0]
 
+
+				
 				# errors = ErrorObject()
 
 				# cheat = StratSeries([ObjStrategy(upcast=b) for b in bank])
 				# cheat = cheat.verify(StratSeries([],exverified=True),errors)
 				print("--=-=-=-=--momomomo=-=-=-=-=-=-==--=>>>>>>")
-				try:
-					nobh = task.verify(StratSeries())
-					print(nobh)
-					print("--=-=-=-=--=-=-=-=-=-=-==--=>>>>>>")
-				except ErrorObject as u:
-					pass
+				# try:
+				nobh = ahah[1].verify(ScopeObject([],oprows=ahah[0]))
+				print(nobh)
+				print("--=-=-=-=--=-=-=-=-=-=-==--=>>>>>>")
+				# except ErrorObject as u:
+				# 	pass
 				# except RuntimeError:
 				# 	print("RECURSION DEPTH EXCEEDED")
 

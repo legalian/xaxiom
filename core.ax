@@ -2,400 +2,6 @@
 
 [
 
-U:U,#U is special. It is the type that all types and predicates have. (this type theory system avoids girard's paradox because it does not support subtyping.)
-FALSE:U,#the concept of falseness. To inhabit this type is to create a contradiction.
-CONTRADICTION:[FALSE,T:U]T,#contradiction proves all things; this enables proof by contradiction.
-
-'!':[A:U]U = FUNC(A,|_|FALSE),#the inhabitation of A implies the inhabitation of false which is contradiction.
-
-
-EQ:[A:U,A,A]U,
-'==':[?A:U,a:A,b:A]U = EQ(A,a,b),
-'!=':[?A:U,a:A,b:A]U = !(a==b),
-
-IDENTITY:    [?A:U,a:A]a==a,#IDENTITY -> "all elements of all types are equal to themselves."
-SUBSTITUTION:[?A:U,?a:A,?b:A,J:[c:A,a==c]U,q:a==b,J(a,IDENTITY(a))]J(b,q),#this is path induction.
-SUBSTITUTE_GARUNTEE:[?A:U,?a:A,J:[c:A,a==c]U,k:J(a,IDENTITY(a))]SUBSTITUTION(|w,y|J(w,y),IDENTITY(a),k) == k,
-
-'^':         [?A:U,?a:A,?b:A,q:b==a]a==b                     = SUBSTITUTION(|w,_|w==b,q,IDENTITY(b)),
-EQUIVALENCE: [?A:U,?B:U,a:A,q:A==B]B                         = SUBSTITUTION(|w,_|w,q,a),
-PRESERVATION:[?A:U,?B:U,?a:A,?b:A,f:[A]B,q:a==b]f(a) == f(b) = SUBSTITUTION(|w,_|f(a)==f(w),q,IDENTITY(f(a))),
-'->':        [?J:U,?a:J,?b:J,?c:J,q1:a==b,q2:b==c]a==c       = SUBSTITUTION(|w,_|a==w,q2,q1),
-.chain:      [?J:U,?a:J,?b:J,?c:J,q1:a==b,q2:[J]b==c]a==c    = SUBSTITUTION(|w,_|a==w,q2(b),q1),
-
-
-
-
-
-
-
-
-
-
-when making type assumption plan:
-    establish a parameter evaluation order such that:
-        each given [] has already been completely inferred.
-        each thing you're trying to infer may only have introduced variables at the root of their arguments.
-
-if no plan can be established, the declaration is invalid.
-plans don't neccessarily work for all inputs; () constructions don't give types and functions sometimes don't place their arguments.
-
-
-first match, moving upwards:
-    name must match. operators become names.
-    attempt to match number of parameters:
-        number of parameters must be:
-            1. the reduced number (run this as an entire plan. if it fails or does not have that number of parameters, pass thru.)
-            2. The full plan.
-            3. no parameters.
-        run the plan. if the plan passes but leaves elements unbound then an error is thrown.
-        if type errors are generated, move to the next one and try again.
-
-
-
-
-berid of putting placeholders in function calls to extract shit. you dont use it and it's a huge performance sink.
-
-?          make variable part of the optional plan.
-!          mark variable as contractible. (you need an extra plan for designating which contractibility function to use.)
-
-
-?-         all parameters up until now are made optional.
-'+'        operator overload.
-.prop      type property (substitution is safe.)
-func.prop  unwrap parameters and recall (upon substituting func out, func.prop should be gotten too.)
-
-autocast to func when there are insufficient parameters.
-
-
-#Types may be nested and unraveled.
-|AND,[.acc,.accb],[UNION,MEMBER,MEMBERB],AND.equal,FUNC,.eval,[MAKEFUNC,FUNCASSURANCE],FUNC.equal|:[A:U,B:[A]U]{#For all (types) and (types derived from the first type)...
-    and:U,
-    ?-|acc,accb|:[c:and]{#Given an element of the type representing the union...
-        acc:A,#you may retrieve an element of the first type.
-        B(acc)#you may retrieve an element of the second type as well.
-    },
-    [a:A,b:B(a)]{#Given elements of each type...
-        union:and,#you may construct an element of the type representing the union of two types.
-        member:a == acc(union),#accessing the first element from the union gives you back the same element that you used to construct the union.
-        memberb:SUBSTITUTION(|w,_|B(w),member,b) == accb(union)#gives you back the second element except a becomes acc(union)
-    },
-    [au:and,bu:and,q:acc(au)==acc(bu),SUBSTITUTION(|w,_|B(w),q,accb(au))==accb(bu)]au==bu,#this is special
-    func:U,
-    ?-eval:[func,a:A]B(a),
-    [b:[a:A]B(a)] {
-        make:func,
-        [a:A]eval(make,a) == b(a)
-    },
-    [af:func,bf:func,[a:A]eval(af,a)==eval(bf,a)]af==bf #this is special
-    # ^^^---- apparently this comes from univalence...
-},
-
-
-
-
-
-|homomorph_body,HOMOMORPH| = [A:U,B:U]{#univalent foundations but not homotopy type theory; this type theory system does not support subtyping.
-    U = {
-        f:[A]B,
-        g:[B]A,
-        gf:[a:A]g(f(a))==a,
-        fg:[b:B]f(g(b))==b
-    },
-    (A==B) == homomorph_body
-}
-
-UNION_TOOLS: {
-    |distributive_contractability|:[A:U,B:[A]U]{
-        [q1:[x:A,y:A]x==y,q2:[z:A,u:B(z),v:B(z)]u==v,c:AND(A,|a|B(a)),d:AND(A,|a|B(a))]c==d = 
-            AND(A,|a|B(a)).equal(
-                c,d
-                q1(c.acc,d.acc),q2(SUBSTITUTION(|w,_|B(w),q1(c.acc,d.acc),c.accb),d.accb)
-            )
-    }
-}
-
-UNIVALENCE_TOOLS:{
-    sub_assoc:[?J:U,?a:J,?b:J,?c:J,?d:J,q1:a==b,q2:b==c,q3:c==d]: q1 -> (q2->q3) == (q1->q2)->q3 = 
-        SUBSTITUTION(
-            |w,wq3| q1->(q2->wq3) = (q1->q2)->wq3,
-            q3,
-            SUBSTITUTION(
-                |w,wq2| q1->(wq2->IDENTITY(w)) = (q1->wq2)->IDENTITY(w),
-                q2,
-                SUBSTITUTION(
-                    |w,wq1| wq1->(IDENTITY(w)->IDENTITY(w)) = (wq1->IDENTITY(w))->IDENTITY(w),
-                    q1,
-                    SUBSTITUTION(
-                        |w,_|IDENTITY(a)->w == w->IDENTITY(a),
-                        ^SUBSTITUTE_GARUNTEE(|w,_|a==w,IDENTITY(a)),
-                        IDENTITY(IDENTITY(a)->IDENTITY(a))
-                    )
-                )
-            )
-        ),
-    sub_id_inverse:[?J:U,a:J]^IDENTITY(a) == IDENTITY(a) =
-        SUBSTITUTE_GARUNTEE(
-            |w,_|w==a,
-            IDENTITY(a)
-        ),
-    sub_inverse_r:[?J:U,?a:J,?b:J,q:a==b] q->^q == IDENTITY(a) = 
-        SUBSTITUTION(
-            |_,q| q->^q == IDENTITY(a),
-            q,
-            SUBSTITUTE_GARUNTEE(|w,_|a==w,^IDENTITY(a)) -> sub_id_inverse(a)
-        ),
-    sub_inverse_l:[?J:U,?a:J,?b:J,q:a==b] ^q->q == IDENTITY(a) = 
-        SUBSTITUTION(
-            |_,q| ^q->q == IDENTITY(a),
-            q,
-            SUBSTITUTION(
-                |w,_| w->IDENTITY(a) == IDENTITY(a),
-                ^sub_id_inverse,
-                SUBSTITUTE_GARUNTEE(|w,_|a==w,IDENTITY(a))
-            )
-        ),
-    sub_id_concat_left:[?J:U,?a:J,?b:J,q:a==b]IDENTITY(a) -> q == q =
-        SUBSTITUTION(
-            |w,wq|IDENTITY(a) -> wq == wq,
-            q,
-            SUBSTITUTE_GARUNTEE(|w,_|a==w,IDENTITY(a))
-        ),
-    sub_id_concat_right:[?J:U,?a:J,?b:J,q:a==b]q->IDENTITY(b) == q =
-        SUBSTITUTION(
-            |w,wq|wq -> IDENTITY(w) == wq,
-            q,
-            SUBSTITUTE_GARUNTEE(|w,_|a==w,IDENTITY(a))
-        ),
-    sub_refl_refl:[?J:U,?a:J,?b:J,q:a==b] ^^q == q =
-        SUBSTITUTION(
-            |w,wq|^^wq == wq,
-            q,
-            SUBSTITUTION(
-                |w,_|^w==IDENTITY(a),
-                sub_id_inverse(a),
-                sub_id_inverse(a)
-            )
-        )
-    refl_distributes:[?J:U,?a:J,?b:J,?c:J,q1:a==b,q2:b==c] ^(q1->q2) == ^q2->^q1 =
-        SUBSTITUTION(
-            |w,wq|^(q1->wq)->^wq->^q1,
-            q2,
-            SUBSTITUTION(
-                |w,wq|^(wq->IDENTITY(w))->^IDENTITY(w)->^wq,
-                q1,
-                SUBSTITUTION(
-                    |w,_|^w == w,
-                    ^SUBSTITUTE_GARUNTEE(|w,_|a==w,IDENTITY(a)),
-                    sub_id_inverse(a)
-                )
-            )
-        ),
-    split_substitution:[?A:U,?a:A,?b:A,J:[c:A,a==c,d:A,a==d]U,q:a==b,k:J(a,IDENTITY(a),a,IDENTITY(a))]SUBSTITUTION(|w,wq|f(w,wq,w,wq),q,k) ==
-        SUBSTITUTION(
-            |w,wq|f(w,wq,b,q),q,
-            SUBSTITUTION(|w,wq|f(a,IDENTITY(a),w,wq),q,k)
-        ) = 
-        SUBSTITUTION(
-            |y,yq|SUBSTITUTION(|w,wq|f(w,wq,w,wq),yq,k) == 
-                SUBSTITUTION(
-                    |w,wq|f(w,wq,y,yq),yq,
-                    SUBSTITUTION(|w,wq|f(a,IDENTITY(a),w,wq),yq,k)
-                ),
-            q,
-            SUBSTITUTE_GARUNTEE(|w,wq|f(w,wq,w,wq),k) ->
-            SUBSTITUTION(
-                |w,_|k == SUBSTITUTION(|w,wq|f(w,wq,a,IDENTITY(a)),IDENTITY(a),w),
-                ^SUBSTITUTE_GARUNTEE(|w,wq|f(a,IDENTITY(a),w,wq),k)
-                ^SUBSTITUTE_GARUNTEE(|w,wq|f(w,wq,a,IDENTITY(a)),k)
-            )
-        ),
-
-    contractible_fiber:[J:U,j:T,a:{g:J,y:j==g},b:{g:J,y:j==g}]a==b = 
-        SUBSTITUTION(
-            |q,qw|(a.g,a.y) =({g:J,y:j==g})= (q,qw),
-            b.y,
-            SUBSTITUTION(
-                |q,qw|(q,qw) =({g:J,y:j==g})= (j,IDENTITY(j)),
-                a.y,
-                IDENTITY({g:J,y:j==g},(j,IDENTITY(j)))
-            )
-        ),
-    equiv_contract:[?J:U,?T:U,q1:T==J,q2:[a:T,b:T]a==b,a:J,b:J]a==b = 
-        SUBSTITUTION(
-            |w,_|FUNC(w,|a|FUNC(w,|b|a==b)),
-            q1,
-            q2
-        ).eval(a).eval(b)
-
-
-    substitute_injective:[?A:U,?a:A,?b:A,f:[c:A,a==c]U,k:f(a,IDENTITY(a)),l:f(a,IDENTITY(a)),q:a==b,g:SUBSTITUTION(|w,wq|f(w,wq),q,k)==SUBSTITUTION(|w,wq|f(w,wq),q,l)]k==l =
-        SUBSTITUTION(
-            |w,wq|FUNC(SUBSTITUTION(|w,wq|f(w,wq),wq,k)==SUBSTITUTION(|w,wq|f(w,wq),wq,l),|_|k==l),
-            q,
-            FUNC(SUBSTITUTION(|w,wq|f(w,wq),wq,k)==SUBSTITUTION(|w,wq|f(w,wq),wq,l),
-                |y|^SUBSTITUTE_GARUNTEE(|w,wq|f(w,wq),k) -> y -> SUBSTITUTE_GARUNTEE(|w,wq|f(w,wq),l))
-            SUBSTITUTE_GARUNTEE(|w,wq|f(w,wq),k)
-        ).eval(g),
-
-
-
-
-
-
-    nothingpath:[?A:U,?a:A,?b:A,?J:U,k:J,q:a==b]SUBSTITUTION(|_,_|J,q,k) == k = 
-        SUBSTITUTION(
-            |_,wq|SUBSTITUTION(|_,_|J,wq,k) == k,
-            q,
-            SUBSTITUTE_GARUNTEE(A,a,|_,_|J,k)
-        ),
-        
-
-    func_sub_distrib:[
-        ?J:U,?a:J,?b:J,
-        A:[c:A,a==c]U,
-        B:[c:A,a==c]U,
-        q:a==b,
-        yo:FUNC(A(a,IDENTITY(a)),|_|B(a,IDENTITY(a))),
-        inp:A(a,IDENTITY(a))
-    ]
-        SUBSTITUTION(
-            |w,wq|FUNC(A(w,wq),|_|B(w,wq)),q,yo
-        ).eval(SUBSTITUTION(|w,wq|A(w,wq),q,inp)) == SUBSTITUTION(|w,wq|B(w,wq),q,yo.eval(inp)) =
-        ^SUBSTITUTE_GARUNTEE(
-            |w,wq|B(w,wq),
-            SUBSTITUTION(
-                |w,wq|FUNC(A(w,wq),|_|B(w,wq)),q,yo
-            ).eval(SUBSTITUTION(|w,wq|A(w,wq),q,inp))
-        ) ->
-        SUBSTITUTION(
-            |w,q|SUBSTITUTION(
-                |w,wq|B(w,wq),
-                IDENTITY(w),
-                SUBSTITUTION(
-                    |w,wq|FUNC(A(w,wq),|_|B(w,wq)),WQ,yo
-                ).eval(SUBSTITUTION(|w,wq|A(w,wq),WQ,inp))
-            ) ==
-            SUBSTITUTION(
-                |w,wq|B(w,wq),
-                WQ,
-                SUBSTITUTION(
-                    |w,wq|FUNC(A(w,wq),|_|B(w,wq)),IDENTITY(a),yo
-                ).eval(SUBSTITUTION(|w,wq|A(w,wq),IDENTITY(a),inp))
-            ),
-            q,
-            IDENTITY(
-                SUBSTITUTION(
-                    |w,wq|B(w,wq),
-                    IDENTITY(a),
-                    SUBSTITUTION(
-                        |w,wq|FUNC(A(w,wq),|_|B(w,wq)),IDENTITY(a),yo
-                    ).eval(SUBSTITUTION(|w,wq|A(w,wq),IDENTITY(a),inp))
-                )
-            )
-        ) ->
-        PRESERVATION(
-            |w|w.eval(SUBSTITUTION(|w,wq|A(w,wq),IDENTITY(a),inp)),
-            SUBSTITUTE_GARUNTEE(|w,wq|FUNC(A(w,wq),|_|B(w,wq)),yo)
-        ) ->
-        PRESERVATION(
-            |w|yo.eval(w),
-            SUBSTITUTE_GARUNTEE(|w,wq|A(w,wq),inp)
-        ),
-
-
-    union_sub_distrib_a:[
-        ?J:U,?a:J,?b:J,
-        A:[c:A,a==c]U,
-        B:[c:A,cq:a==c,A(c,cq)]U,
-        q:a==b,
-        isn:AND(A(a,IDENTITY(a)),|c|B(a,IDENTITY(a),c)),
-    ]
-        SUBSTITUTION(|w,wq|AND(A(w,wq),|c|B(q,wq,c)),q,isn).acc == SUBSTITUTION(|w,wq|A(w,wq),q,isn.acc) = 
-        ^SUBSTITUTE_GARUNTEE(
-            |w,wq|A(w,wq),
-            SUBSTITUTION(|w,wq|AND(A(w,wq),|c|B(q,wq,c)),q,isn).acc
-        ) ->
-        SUBSTITUTION(
-            |w,wq|
-            SUBSTITUTION(|w,wq|A(w,wq),IDENTITY(w),SUBSTITUTION(|w,wq|AND(A(w,wq),|c|B(q,wq,c)),wq,isn).acc) ==
-            SUBSTITUTION(|w,wq|A(w,wq),wq,SUBSTITUTION(|w,wq|AND(A(w,wq),|c|B(q,wq,c)),IDENTITY(a),isn).acc),
-            q,
-            IDENTITY(
-                SUBSTITUTION(|w,wq|A(w,wq),IDENTITY(a),SUBSTITUTION(|w,wq|AND(A(w,wq),|c|B(q,wq,c)),IDENTITY(a),isn).acc)
-            )
-        ) ->
-        PRESERVATION(
-            |y|SUBSTITUTION(|w,wq|A(w,wq),wq,y.acc),
-            SUBSTITUTE_GARUNTEE(|w,wq|AND(A(w,wq),|c|B(q,wq,c)),isn)
-        )
-
-
-
-    substitute_annhialate:[?J:U,?x:J,?y:J,q:x==y,I:[J]U,k:I(x)]
-        SUBSTITUTION(|w,_|I(w),q,SUBSTITUTION(|w,_|I(w),^q,k)) == k = 
-        SUBSTITUTION(
-            |_,wq|SUBSTITUTION(|w,_|I(w),wq,SUBSTITUTION(|w,_|I(w),^wq,k)) == k,
-            q
-            SUBSTITUTION(
-                |w,_|SUBSTITUTION(|w,_|I(w),IDENTITY(x),w) == k,
-                SUBSTITUTION(
-                    |w,_|k == SUBSTITUTION(|w,_|I(w),w,k)
-                    ^sub_id_inverse(x),
-                    ^SUBSTITUTE_GARUNTEE(|w,_|I(w),k),
-                ),
-                SUBSTITUTE_GARUNTEE(|w,_|I(w),k)
-            )
-        ),
-
-
-
-
-    uni:[A:U,B:U]U = {
-        uni_block:homomorph_body(A==B,homomorph_body(A,B)) = SUBSTITUTION(
-            |w,_|w,
-            HOMOMORPH(HOMOMORPH(A,B),homomorph_body(A==B,homomorph_body(A,B))),
-            HOMOMORPH(A,B)
-        ),
-        eq_implies:[q:A==B]homomorph_body(A,B) = uni_block.f(q),
-        implies_eq:[f:[A]B,g:[B]A,gf:[a:A]g(f(a))==a,fg:[b:B]f(g(b))==b]A==B = uni_block.g((f,g,|a|gf(a),|b|fg(b)))
-    }
-
-
-
-
-
-
-    # secret_uni_help:[A:U]uni(A,A).eq_implies(IDENTITY(A)) == (|a|a,|a|a,|a|IDENTITY(a),|a|IDENTITY(a))
-
-
-    # function_extensionality:[A:U,B:[A]U,x:FUNC(A,|a|B(a)),y:FUNC(A,|a|B(a)),[a:A]x.eval(a)==y.eval(a)]x==y = 
-    #     # secret_uni_help(A)
-
-
-
-    #     x and y are part of an equivalence each, of A==B, specifically A==B which are equal.
-
-
-
-
-
-    # transitive_concat:[?A:U,?B:U,?C:U,
-    #     q1:A==B,qh1:homomorph_body(A,B):uni(A,B).eq_implies(q1),
-    #     q2:B==C,qh2:homomorph_body(B,C):uni(B,C).eq_implies(q2),
-    #     ac:[a:A]C = qh2.f(qh1.f(a)),
-    #     ca:[c:C]A = qh1.g(qh2.g(c)),
-    #     TRANSITIVE(qh2.)
-
-    #     reconstruct:uni(A,C).implies_eq()
-    # ]uni(A,C).implies_eq()
-
-    # eq_implies()
-    # transitive_concat:[q1:A==b]
-
-
-
-}
 
 
 AFF:U,#AFF represents the real numbers
@@ -405,19 +11,19 @@ AFF:U,#AFF represents the real numbers
 
 '+':     [AFF,AFF]AFF,
 '-':     [AFF]AFF,
-'*':     [AFF,AFF]AFF,
-MINVERSE:[a:AFF,!q:a!=0]AFF,
 '-':     [a:AFF,b:AFF]AFF = a+(-b),
+'*':     [AFF,AFF]AFF,
+MINVERSE:[a:AFF,q!:a!=0]AFF,
 
 
 
 ADD_IDENTITY:                [a:AFF]a+0==a,
 ADD_IDENTITY_ANNIHALATE:     [a:AFF]a-a==0,
-MULTIPLY_IDENTITY:           [a:AFF]a*1==a,
-MULTIPLY_IDENTITY_ANNIHALATE:[a:AFF,!g:a!=0]a*MINVERSE(a,g) == 1,
-ADD_COMMUTATIVE:             [a:AFF,b:AFF]a+b==b+a,
-MULTIPLY_COMMUTATIVE:        [a:AFF,b:AFF]a*b==b*a,
 ADD_ASSOCIATIVE:             [a:AFF,b:AFF,c:AFF](a+b)+c == a+(b+c),
+ADD_COMMUTATIVE:             [a:AFF,b:AFF]a+b==b+a,
+MULTIPLY_IDENTITY:           [a:AFF]a*1==a,
+MULTIPLY_IDENTITY_ANNIHALATE:[a:AFF,g!:a!=0]a*MINVERSE(a,g) == 1,
+MULTIPLY_COMMUTATIVE:        [a:AFF,b:AFF]a*b==b*a,
 MULTIPLY_ASSOCIATIVE:        [a:AFF,b:AFF,c:AFF](a*b)*c == a*(b*c),
 DISTRIBUTIVE:                [a:AFF,b:AFF,c:AFF]a*(b+c) == a*b+a*c,
 
@@ -432,40 +38,41 @@ ONE_GT_ZERO: 1 >> 0,
     {a=>>b,a<<=b} == (a==b),
     {a!=b,a=>>b} == a>>b
 },
-|ADDITIVE,MULTIPLICATIVE,NEGATIVECOMP|:[?a:AFF,?b:AFF,a>>b] {
-    [?c:AFF,?d:AFF,c=>>d]a+c>>b+d,
-    [?c:AFF,c>>0]a*c>>b*c,
+|ADDITIVE,MULTIPLICATIVE,NEGATIVECOMP|:[a?:AFF,b?:AFF,a>>b] {
+    [c?:AFF,d?:AFF,c=>>d]a+c>>b+d,
+    [c?:AFF,c>>0]a*c>>b*c,
     -a << -b
 },
 
-should not be a(k) and b(k), should be DEC(CONTRADICT()).
+# should not be a(k) and b(k), should be DEC(CONTRADICT()).
 
-|DEC,DEC.POSITIVE,DEC.NEGATIVE|:[?T:U,K:U,a:[K]T,b:[!K]T]{
+|DEC,DEC.POSITIVE,DEC.NEGATIVE|:[T?:U,K:U,a:[K]T,b:[!K]T]{
     dec:T,#<--- This is the definition of a conditional.
     [k:K] dec==a(k),#<--- When the conditional's predicate is true, the conditional's result is equal to its first argument.
     [k:!K]dec==b(k)#<--- When the conditional's predicate is false, the conditional's result is equal to its second argument.
 },
-|.positive,.negative|:[?K:U,?a:[K]U,?b:[NOT(K)]U,coc:U = DEC(K,|x|a(x),|x|b(x)),dec:coc]{
+|'.'positive,'.'negative|:[K?:U,a?:[K]U,b?:[NOT(K)]U,coc:U = DEC(K,|x|a(x),|x|b(x)),dec:coc]{
     [pos:K]a(pos) = EQUIVALENCE(dec,coc.POSITIVE(pos)),
-    [neg:!K]b(neg) = EQUIVALENCE(dec,coc.NEGATIVE(neg)),
-}
-review positive and negative.
+    [neg:!K]b(neg) = EQUIVALENCE(dec,coc.NEGATIVE(neg))
+},
+# review positive and negative.
+
 
 |INDUCTION,INDUCTION.PREDICATE|:[A:U,B:[A]U,L:[A]{a:AFF,a=>>0},f:[b:A,[c:A,L(c).a+1<<=L(b).a]B(c)]B(b)]{
     res:[a:A]B(a),#<--- This is the definition of well-formed induction/recursion.
     [a:A]res(a) == f(a,|e,_|res(e))#<--- a recursive function is equal to itself called on itself.
 },
-.predicate:[?A:U,?L:[A]{a:AFF,a=>>0},?f:[b:A,[c:A,L(c).a+1<<=L(b).a]U]U,coc:U = INDUCTION(A,|_|U,|a|L(a),|a,R|f(a,|x,y|R(x,y))),ind:coc]f(a,|e,_|res(e)) = EQUIVALENCE(ind,coc.PREDICATE)
+'.'predicate:[A?:U,L?:[A]{a:AFF,a=>>0},f?:[b:A,[c:A,L(c).a+1<<=L(b).a]U]U,coc:U = INDUCTION(A,|_|U,|a|L(a),|a,R|f(a,|x,y|R(x,y))),ind:coc]f(a,|e,_|res(e)) = EQUIVALENCE(ind,coc.PREDICATE),
 
 
 
-review predicate
+# review predicate
 
 
-overload nat addition and positive addition.
+# overload nat addition and positive addition.
 
 
-|TRICHOTOMY_E,TRICHOTOMY_G,TRICHOTOMY_NE,TRICHOTOMY_NG,TRICHOTOMY_W|:[?a:AFF,?b:AFF]{
+|TRICHOTOMY_E,TRICHOTOMY_G,TRICHOTOMY_NE,TRICHOTOMY_NG,TRICHOTOMY_W|:[a?:AFF,b?:AFF]{
     [q1:a=>>b,q2:a<<=b]a==b = EQUIVALENCE({a=>>b,a<<=b},a==b,(q1,q2),TRICHOTOMY_EQUAL),
     [q1:a!=b,q2:a=>>b]a>>b  = EQUIVALENCE({a!=b,a=>>b} ,a>>b,(q1,q2),TRICHOTOMY_GREATER),
     [q:a>>b]a!=b  = 
@@ -485,12 +92,12 @@ overload nat addition and positive addition.
         )
 },
 
-INV_CONTRACTIBLE:[?J:U,q1:!J,q2:!J]q1==q2 =
+INV_CONTRACTIBLE:[J?:U,q1:!J,q2:!J]q1==q2 =
     (!J).equal(
         q1,q2,
         |n|CONTRADICTION(q1.eval(n),q1.eval(n)==q2.eval(n))
     ),
-AFFINE_CONTRACTIBLE:[?a:AFF,?b:AFF,q1:a==b,q2:a==b]q1==q2 = 
+AFFINE_CONTRACTIBLE:[a?:AFF,b?:AFF,q1:a==b,q2:a==b]q1==q2 = 
     UNIVALENCE_TOOLS.equiv_contract(
         TRICHOTOMY_EQUAL(a,b),
         |c,d|UNION_TOOLS.distributive_contractability(a=>>b,a<<=b,
@@ -502,7 +109,7 @@ AFFINE_CONTRACTIBLE:[?a:AFF,?b:AFF,q1:a==b,q2:a==b]q1==q2 =
         q1,
         q2
     ),
-GT_CONTRACTIBLE:[?a:AFF,?b:AFF,q1:a>>b,q2:a>>b]q1==q2 = 
+GT_CONTRACTIBLE:[a?:AFF,b?:AFF,q1:a>>b,q2:a>>b]q1==q2 = 
     UNIVALENCE_TOOLS.equiv_contract(
         TRICHOTOMY_GREATER(a,b),
         |c,d|UNION_TOOLS.distributive_contractability(a!=b,a=>>b,
@@ -514,48 +121,18 @@ GT_CONTRACTIBLE:[?a:AFF,?b:AFF,q1:a>>b,q2:a>>b]q1==q2 =
         q1,
         q2
     ),
-doublenot_pos:[?J:U,j:!!J]J = 
+doublenot_pos:[J?:U,j:!!J]J = 
     DEC(J,
         |s|s,
         |s|CONTRADICTION(j.eval(s))
     ),
-doublenot_neg:[?J:U,j:J]!!J = 
+doublenot_neg:[J?:U,j:J]!!J = 
     DEC(!J,
         |s|CONTRADICTION(s.eval(j),!!J),
         |s|s
     ),
 
 ALGEBRA_TOOLS: {
-    add_equations:     [?a:AFF,?b:AFF,?c:AFF,?d:AFF,q1:a==b,q2:c==d]a+c==b+d = EQUIVALENCE(PRESERVATION(|r|r+c,q1),PRESERVATION(|g|a+c==b+g,q2)),
-    multiply_equations:[?a:AFF,?b:AFF,?c:AFF,?d:AFF,q1:a==b,q2:c==d]a*c==b*d = EQUIVALENCE(PRESERVATION(|r|r*c,q1),PRESERVATION(|g|a*c==b*g,q2)),
-
-    assoc_eliminate_add:[a:AFF,b:AFF](a+b)-b == a =
-        ADD_ASSOCIATIVE(a,b,-b) ->
-        PRESERVATION(|g|a+g,ADD_IDENTITY_ANNIHALATE(b)) ->#a+0 == a+(b-b)
-        ADD_IDENTITY(a),#a+0=a
-    assoc_eliminate_add_ref:[a:AFF,b:AFF](a-b)+b == a =
-        ADD_ASSOCIATIVE(a,-b,b) ->
-        PRESERVATION(|g|a+g,ADD_COMMUTATIVE(-b,b) -> ADD_IDENTITY_ANNIHALATE(b)) ->#a+0 == a+(b-b)
-        ADD_IDENTITY(a),#a+0=a
-    assoc_eliminate_mult:[a:AFF,b:AFF,g:b!=0](a*b)*MINVERSE(b,g) == a = 
-        MULTIPLY_ASSOCIATIVE(a,b,MINVERSE(b,g)) ->
-        PRESERVATION(|g|a+g,MULTIPLY_IDENTITY_ANNIHALATE(b,g)) ->#a+0 == a+(b-b)
-        MULTIPLY_IDENTITY(a),#a+0=a
-    elim_add: [?a:AFF,?b:AFF,?c:AFF,q:a+c==b+c]a==b = 
-        ^assoc_eliminate_add(a,c) ->
-        PRESERVATION(|r|r-c,q) ->#(a+c)-c == (b+c)-c
-        assoc_eliminate_add(b,c),
-    elim_mult:[?a:AFF,?b:AFF,?c:AFF,g:c!=0,q:a*c==b*c]a==b =
-        ^assoc_eliminate_mult(a,c,g) ->
-        PRESERVATION(|r|r-c,q) ->#a+c-c == b+c-c
-        assoc_eliminate_mult(b,c,g),
-    times_zero_is_zero:[a:AFF]a*0 == 0 = 
-        elim_add(
-            ^DISTRIBUTIVE(a,0,0) ->#a*0+a*0 == a*(0+0)
-            PRESERVATION(|r|a*r,ADD_IDENTITY(0)) ->#a*(0+0) == a*0
-            ^ADD_IDENTITY(a*0) ->
-            ADD_COMMUTATIVE(a*0,0)#   a*0 == 0+a*0
-        ),
     negative_is_multiplication:[a:AFF,b:AFF] -a*b == a*(-b) = 
         ^ADD_IDENTITY(-a*b) -> 
         ADD_COMMUTATIVE(-a*b,0) ->#-a*b == 0-a*b
@@ -569,31 +146,11 @@ ALGEBRA_TOOLS: {
             times_zero_is_zero(a)
         ) ->
         assoc_eliminate_add(a*(-b),a*b),#(a*(-b) + a*b) -a*b  == a*(-b)
-    inverse_isnt_negative:[a:AFF,g:a!=0,m:AFF=MINVERSE(a,g)] m != 0 = 
-        DEC(m == 0,|q|
-            CONTRADICTION(
-                m != 0,
-                (#1==0
-                    ^MULTIPLY_IDENTITY_ANNIHALATE(a,g) ->#1=a*1/a
-                    PRESERVATION(|r|a*r,q) ->#a*1/a=a*0
-                    times_zero_is_zero(a)#a*0=0
-                )
-                TRICHOTOMY_NE(ONE_GT_ZERO)
-            ),|q|q
-        ),
-    negnegative:[a:AFF] -(-a) == a = 
-        elim_add(#a-a == -(-a)-a
-            ADD_IDENTITY_ANNIHALATE(a)->#a-a == 0
-            ^ADD_IDENTITY_ANNIHALATE(-a)->#0 == -a-(-a)
-            ADD_COMMUTATIVE(-a,-(-a))#-a-(-a) == -(-a)-a
-        ),
-    invinverse:[a:AFF,g:a!=0,m:AFF=MINVERSE(a,g),mm:AFF = MINVERSE(m,inverse_isnt_negative(a,g))] mm == a = 
-        elim_mult(#a-a == -(-a)-a
-            MULTIPLY_IDENTITY_ANNIHALATE(a,g) ->
-            ^MULTIPLY_IDENTITY_ANNIHALATE(m,inverse_isnt_negative(a,g)) ->
-            MULTIPLY_COMMUTATIVE(m,mm)
-        )
-    compare_transitive_ge:[?a:AFF,?b:AFF,?c:AFF,q1:a>>b,q2:b=>>c]a>>c =
+
+
+
+
+    compare_transitive_ge:[a?:AFF,b?:AFF,c?:AFF,q1:a>>b,q2:b=>>c]a>>c =
         SUBSTITUTION(
             |g,_|g>>b,
             assoc_eliminate_add(a,b),#(a+b)-b == a
@@ -603,7 +160,7 @@ ALGEBRA_TOOLS: {
                 ADDITIVE(ADDITIVE(q1,q2),TRICHOTOMY_NG(IDENTITY(-b)))
             )
         ),
-    compare_transitive_eg:[?a:AFF,?b:AFF,?c:AFF,q1:a=>>b,q2:b>>c]a>>c =
+    compare_transitive_eg:[a?:AFF,b?:AFF,c?:AFF,q1:a=>>b,q2:b>>c]a>>c =
         SUBSTITUTION(
             |g,_|g>>b,
             PRESERVATION(|g|g-b,ADD_COMMUTATIVE(b,a)) -> assoc_eliminate_add(a,b),#(b+a)-b == a
@@ -613,16 +170,16 @@ ALGEBRA_TOOLS: {
                 ADDITIVE(ADDITIVE(q2,q1),TRICHOTOMY_NG(IDENTITY(-b)))
             )
         ),
-    compare_transitive_e:[?a:AFF,?b:AFF,?c:AFF,q1:a=>>b,q2:b=>>c]a=>>c =
+    compare_transitive_e:[a?:AFF,b?:AFF,c?:AFF,q1:a=>>b,q2:b=>>c]a=>>c =
         DEC(a==b,
             |s|SUBSTITUTION(|w,_|w=>>c,^s,q2),
             |s|TRICHOTOMY_G(s,q1)
         ),
 
-    compare_transitive_ge:[?a:AFF,?b:AFF,?c:AFF,q1:a>>b,q2:b>>c]a>>c = compare_transitive_ge(q1,TRICHOTOMY_W(q2))
+    compare_transitive_ge:[a?:AFF,b?:AFF,c?:AFF,q1:a>>b,q2:b>>c]a>>c = compare_transitive_ge(q1,TRICHOTOMY_W(q2)),
 
-    |additive_e,multiplicative_e,negativecomp_e|:[?a:AFF,?b:AFF,q1:a=>>b] {
-        [?c:AFF,?d:AFF,q2:c=>>d]a+c=>>b+d =
+    |additive_e,multiplicative_e,negativecomp_e|:[a?:AFF,b?:AFF,q1:a=>>b] {
+        [c?:AFF,d?:AFF,q2:c=>>d]a+c=>>b+d =
             DEC(a==b,
                 |g|DEC(c==d,
                     |y|TRICHOTOMY_NG(add_equations(g,y)),
@@ -637,27 +194,26 @@ ALGEBRA_TOOLS: {
                     )
                 ),
                 |g|ADDITIVE(TRICHOTOMY_G(g,q1),q2)
-            ),
-        [?c:AFF,q2:c=>>0]a*c=>>b*c = 
-            DEC(c==0,
-                |g|TRICHOTOMY_NG(
-                    PRESERVATION(|y|a*y,g) ->
-                    times_zero_is_zero(a) ->
-                    ^times_zero_is_zero(b) ->
-                    ^PRESERVATION(|y|b*y,g)
-                ),
-                |g|DEC(a==b,
-                    |y|,
-                    |y|TRICHOTOMY_W(MULTIPLICATIVE(TRICHOTOMY_G(y,q1),TRICHOTOMY_G(g,q2)))
-                )
-            ),
-        -a <<= -b = 
-            DEC(a==b,
-                |g|TRICHOTOMY_NG(^PRESERVATION(|w|-w,g)),
-                |g|TRICHOTOMY_W(NEGATIVECOMP(TRICHOTOMY_G(g,q1)))
-            )
+            )#,
+        # [c?:AFF,q2:c=>>0]a*c=>>b*c = 
+        #     DEC(c==0,
+        #         |g|TRICHOTOMY_NG(
+        #             PRESERVATION(|y|a*y,g) ->
+        #             times_zero_is_zero(a) ->
+        #             ^times_zero_is_zero(b) ->
+        #             ^PRESERVATION(|y|b*y,g)
+        #         ),
+        #         |g|DEC(a==b,
+        #             |y|,
+        #             |y|TRICHOTOMY_W(MULTIPLICATIVE(TRICHOTOMY_G(y,q1),TRICHOTOMY_G(g,q2)))
+        #         )
+        #     ),
+        # -a <<= -b = 
+        #     DEC(a==b,
+        #         |g|TRICHOTOMY_NG(^PRESERVATION(|w|-w,g)),
+        #         |g|TRICHOTOMY_W(NEGATIVECOMP(TRICHOTOMY_G(g,q1)))
+        #     )
     },
-    nzero_eq_zero: -0 == 0 = elim_add(ADD_IDENTITY(0) -> ADD_COMMUTATIVE(0,-0)),
     minus_one_less:[a:AFF]a-1<<a =
         SUBSTITUTION(
             |g,_|a-1<<g,
@@ -666,20 +222,20 @@ ALGEBRA_TOOLS: {
         ),
     minus_one_lteq:[a:AFF](a-1)+1<<=a =
         TRICHOTOMY_NG(assoc_eliminate_add_ref(a,1)),
-    trico_translate:[?x:AFF,?a:AFF,q:x=>>a]x-a=>>0 = 
+    trico_translate:[x?:AFF,a?:AFF,q:x=>>a]x-a=>>0 = 
         SUBSTITUTION(
             |g,_|x-a>>g,
-            ADD_IDENTITY_ANNHIALATE(a)#a-a=0
+            ADD_IDENTITY_ANNHIALATE(a),#a-a=0
             ALGEBRA_TOOLS.additive_e(q,TRICHOTOMY_NG(IDENTITY(-a)))#x-a=>>a-a
         ),
 
-    both_greater_zero_add:[?a:AFF,?b:AFF,q1:a=>>0,q2:b=>>0]a+b=>>0 = 
+    both_greater_zero_add:[a?:AFF,b?:AFF,q1:a=>>0,q2:b=>>0]a+b=>>0 = 
         SUBSTITUTION(
             |w,_|a+b=>>w,
             ADD_IDENTITY(0),
             additive_e(q1,q2)
         ),
-    both_greater_zero_mult:[?a:AFF,?b:AFF,q1:a=>>0,q2:b=>>0]a*b=>>0 = 
+    both_greater_zero_mult:[a?:AFF,b?:AFF,q1:a=>>0,q2:b=>>0]a*b=>>0 = 
         SUBSTITUTION(
             |w,_|a*b=>>w,
             times_zero_is_zero(0),
@@ -687,15 +243,13 @@ ALGEBRA_TOOLS: {
         ),
 
 
-    greater_add_both:[?a:AFF,q1:a=>>0,c:AFF]a+c=>>c = 
+    greater_add_both:[a?:AFF,q1:a=>>0,c:AFF]a+c=>>c = 
         SUBSTITUTION(
             |w,_|a+c=>>w,
             ADD_COMMUTATIVE(0,c)->ADD_IDENTITY(c),
             additive_e(q1,TRICHOTOMY_NG(IDENTITY(c)))
         )
 
-
-    #get rid of homomorph and then just have a pred-dont-matter for conditional?
 
 },
 
@@ -714,10 +268,10 @@ NAT_TOOLS: {
     #these propreties ARE NOT the same as inherited properties becuase they CANNOT BE STORED ON THE STRATEGY itself. Rather, they are an extension to the scope object(new)
     #they may not all be immediately consumed... n.q.predicate, for example.
 
-    contractible labels assign IDS to everything when they substitute down. That way, substitution can do each element of a label in 1 pass.
+    # contractible labels assign IDS to everything when they substitute down. That way, substitution can do each element of a label in 1 pass.
 
 
-    isnat:[a:AFF,!g:a=>>0]U = 
+    isnat:[a:AFF,g!:a=>>0]U = 
         INDUCTION(
             {a:AFF,a=>>0},|_|U,|x|x,
             |[x,_],R|DEC(x<<1,|s|x==0,|s|R(
@@ -735,7 +289,7 @@ NAT_TOOLS: {
     # isnat_occ_negative:[?a:AFF,?g:a=>>0,q:isnat(a,g),s:a=>>1]isnat(a-1,ALGEBRA_TOOLS.trico_translate(s)) = 
     #     EQUIVALENCE(q,isnat_negative(a,g,s))
 
-    isnat_contractible:[?a:AFF,?g:a=>>0,u:isnat(a,g),v:isnat(a,g)]u==v = 
+    isnat_contractible:[a?:AFF,g?:a=>>0,u:isnat(a,g),v:isnat(a,g)]u==v = 
         INDUCTION({a:AFF,g:a=>>0,u:isnat(a,g),v:isnat(a,g)},|[a,g,u,v]|u==v,|[a,g,u,v]|(a,g),|[a,g,u,v],R|
             DEC(a<<1,
                 |s|
@@ -949,9 +503,6 @@ NAT_TOOLS: {
 
 
 
-HEAP:U,
-HACC:[HEAP]AFF
-
 ]{
 
 
@@ -959,129 +510,12 @@ HACC:[HEAP]AFF
 
 
 
-Array:U = {
-    ara:NAT,
-    J:[BOUNDNAT(ara)]U,
-    f:[b:BOUNDNAT(ara)]J(b)
-},
-# array_each:[a:Array,P:[b:BOUNDNAT(a.ara),a.J(b)]U]U = ([b:BOUNDNAT(a.ara)]P(b,a.f(b))),
-# Array.each ~= array_each;
-.append:[?vla:U,a:Array<J=|_|vla>,new:vla]
-    Array<
-        a.ara+1,
-        |_|vla,
-        |[n,_]|DEC(n<<a.ara,
-            |s|a.f((n,s)),
-            |_|new
-        )
-    > = (),
-# Array.append ~= array_append_simple;
-.map:[a:Array,B:[BOUNDNAT(a.ara)]U,f:[bn:BOUNDNAT(a.ara),a.J(bn)]B(bn)]
-    Array<
-        a.ara,
-        |bn|B(bn),
-        |bn|f(a.f(bn))
-    > = (),
-# Array.map ~= array_map;
-.truncate:[a:Array,|n,b|:BOUNDNAT(a.ara)]#b:a.ara>>n
-    Array<
-        n,
-        |n2,b2|a.J((n2,compare_transitive_g(b,b2))),
-        |n2,b2|a.f((n2,compare_transitive_g(b,b2)))
-    > = (),
-# Array.truncate ~= array_truncate;
-# array_delete_simple:[?vla:U,a:Array<J=|_|vla>,kill:BOUNDNAT(a.ara)]
-#     Array<
-#         nat_minus_one(a.ara),
-#         |_|vla,
-#         |[n,b]|DEC(n.a<<kill.a,
-#             |s|a.f((n,ALGEBRA_TOOLS.compare_transitive_g(ALGEBRA_TOOLS.minus_one_less(a.ara.a),b))),
-#             |s|a.f((nat_plus_one(n),
-#                 SUBSTITUTION(
-#                     |w,_|w>>n.a+1,
-#                     assoc_eliminate_add_ref(a.ara.a,1),
-#                     ADDITIVE(b,TRICHOTOMY_NG(IDENTITY(1)))
-#                 )
-#             ))
-#         )
-#     > = (),
-# Array.delete ~= array_delete_simple;
-Array.concatenate:[?vla:U,a:Array<J=|_|vla>,b:Array<J=|_|vla>]
-    Array<
-        nat_add(a.ara,b.ara),
-        |_|vla,
-        |[n,b]|DEC(n.a<<a.ara.a,
-            |s|a.f((n,s)),
-            |s|a.f((nat_subtract(n,a.ara,s),
-                SUBSTITUTION(
-                    |w,_|n.a-a.ara.a<<w,
-                    assoc_eliminate_add(n.a,a.ara.a),
-                    ADDITIVE(b,TRICHOTOMY_NG(IDENTITY(-a.ara.a)))
-                )
-            ))
-        )
-    > = (),
-# Array.concatenate ~= array_concatenate_simple;
-empty_array:[typ:[BOUNDNAT(nat0)]U]
-    Array<
-        nat0,
-        |bn|typ(bn),
-        |[n,b]|CONTRADICTION(n.g.eval(b),typ((n,b)))
-    > = (),
 
 
 
 
 
 
-positivesum:[l:Array<J=|_|{a:AFF,g:a=>>0}>]{a:{a:AFF,a=>>0},f:[bn:BOUNDNAT(l.ara)]l.f(bn).a <<= a.a} = 
-    INDUCTION(
-        Array<J=|_|{a:AFF,g:a=>>0}>,
-        |l|{a:{a:AFF,g:a=>>0},f:[bn:BOUNDNAT(l.ara)]l.f(bn).a <<= a.a},
-        |l|(l.ara.a,l.ara.g),
-        |l,R|DEC(l.ara.a<<1,
-            |s|(0,TRICHOTOMY_NG(0)),
-            |s|
-            ol ~= R(
-                l.truncate(l.ara.minus_one(s)),
-                minus_one_lteq(l.ara)
-            );
-            (
-                addpositive(
-                    ol.a,
-                    l.f(l.ara.minus_one(s))
-                ),
-                |[n,b]|DEC(n.a<<l.ara.a-1,#produce  l.f((n,b)).a <<= ol.a.a+l.f(l.ara.minus_one(s)).a
-                    |h|SUBSTITUTION(
-                        |w,_| w <<= ol.a.a+l.f(l.ara.minus_one(s)).a,
-                        ADD_IDENTITY_ANNHIALATE(l.f((n,b)).a),
-                        ALGEBRA_TOOLS.additive_e(ol.f((n,h)),l.f(l.ara.minus_one(s)).g)
-                    )
-                    |h|SUBSTITUTION(
-                        |w,_| w <<= ol.a.a+l.f(l.ara.minus_one(s)).a,
-                        ADD_IDENTITY_ANNHIALATE(l.f((n,b)).a),
-                        ALGEBRA_TOOLS.additive_e(
-                            ol.a.g,#ol.a.a =>> 0
-                            TRICHOTOMY_NG(#l.f(l.ara.minus_one(s)).a =>> l.f((n,b)).a
-                                PRESERVATION(#l.f(l.ara.minus_one(s)).a == l.f((n,b)).a
-                                    |w|l.f(w).a,
-                                    nats_be_equal(#l.ara.minus_one(s) == (n,b)
-                                        l.ara.minus_one(s),
-                                        (n,b),
-                                        TRICHOTOMY_E(#l.ara.a-1 == n.a
-                                            nat_pinch(l.ara,(n,b)),
-                                            h
-                                        )
-                                    )
-                                )
-                            )
-                        )
-                    )
-                )
-            )
-        ),
-        l
-    ),
 
 
 
@@ -1089,515 +523,6 @@ positivesum:[l:Array<J=|_|{a:AFF,g:a=>>0}>]{a:{a:AFF,a=>>0},f:[bn:BOUNDNAT(l.ara
 
 
 
-
-
-Tree:U = {
-    J:{
-        S:U,
-        J:[S]U,
-        araget:[s:S,J(s)]NAT,
-        ya:[s:S,j:J(s),BOUNDNAT(araget(s,j))]S
-    }
-    s:J.S,
-    e:{a:AFF,g:a=>>0},
-    r:INDUCTION(
-        {S,{a:AFF,a=>>0}},
-        |_|U,
-        |[_,e]|e,
-        |[s,[a,g]],R|{
-            j:J.J(s),
-            q:[a.a << 1]J.araget(j).a==0,
-            args:Array<
-                J.araget(j),
-                |[n,b]|R(
-                    (J.ya(s,j,(n,b)),
-                    (a-1,
-                    DEC(a<<1,
-                        |s|CONTRADICTION(n.g.eval(SUBSTITUTION(|w,_|n.a<w,q(s),b)), a-1=>>0 ),
-                        |s|ALGEBRA_TOOLS.trico_translate(s)
-                    ))),
-                    ALGEBRA_TOOLS.minus_one_lteq(a)
-                )
-            >
-        },
-        (s,e)
-    )
-}
-
-.unwrap:[t:Tree]t.r.predicate.b = EQUIVALENCE(t.r,t.r.predicate)
-# Tree.unwrap ~= tree_unwrap;
-.root:[t:Tree]t.J.J(t.s) = t.unwrap.j
-# Tree.root ~= tree_root;
-.ara:[t:Tree]NAT = t.J.araget(t.root)
-# Tree.ara ~= tree_ara;
-
-.children:[t:Tree]
-    Array<
-        t.ara,
-        |[n,b]|Tree<
-            J=t.J
-            s=ya(t.s,t.root,(n,b)),
-            r=t.unwrap.args.f((n,b)),
-            e=(
-                t.e.a-1,
-                DEC(t.e.a<<1,
-                    |s|CONTRADICTION(n.g.eval(SUBSTITUTION(|w,_|n.a<w,t.unwrap.q(s),b)),t.e.a-1=>>0),
-                    |s|ALGEBRA_TOOLS.trico_translate(s)
-                )
-            )
-        >,
-        |_|()
-    > = (),
-# Tree.children ~= tree_children;
-
-.map:[t:Tree,K:Tree.J,s:K.S,f:[s:t.J.S,t.J.J(s),c:K.S]K.J(c)]
-    Tree<
-        J=K,
-        e=t.e,
-        s=s,
-        INDUCTION(
-            {Tree<J=t.J>,K.S},
-            |[t,s]|Tree<J=K,e=t.e,s=s>.r,
-            |[t,s]|t.e,
-            |[t,s],R|
-            EQUIVALENCE(
-                (
-                    f(t.s,t.root,s),
-                    |d|t.unwrap.q(d),
-                    |bn|R(
-                        (t.e-1,t.root.args.f(bn)),
-                        ALGEBRA_TOOLS.minus_one_lteq(t.e)
-                    )
-                ),
-                ^Tree<J=K,e=t.e,s=s>.r.predicate,
-            ),
-            (t,s)
-        )
-    > = (),
-# Tree.map ~= tree_map;
-
-
-
-
-.heighten:[t:Tree,e:AFF,q:e=>>t.e.a]Tree<
-    J=t.J,
-    s=t.s,
-    e=(e,compare_transitive_e(q,t.e.g)),
-    INDUCTION(
-        {
-            t:Tree<J=t.J>,
-            e:AFF,
-            q:e=>>t.e.a
-        }
-        |[t,e,q]|Tree<
-            J=t.J,
-            s=t.s,
-            e=(e,compare_transitive_e(q,t.e.g))
-        >.r,
-        |[t,e,q]|t.e,
-        |[t,e,q],R|EQUIVALENCE((
-            t.root,
-            |z|t.unwrap.q(compare_transitive_ge(z,q))
-            |nb|R((
-                t.children.f(nb),
-                e-1,
-                additive_e(q,TRICHOTOMY_NG(IDENTITY(-1)))
-            ),
-                ALGEBRA_TOOLS.minus_one_lteq(t.e.a)
-            )),^Tree<J=t.J,s=t.s,e=(e,compare_transitive_e(q,t.e.g))>.r.predicate
-        ),
-        (t,e,q)
-    )
->
-# tree.heighten ~= tree_heighten;
-
-
-
-
-tree_assemble:[
-    K:Tree.J,
-    s:K.s,
-    j:K.J(s),
-    chi:Array<J.araget(j),|bn|Tree<K,K.ya(s,j,bn)>>
-]Tree<
-    K,
-    s,
-    addpositive(
-        positivesum(chi.map(|_|{a:AFF,a=>>0},|bn,bnk|bnk.e)).a,
-        (1,TRICHOTOMY_W(ONE_GT_ZERO))
-    ),
-    EQUIVALENCE(
-        (
-            j,
-            |d|CONTRADICTION(
-                greater_add_both(positivesum(chi.map(|_|{a:AFF,a=>>0},|bn,bnk|bnk.e)).a.g,1).eval(d),    
-                K.araget(j).a==0
-            ),
-            |bn|chi.f(bn).heighten(
-                positivesum(chi.map(|_|{a:AFF,a=>>0},|_,bnk|bnk.e)).a,
-                positivesum(chi.map(|_|{a:AFF,a=>>0},|_,bnk|bnk.e)).f(bn)
-            )
-        ),
-        ^Tree<J=K,e=t.e,s=s>.r.predicate,
-    )
-> = ()
-
-
-
-
-untyped_strategy:U = Tree<{{},NAT,|_,ara|ara,|_,_,_|()}>,
-untyped_stack:U = Array<J=|_|Array<J=|_|untyped_strategy>>,
-untyped_statement:[s:untyped_stack]U = Tree<{
-    untyped_stack,
-    |s|{
-        local:BOUNDNAT(s.ara),
-        id:BOUNDNAT(s.f(local).ara)
-    },
-    |s,j|s.f(j.local).f(j.id).ara,
-    |s,j,bn|s.append(s.f(j.local).f(j.id).children.f(bn).children),
-},s=s>,
-
-
-
-
-
-
-
-nat_pinch:[n:NAT,a:AFF,b:a<<n.a]a<<=n.a-1 = 
-
-
-
-
-
-
-    union_sub_distrib_a:[
-        ?J:U,?a:J,?b:J,
-        A:[c:A,a==c]U,
-        B:[c:A,cq:a==c,A(c,cq)]U,
-        q:a==b,
-        isn:AND(A(a,IDENTITY(a)),|c|B(a,IDENTITY(a),c)),
-    ]
-        SUBSTITUTION(|w,wq|AND(A(w,wq),|c|B(q,wq,c)),q,isn).acc == SUBSTITUTION(|w,wq|A(w,wq),q,isn.acc) = 
-
-
-
-        you need to do better. the full shabang. with the unions, just like function extensionality distribution.
-
-
-
-
-
-array_vla_equal:[
-    ?vla:U,
-    a:Array<J=|_|vla>,
-    b:Array<J=|_|vla>,
-    q:a.ara.a == b.ara.a,
-    v:a.ara == b.ara = nats_be_equal(a.ara,b.ara,q),
-
-
-
-    f:[bn:BOUNDNAT(b.ara)]a.f(SUBSTITUTION(|w,_|BOUNDNAT(w),v,bn)) == b.f(bn)
-
-    PRESERVATION(
-        |y|a.f(y),
-        union_sub_distrib_a(|_,_|NAT,|w,_,n|n.a<<w.a,v,(shn,),)
-    )
-    f:[shn:NAT,ah:shn.a << a.ara.a,bh: shn.a << b.ara.a] a.f((shn,ah)) == b.f((shn,bh))
-
-
-
-] a == b =
-    Array<J=|_|vla>.equal(
-        a,b,
-        v,
-
-        subaf ~= SUBSTITUTION(|w,_|FUNC(BOUNDNAT(w),|_|vla),v,a.f);
-
-
-        FUNC(BOUNDNAT(b.ara),|_|vla).equal(
-            subaf,b.f,
-            |bn|
-            an ~= SUBSTITUTION(|w,_|BOUNDNAT(w),^v,bn);
-            PRESERVATION(
-                |w|subaf.eval(w)
-                ^substitute_annhialate(v,|w|BOUNDNAT(w),bn),
-            ) ->
-            FUNC_SUB_DISTRIB(|w,_|BOUNDNAT(w),|_,_|vla,v,a.f,an) ->#-> SUBSTITUTION(|w,_|vla,q,a.f(an))
-            NOTHINGPATH(a.f(an),q) ->#-> a.f(an)
-            f(bn)#-> b.f(bn)
-        )
-    ),
-
-
-
-
-
-concat_induction:[
-    ?vla:U,
-    i:Array<J=|_|vla>,
-    # b:Array<J=|_|a.J>,
-
-    P:[untyped_stack]U,
-    base:P(empty_array(|_|vla)),
-    rec:[s:Array<J=|_|vla>,nen:vla]P(s.append(vla)),
-]P(i),
-
-
-concat_append_associative:[
-    ?vla:U,
-    i:Array<J=|_|vla>,
-    more:Array<J=|_|vla>,
-    row:vla
-]i.concatenate(more).append(row) == i.concatenate(more.append(row))
-
-concat_concat_associative:[
-    ?vla:U,
-    i1:Array<J=|_|vla>,
-    i2:Array<J=|_|vla>,
-    i3:vla
-]i1.concatenate(i2).concatenate(i3) == i1.concatenate(i2.concatenate(i3))
-
-
-
-
-
-
-concat_identity_r:[
-    ?vla:U,
-    i:Array<J=|_|vla>
-]i.concatenate(empty_array(|_|vla)) == i =
-    v ~= nats_be_equal(nat_add(i.ara,nat0),i.ara,ADD_IDENTITY(i.ara.a));
-    
-    array_vla_equal(
-        i.concatenate(empty_array(|_|vla)),i,
-        ADD_IDENTITY(i.ara.a),
-        |bn|
-
-            DEC(
-                bn.n.a<<i.ara.a
-
-
-            )
-
-
-
-    )
-
-
-
-array_vla_equal:[
-    ?vla:U,
-    a:Array<J=|_|vla>,
-    b:Array<J=|_|vla>,
-    q:a.ara.a == b.ara.a,
-    v:a.ara == b.ara = nats_be_equal(a.ara,b.ara,q),
-    f:[bn:BOUNDNAT(b.ara)]a.f(SUBSTITUTION(|w,_|BOUNDNAT(w),v,bn)) == b.f(bn)
-]
-
-
-
-concat_identity_l:[
-    ?vla:U,
-    i:Array<J=|_|vla>
-]empty_array(|_|vla).concatenate(i) == i = 
-    Array<J=|_|vla>.equal(
-
-
-    )
-
-
-
-
-
-
-untyped_statement_swaptop:[
-    ?s:untyped_stack,
-    ?rowA:Array<J=|_|untyped_strategy>,
-    ?rowB:Array<J=|_|untyped_strategy>,
-    r:untyped_statement(s.append(rowA).append(rowB))
-]r:untyped_statement(s.append(rowB).append(rowA)) = r.map(
-
-),
-
-#you better not change e... you can probably accomplish this with a map... that's exciting.
-
-untyped_statement_cushion:[
-    ?s:untyped_stack,
-    rowN:Array<J=|_|untyped_strategy>,
-    r:untyped_statement(s)
-]untyped_statement(s.append(rowN)) = ~,
-
-
-
-
-
-Lambda_argument:U = {
-    |localara,share,parsh,locrow|:{
-        localara:NAT,#localara
-        share:{a:AFF,g:a=>>0},#
-        parsh:[BOUNDNAT(localara)]share.a-1=>>0#
-        locrow:Array<localara,J=|bn|untyped_strategy<e=(share.a-1,parsh(bn))>>#
-    },
-    common:untyped_stack,#
-    local:NAT = common.ara,
-    root:untyped_statement(common.append(locrow)),#
-    subs:Array<locrow.ara,|bn|untyped_statement(common.append(locrow.f(bn).children))>,#
-},
-
-lambda_substitute:[LA:Lambda_argument]untyped_statement(common.concatenate(more)) = 
-    INDUCTION(
-        Lambda_argument,
-        |LA|untyped_statement(LA.common.concatenate(LA.more)),
-        |LA|LA.share.a,
-        |LA,R1|
-        INDUCTION(
-            Lambda_argument<(LA.localara,LA.share,LA.parsh,LA.locrow)>,
-            |LA|untyped_statement(LA.common.concatenate(LA.more)),
-            |LA|LA.root.e.a,
-            |LA,R2|
-            activestrat ~= LA.common.append(LA.locrow).f(LA.root.local).f(LA.root.id);
-            descent ~= LA.root.children.map(
-                |bn|untyped_statement(LA.common.append(
-                    activestrat.children.f(bn).children
-                )),
-                |bn,bnk|
-                nurow ~= activestrat.children.f(bn).children;
-                R2((
-                    common = LA.common.append(nurow),
-                    root = untyped_statement_swaptop(bnk),
-                    subs = |bn|untyped_statement_swaptop(untyped_statement_cushion(nurow,LA.subs.f(bn)))
-                ),
-                    ALGEBRA_TOOLS.minus_one_lteq(LA.root.e.a),
-                )
-            )
-            DEC(LA.root.root.local.n.a =>> LA.local.a
-                |s|
-                selected ~= (
-                    LA.root.root.id,
-                    SUBSTITUTION(#LA.root.root.id.a << locrow.ara.a
-                        |w,_|LA.root.root.id.a<<w.ara.a,
-                        LA.common.append(LA.locrow).f(LA.root.root.local.n).NEGATIVE(s),
-                        LA.root.root.id.q
-                    )
-                );
-                pivot ~= LA.locrow.f(selected);
-                R1((
-                    localara = pivot.ara,
-                    share = pivot.e,
-                    parsh = |bn|pivot.children.f(bn).e.g,
-                    locrow = pivot.children,
-                    common = LA.common,
-                    root = LA.subs.f(selected),
-                    subs = descent.map(
-                        |bn|untyped_statement(
-                            LA.common.append(
-                                LA.locrow.f(selected).children.f(bn).children
-                            )
-                        ),
-                        |bn,bnk|SUBSTITUTION(
-                            |w,wq|LA.common.append(
-                                w.f((
-                                    LA.root.root.id,
-                                    SUBSTITUTION(
-                                        |y,_|LA.root.root.id.a<<y.ara.a,
-                                        wq,
-                                        LA.root.root.id.q
-                                    )
-                                )).children.f(bn).children
-                            ),
-                            #LA.common.append(LA.locrow).f(LA.local) == LA.locrow
-                            LA.common.append(LA.locrow).f(LA.root.root.local.n).NEGATIVE(s),
-                            bnk
-                        )
-                    )
-                ),
-                    ALGEBRA_TOOLS.minus_one_lteq(LA.share.a),
-                ),
-                |s|tree_assemble(
-                    LA.root.J,
-                    LA.common,
-                    (
-                        (LA.root.root.local.n,s),
-                        (LA.root.root.id.n,
-                            SUBSTITUTION(
-                                |w,_|LA.root.root.id.n.a << w.ara,
-                                LA.common.append(LA.locrow).f(LA.root.root.local).POSITIVE(s),
-                                LA.root.root.id.q
-                            )
-                        )
-                    ),
-                    descent
-                )
-            ),
-            LA
-        ),
-        LA
-    ),
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-addpositive:[a:{a:AFF,g:a=>>0},b:{a:AFF,g:a=>>0}]{a:AFF,g:a=>>0} = (
-    a.a+b.a,
-    ALGEBRA_TOOLS.both_greater_zero_add(a.g,b.g)
-),
-multpositive:[a:{a:AFF,g:a=>>0},b:{a:AFF,g:a=>>0}]{a:AFF,g:a=>>0} = (
-    a.a*b.a,
-    ALGEBRA_TOOLS.both_greater_zero_mult(a.g,b.g)
-),
-    
-
-
-
-
-
-examine every both_greater_zero_add and move addpositive up.
-
-
-
-
-
-
-
-
-
-
-semtyped_strategy:[s:untyped_stack]U = Tree<{
-    untyped_stack,
-    |s|{
-        type:untyped_statement(s.append(
-            t.children.map(|_|Tree<{}>,|_,ol|ol.map(|_|{}))
-        )),
-        ara:NAT
-    },
-    |s,j|j.ara,
-    |s,j,bn|s.append(s.f(j.local).f(j.id).children.f(bn).children),
-}>,
-
-
-    {t:Tree<Tree<{id:NAT,local:NAT}>>,t.each(s,
-        |s,t|(
-            untyped_statement<s.append(
-                t.children.map(|_|Tree<{}>,|_,ol|ol.map(|_|{}))
-            ),t>,
-            |_,bn|
-            s.append(
-                t.children.truncate(bn).map(|_|Tree<{}>,|_,ol|ol.map(|_|{}))
-            )
-        )
-    )},
 
 
 

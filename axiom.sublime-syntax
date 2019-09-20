@@ -114,9 +114,11 @@ contexts:
     # - match: '\!\?\s*\b(\w+)\b\s*\:'
     #   scope: constant.character
 
-    - match: '\?\s*\b(\w+)\b\s*\:'
+    - match: '\s*\b(\w+)\b\s*\?\:'
       scope: entity.name.function
-    - match: '\!\s*\b(\w+)\b\s*\:'
+    - match: '\s*\b(\w+)\b\s*(\?\!|\!\?)\:'
+      scope: variable.parameter
+    - match: '\s*\b(\w+)\b\s*\!\:'
       scope: constant.character
     - match: '\b(\w+)\b\s*\:'
       scope: variable.function

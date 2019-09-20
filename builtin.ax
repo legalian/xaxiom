@@ -1,0 +1,437 @@
+
+{
+
+U:U,#U is special. It is the type that all types and predicates have. (this type theory system avoids girard's paradox because it does not support subtyping.)
+
+EQ:[A:U,A,A]U,
+'==':[A?:U,a:A,b:A]U = EQ(A,a,b),
+
+IDENTITY:    [A?:U,a:A]a==a,#IDENTITY -> "all elements of all types are equal to themselves."
+SUBSTITUTION:[A?:U,a?:A,b?:A,J:[c:A,a==c]U,q:a==b,J(a,IDENTITY(a))]J(b,q),#this is path induction.
+SUBSTITUTE_GARUNTEE:[A?:U,a?:A,J:[c:A,a==c]U,k:J(a,IDENTITY(a))]SUBSTITUTION(|w,y|J(w,y),IDENTITY(a),k) == k,
+
+'^':         [A?:U,a?:A,b?:A,q:b==a]a==b                     = SUBSTITUTION(|w,_|w==b,q,IDENTITY(b)),
+EQUIVALENCE: [A?:U,B?:U,a:A,q:A==B]B                         = SUBSTITUTION(|w,_|w,q,a),
+PRESERVATION:[A?:U,B?:U,a?:A,b?:A,f:[A]B,q:a==b]f(a) == f(b) = SUBSTITUTION(|w,_|f(a)==f(w),q,IDENTITY(f(a))),
+'->':        [J?:U,a?:J,b?:J,c?:J,q1:a==b,q2:b==c]a==c       = SUBSTITUTION(|w,_|a==w,q2,q1),
+'->':        [J?:U,a?:J,b?:J,c?:J,q1:a==b,q2:[J]b==c]a==c    = SUBSTITUTION(|w,_|a==w,q2(b),q1),
+
+
+
+
+#Types may be nested and unraveled.
+|AND,['.'acc,'.'accb],[UNION,MEMBER,MEMBERB],AND.equal,FUNC,'.'eval,[MAKEFUNC,FUNCASSURANCE],FUNC.equal|:[A:U,B:[A]U]{#For all (types) and (types derived from the first type)...
+    and:U,
+    |acc,accb|:[c:and]{#Given an element of the type representing the union...
+        acc:A,#you may retrieve an element of the first type.
+        B(acc)#you may retrieve an element of the second type as well.
+    },
+    [a:A,b:B(a)]{#Given elements of each type...
+        union:and,#you may construct an element of the type representing the union of two types.
+        member:a == acc(union),#accessing the first element from the union gives you back the same element that you used to construct the union.
+        memberb:SUBSTITUTION(|w,_|B(w),member,b) == accb(union)#gives you back the second element except a becomes acc(union)
+    },
+    [au:and,bu:and,q:acc(au)==acc(bu),SUBSTITUTION(|w,_|B(w),q,accb(au))==accb(bu)]au==bu,#this is special
+
+
+
+    func:U,
+    eval:[func,a:A]B(a),
+    [b:[a:A]B(a)] {
+        make:func,
+        [a:A]eval(make,a) == b(a)
+    },
+    [af:func,bf:func,[a:A]eval(af,a)==eval(bf,a)]af==bf #this is special
+    # ^^^---- apparently this comes from univalence...
+},
+
+'!':[A:U]U = [A,u:U]u,#the inhabitation of A implies the inhabitation of all things; contradiction.
+'!=':[A?:U,a:A,b:A]U = !(a==b),
+
+
+doublenot:[J?:U,j:J]!!J = DEC(!J,|s|CONTRADICTION(s.eval(j),!!J),|s|s),
+doublenot:[J?:U,j:!!J]J = DEC(J,|s|s,|s|CONTRADICTION(j.eval(s))),
+negate_union:[A?:U,B?:[A]U,s:!{a:A,B(a)}][x:A]!B(a) = DEC(B(x),|c|s((x,c),!B(x)),|c|c),
+negate_union:[A?:U,B?:[A]U,s:!{a:A,!B(a)}][x:A]B(x) = DEC(B(x),|c|c,|c|s((x,c),B(x))),
+
+OR:[A:U,B:U]U = !{!A,!B},
+OR.construct:[A:U,B:U,a:A]OR(A,B) = DEC({a:!A,b:!B},|s|s.a(a),|s|s),
+OR.construct:[A:U,B:U,b:B]OR(A,B) = DEC({a:!A,b:!B},|s|s.b(b),|s|s),
+'.'extract:[A?:U,B?:U,o:OR(A,B),na:!A]B = DEC(B,|s|s,|s|o((na,s),B)),
+'.'extract:[A?:U,B?:U,o:OR(A,B),nb:!B]A = DEC(A,|s|s,|s|o((s,nb),A)),
+
+
+ 
+# !([a:A]B(a)) == {a:A,!B(a)}
+
+
+
+
+
+
+# [A?:U,?B:[A]U,c:{a:A,B(a)}]c == (c.a,c.b)
+#  [?A:U,?B:[A]U,b:B,curried:B = |c|b(c),a:A]b(a) == curried(a)
+
+#  [A:U,B:[A]U,a1:A,b1:B(a1),a2:A,b2:B(a2)]
+#  EQ({a:A,B(a)},(a1,b1),(a2,b2)) == {c:a1==a2,SUBSTITUTION(|w,_|B(w),b1,c) == b2}
+#  [A:U,B:[A]U,b1:[a1:A]B(a1),b2:[a2:A]B(a2)]
+#  EQ(B,|a|b1(a),|a|b2(a)) == ([a:A]b1(a) == b2(a))
+
+#  [?J:U,?x:J,?y:J,A:[c:A,x==c]U,B:[c:A,cq:x==c,A(c,cq)]U,q:x==y,a:A(x,IDENTITY(x)),b:B(x,IDENTITY(x),a)]
+#  SUBSTITUTION(|w,wq|{a:A(w,wq),B(w,wq,a)},q,(a,b))
+#  ==
+#  (
+#     SUBSTITUTION(|w,wq|A(w,wq),q,a),
+#     SUBSTITUTION(
+#         |w,wq|B(w,wq,SUBSTITUTION(|w,wq|A(w,wq),wq,a)),
+#         q,
+#         SUBSTITUTION(
+#             |w,_|B(x,IDENTITY(x),w),
+#             ^SUBSTITUTE_GARUNTEE(|w,wq|A(w,wq),a),
+#             b
+#         )
+#     )
+#  )
+
+#  [?J:U,?x:J,?y:J,A:[c:A,x==c]U,B:[c:A,cq:x==c,A(c,cq)]U,q:x==y,b:[a:A(x,IDENTITY(x))]B(x,IDENTITY(x),a)]
+#  SUBSTITUTION(|w,wq|[a:A(w,wq)]B(w,wq,a),q,b)
+#  ==
+#  (|a|SUBSTITUTION(
+#     |w,wq|B(w,wq,SUBSTITUTION(|w,wq|A(w,wq),wq,a)),
+#     q,
+#     SUBSTITUTION(
+#         |w,_|B(x,IDENTITY(x),w),
+#         ^SUBSTITUTE_GARUNTEE(|w,wq|A(w,wq),a),
+#         b(SUBSTITUTION(A(w,wq),^q,a))
+#     )
+#  ))
+
+
+
+#  eq_combine:[?A:U,?B:[A]U,?a1:A,?b1:B(a1),?a2:A,?b2:B(a2),aq:a1==a2,bq:SUBSTITUTION(|w,wq|B(w),aq,b1)==b2]
+#     EQ({a:A,B(a)},(a1,b1),(a2,b2))
+
+
+
+#  eq_unnest:[]
+
+
+#  best way to provide the fact that functions are equal...?
+
+ 
+
+
+
+#  {asdf} === {asdf}
+#  -each row that has no type reference to another row will simply provide the ==.
+#  -rows marked as compactible are omitted completely.
+#  -rows where the solution is identity is omitted completely.
+#  -substitutions over unions are automatically split up.
+#  -substitutions over functions are automatically split up.
+#  -constant substitutions are automatically eliminated.
+
+
+
+ 
+
+
+
+#  {a:A,b:P(a),c:K(b)} <-- impossible; will never occur
+
+
+#  {a:A,b:B,c:K(a,b)} <-- possible; will occur
+
+#  {a:A,b:P(a),c:K(a,b)} <-- possible; will occur
+
+#  a:a1 == a2
+#  b:SUBSTITUTION(|w,_|B(w),a,b1) == b2
+#  c:
+
+
+
+
+#  {a:A,b:B(a),c:C(a,b)}
+
+#  SUBSTITUTION(|[a,b],_|C(a,b),(a,b),c1)
+
+
+
+#  right associative:
+
+
+#  {
+
+#     {
+#         SUBSTITUTION()
+#     }
+#  }
+
+
+
+
+
+#  for function and union types: ----> leftmost is topmost
+
+#  K(a,b) are you substituting a or b first? a.
+
+#  SUBSTITUTION(
+#     |w,wq|{}
+
+#  )
+
+
+
+
+#  SUBSTITUTION(|w,wq|[A(w,wq)]B(w,wq),q,yo)(SUBSTITUTION(|w,wq|A(w,wq),q,inp))
+#  == 
+#  SUBSTITUTION( |w,wq|B(w,wq),q,yo(inp) )
+
+
+
+
+
+
+# berid of putting placeholders in function calls to extract shit. you dont use it and it's a huge performance sink.
+
+# ?          make variable part of the optional plan.
+# !          mark variable as contractible. (you need an extra plan for designating which contractibility function to use.)
+
+
+# ?-         all parameters up until now are made optional.
+# '+'        operator overload.
+# .prop      type property (substitution is safe.)
+# func.prop  unwrap parameters and recall (upon substituting func out, func.prop should be gotten too.)
+
+# autocast to func when there are insufficient parameters.
+
+
+
+
+
+
+# |homomorph_body,HOMOMORPH| = [A:U,B:U]{#univalent foundations but not homotopy type theory; this type theory system does not support subtyping.
+#     U = {
+#         f:[A]B,
+#         g:[B]A,
+#         gf:[a:A]g(f(a))==a,
+#         fg:[b:B]f(g(b))==b
+#     },
+#     (A==B) == homomorph_body
+# }
+
+# UNION_TOOLS: {
+#     |distributive_contractability|:[?A:U,?B:[A]U]{
+#         [q1:[x:A,y:A]x==y,q2:[z:A,u:B(z),v:B(z)]u==v,c:AND(A,B),d:AND(A,B)]c==d = 
+#             AND(A,|a|B(a)).equal(
+#                 c,d
+#                 q1(c.acc,d.acc),q2(SUBSTITUTION(|w,_|B(w),q1(c.acc,d.acc),c.accb),d.accb)
+#             )
+#     }
+# }
+
+# UNIVALENCE_TOOLS:{
+#     split_substitution:[?A:U,?a:A,?b:A,J:[c:A,a==c,d:A,a==d]U,q:a==b,k:J(a,IDENTITY(a),a,IDENTITY(a))]SUBSTITUTION(|w,wq|f(w,wq,w,wq),q,k) ==
+#         SUBSTITUTION(
+#             |w,wq|f(w,wq,b,q),q,
+#             SUBSTITUTION(|w,wq|f(a,IDENTITY(a),w,wq),q,k)
+#         ) = 
+#         SUBSTITUTION(
+#             |y,yq|SUBSTITUTION(|w,wq|f(w,wq,w,wq),yq,k) == 
+#                 SUBSTITUTION(
+#                     |w,wq|f(w,wq,y,yq),yq,
+#                     SUBSTITUTION(|w,wq|f(a,IDENTITY(a),w,wq),yq,k)
+#                 ),
+#             q,
+#             SUBSTITUTE_GARUNTEE(|w,wq|f(w,wq,w,wq),k) ->
+#             SUBSTITUTION(
+#                 |w,_|k == SUBSTITUTION(|w,wq|f(w,wq,a,IDENTITY(a)),IDENTITY(a),w),
+#                 ^SUBSTITUTE_GARUNTEE(|w,wq|f(a,IDENTITY(a),w,wq),k)
+#                 ^SUBSTITUTE_GARUNTEE(|w,wq|f(w,wq,a,IDENTITY(a)),k)
+#             )
+#         ),
+
+#     contractible_fiber:[J:U,j:T,a:{g:J,y:j==g},b:{g:J,y:j==g}]a==b = 
+#         SUBSTITUTION(
+#             |q,qw|(a.g,a.y) =({g:J,y:j==g})= (q,qw),
+#             b.y,
+#             SUBSTITUTION(
+#                 |q,qw|(q,qw) =({g:J,y:j==g})= (j,IDENTITY(j)),
+#                 a.y,
+#                 IDENTITY({g:J,y:j==g},(j,IDENTITY(j)))
+#             )
+#         ),
+#     equiv_contract:[?J:U,?T:U,q1:T==J,q2:[a:T,b:T]a==b,a:J,b:J]a==b = 
+#         SUBSTITUTION(
+#             |w,_|FUNC(w,|a|FUNC(w,|b|a==b)),
+#             q1,
+#             q2
+#         ).eval(a).eval(b)
+
+
+#     substitute_injective:[?A:U,?a:A,?b:A,f:[c:A,a==c]U,k:f(a,IDENTITY(a)),l:f(a,IDENTITY(a)),q:a==b,g:SUBSTITUTION(|w,wq|f(w,wq),q,k)==SUBSTITUTION(|w,wq|f(w,wq),q,l)]k==l =
+#         SUBSTITUTION(
+#             |w,wq|FUNC(SUBSTITUTION(|w,wq|f(w,wq),wq,k)==SUBSTITUTION(|w,wq|f(w,wq),wq,l),|_|k==l),
+#             q,
+#             FUNC(SUBSTITUTION(|w,wq|f(w,wq),wq,k)==SUBSTITUTION(|w,wq|f(w,wq),wq,l),
+#                 |y|^SUBSTITUTE_GARUNTEE(|w,wq|f(w,wq),k) -> y -> SUBSTITUTE_GARUNTEE(|w,wq|f(w,wq),l))
+#             SUBSTITUTE_GARUNTEE(|w,wq|f(w,wq),k)
+#         ).eval(g),
+
+
+
+
+
+
+#     nothingpath:[?A:U,?a:A,?b:A,?J:U,k:J,q:a==b]SUBSTITUTION(|_,_|J,q,k) == k = 
+#         SUBSTITUTION(
+#             |_,wq|SUBSTITUTION(|_,_|J,wq,k) == k,
+#             q,
+#             SUBSTITUTE_GARUNTEE(A,a,|_,_|J,k)
+#         ),
+        
+
+#     func_sub_distrib:[
+#         ?J:U,?a:J,?b:J,
+#         A:[c:A,a==c]U,
+#         B:[c:A,a==c]U,
+#         q:a==b,
+#         yo:FUNC(A(a,IDENTITY(a)),|_|B(a,IDENTITY(a))),
+#         inp:A(a,IDENTITY(a))
+#     ]
+#         SUBSTITUTION(
+#             |w,wq|FUNC(A(w,wq),|_|B(w,wq)),q,yo
+#         ).eval(SUBSTITUTION(|w,wq|A(w,wq),q,inp)) == SUBSTITUTION(|w,wq|B(w,wq),q,yo.eval(inp)) =
+#         ^SUBSTITUTE_GARUNTEE(
+#             |w,wq|B(w,wq),
+#             SUBSTITUTION(
+#                 |w,wq|FUNC(A(w,wq),|_|B(w,wq)),q,yo
+#             ).eval(SUBSTITUTION(|w,wq|A(w,wq),q,inp))
+#         ) ->
+#         SUBSTITUTION(
+#             |w,q|SUBSTITUTION(
+#                 |w,wq|B(w,wq),
+#                 IDENTITY(w),
+#                 SUBSTITUTION(
+#                     |w,wq|FUNC(A(w,wq),|_|B(w,wq)),WQ,yo
+#                 ).eval(SUBSTITUTION(|w,wq|A(w,wq),WQ,inp))
+#             ) ==
+#             SUBSTITUTION(
+#                 |w,wq|B(w,wq),
+#                 WQ,
+#                 SUBSTITUTION(
+#                     |w,wq|FUNC(A(w,wq),|_|B(w,wq)),IDENTITY(a),yo
+#                 ).eval(SUBSTITUTION(|w,wq|A(w,wq),IDENTITY(a),inp))
+#             ),
+#             q,
+#             IDENTITY(
+#                 SUBSTITUTION(
+#                     |w,wq|B(w,wq),
+#                     IDENTITY(a),
+#                     SUBSTITUTION(
+#                         |w,wq|FUNC(A(w,wq),|_|B(w,wq)),IDENTITY(a),yo
+#                     ).eval(SUBSTITUTION(|w,wq|A(w,wq),IDENTITY(a),inp))
+#                 )
+#             )
+#         ) ->
+#         PRESERVATION(
+#             |w|w.eval(SUBSTITUTION(|w,wq|A(w,wq),IDENTITY(a),inp)),
+#             SUBSTITUTE_GARUNTEE(|w,wq|FUNC(A(w,wq),|_|B(w,wq)),yo)
+#         ) ->
+#         PRESERVATION(
+#             |w|yo.eval(w),
+#             SUBSTITUTE_GARUNTEE(|w,wq|A(w,wq),inp)
+#         ),
+
+
+#     union_sub_distrib_a:[
+#         ?J:U,?a:J,?b:J,
+#         A:[c:A,a==c]U,
+#         B:[c:A,cq:a==c,A(c,cq)]U,
+#         q:a==b,
+#         isn:AND(A(a,IDENTITY(a)),|c|B(a,IDENTITY(a),c)),
+#     ]
+#         SUBSTITUTION(|w,wq|AND(A(w,wq),|c|B(q,wq,c)),q,isn).acc == SUBSTITUTION(|w,wq|A(w,wq),q,isn.acc) = 
+#         ^SUBSTITUTE_GARUNTEE(
+#             |w,wq|A(w,wq),
+#             SUBSTITUTION(|w,wq|AND(A(w,wq),|c|B(q,wq,c)),q,isn).acc
+#         ) ->
+#         SUBSTITUTION(
+#             |w,wq|
+#             SUBSTITUTION(|w,wq|A(w,wq),IDENTITY(w),SUBSTITUTION(|w,wq|AND(A(w,wq),|c|B(q,wq,c)),wq,isn).acc) ==
+#             SUBSTITUTION(|w,wq|A(w,wq),wq,SUBSTITUTION(|w,wq|AND(A(w,wq),|c|B(q,wq,c)),IDENTITY(a),isn).acc),
+#             q,
+#             IDENTITY(
+#                 SUBSTITUTION(|w,wq|A(w,wq),IDENTITY(a),SUBSTITUTION(|w,wq|AND(A(w,wq),|c|B(q,wq,c)),IDENTITY(a),isn).acc)
+#             )
+#         ) ->
+#         PRESERVATION(
+#             |y|SUBSTITUTION(|w,wq|A(w,wq),wq,y.acc),
+#             SUBSTITUTE_GARUNTEE(|w,wq|AND(A(w,wq),|c|B(q,wq,c)),isn)
+#         )
+
+
+
+#     substitute_annhialate:[?J:U,?x:J,?y:J,q:x==y,I:[J]U,k:I(x)]
+#         SUBSTITUTION(|w,_|I(w),q,SUBSTITUTION(|w,_|I(w),^q,k)) == k = 
+#         SUBSTITUTION(
+#             |_,wq|SUBSTITUTION(|w,_|I(w),wq,SUBSTITUTION(|w,_|I(w),^wq,k)) == k,
+#             q
+#             SUBSTITUTION(
+#                 |w,_|SUBSTITUTION(|w,_|I(w),IDENTITY(x),w) == k,
+#                 SUBSTITUTION(
+#                     |w,_|k == SUBSTITUTION(|w,_|I(w),w,k)
+#                     ^sub_id_inverse(x),
+#                     ^SUBSTITUTE_GARUNTEE(|w,_|I(w),k),
+#                 ),
+#                 SUBSTITUTE_GARUNTEE(|w,_|I(w),k)
+#             )
+#         ),
+
+
+
+
+#     uni:[A:U,B:U]U = {
+#         uni_block:homomorph_body(A==B,homomorph_body(A,B)) = SUBSTITUTION(
+#             |w,_|w,
+#             HOMOMORPH(HOMOMORPH(A,B),homomorph_body(A==B,homomorph_body(A,B))),
+#             HOMOMORPH(A,B)
+#         ),
+#         eq_implies:[q:A==B]homomorph_body(A,B) = uni_block.f(q),
+#         implies_eq:[f:[A]B,g:[B]A,gf:[a:A]g(f(a))==a,fg:[b:B]f(g(b))==b]A==B = uni_block.g((f,g,|a|gf(a),|b|fg(b)))
+#     }
+
+
+
+ 
+
+# }
+
+
+
+
+
+
+
+#     union_sub_distrib_a:[
+#         ?J:U,?a:J,?b:J,
+#         A:[c:A,a==c]U,
+#         B:[c:A,cq:a==c,A(c,cq)]U,
+#         q:a==b,
+#         isn:AND(A(a,IDENTITY(a)),|c|B(a,IDENTITY(a),c)),
+#     ]
+#         SUBSTITUTION(|w,wq|AND(A(w,wq),|c|B(q,wq,c)),q,isn).acc == SUBSTITUTION(|w,wq|A(w,wq),q,isn.acc) = 
+
+
+
+#         you need to do better. the full shabang. with the unions, just like function extensionality distribution.
+
+
+
+
+
+
+
+
+
+
+}

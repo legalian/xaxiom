@@ -1,55 +1,38 @@
 
+opsymbol     : /([!?@$%^&*\-+;=<>]{2,3}|[!?@$%^&*\-+;]{1,3})(?!:)/                                                                                                            -> string
+label        :  /(('\.')?\w+)|'([!?@$%^&*\-+;=<>]{2,3}|[!?@$%^&*\-+;]{1,3})'|'\w+\.ax'/                                                                                       -> string
+acclabel     : /((('\.')?\w+)|'([!?@$%^&*\-+;=<>]{2,3}|[!?@$%^&*\-+;]{1,3})')(\.((('\.')?\w+)|'([!?@$%^&*\-+;=<>]{2,3}|[!?@$%^&*\-+;]{1,3})'))*/                              -> string
+assignlabel  : /((('\.')?\w+)|'([!?@$%^&*\-+;=<>]{2,3}|[!?@$%^&*\-+;]{1,3})')(\.((('\.')?\w+)|'([!?@$%^&*\-+;=<>]{2,3}|[!?@$%^&*\-+;]{1,3})'))*(?=\s*=[^!?@$%^&*\-+;=<>])/    -> string
+createlabel  : /((('\.')?\w+)|'([!?@$%^&*\-+;=<>]{2,3}|[!?@$%^&*\-+;]{1,3})')(\.((('\.')?\w+)|'([!?@$%^&*\-+;=<>]{2,3}|[!?@$%^&*\-+;]{1,3})'))*(?=\s*\??!?:)/                 -> string
 
-opsymbol  : /[!?@$%^&*\-+]{1,3}/
-label     : /(('\.')?[a-zA-Z0-9_]+)|'[!?@$%^&*\-+]{1,3}'/
-
-
-acclabel  : label ("." label)+
-
-
-
-multilabel : label
-           | "["multilabel(","multilabel)*"]"
+multilabel : acclabel
+           | "["multilabel(","multilabel)*"]" -> introducer
 introducer : "|"multilabel(","multilabel)*"|"
 
+?lamb      : introducer? strategy
+?strategy  : ("["dualsubs"]")* operators
+?operators : opsymbol* object (opsymbol+ object)*
+subsobject : argument(","argument)*
+dualsubs   : declaration (","declaration)*
+object     : (object".")? label ("("subsobject?")")*  -> reftree
+           | object"<"subsobject?">"                  -> template
+           | "("subsobject?")"                        -> wsubsobject
+           | "{"dualsubs?"}"                          -> wdualsubs
 
+argument : (assignlabel"=")? lamb
 
-?outerobject : ("["objargumentstratseries"]")? object
-
-
-?object : opsymbol* objectatom (opsymbol+ objectatom)*
-
-
-
-objargumentseries      : objargumentnamed(","objargumentnamed)*
-objargumentstratseries : declaration (","declaration)*
-
-objectatom : (objectatom".")? label ("("objargumentseries")")*   -> treeref
-           | objectatom"<"objargumentseries">"              -> template
-           | "("objargumentseries")"                        -> union
-           | "{"objargumentstratseries"}"                   -> andtype
-
-
-
-objargument      : introducer? outerobject
-objargumentnamed : (acclabel"=")? objargument
-                 // | "@" introducer? label -> objargumentplaceholder
-
-infermarker : "?" -> silentmarker | "!" -> contractmarker// | "!?" -> interrobang | "?!" -> interrobang
-declaration : (infermarker? (label":"|introducer":"|"::"))? outerobject ("="outerobject)?
-
-opwithflags : "binary("opsymbol")" -> binary
-            | "urnary("opsymbol")" -> urnary
-
+infermarker : "?:" -> silentmarker | "!:" -> contractmarker | "!?:" -> interrobangmarker | "?!:" -> interrobangmarker | ":"
+datapack    : (createlabel infermarker)|(introducer infermarker)|(infermarker":")
+declaration : datapack ("["dualsubs"]")? "="strategy -> inferreddeclaration
+			| datapack strategy"="strategy
+			| datapack strategy
+			| strategy ("="strategy)?
 precrowflags : "left-assoc"->leftassoc |"right-assoc"->rightassoc
-
-precrow : opsymbol* precrowflags? ";"
-
-start : precrow* outerobject
-
-
+precrow : opsymbol* precrowflags? ":"
+start : precrow* strategy
 
 %ignore /#[^\n]*/
+%ignore "\t"
 %ignore " "
 %ignore "\n"
 
