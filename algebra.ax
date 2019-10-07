@@ -1,0 +1,46 @@
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+			overflowcore:[a:J,b:J] = Boundnat_core(n).noetherian_recursion(U,
+				|d,R|AT_LEAST_TWO_OF(
+					a(d),b(d),
+					{q:d.n>>0,R(d.minus_one(q), d.minus_one_lt(q) )}
+				)
+			),
+			addcore:[a:J,b:J]J = |d|XOR(
+				XOR(a(d),b(d)),
+				{q:d.n>>0,overflowcore(a,b).r(d.minus_one(q))}
+			),
+			'+'=addcore,
+
+
+
+			overflowinvcore:[a:J] = Boundnat_core(n).noetherian_recursion(U,
+				|d,R|{
+					a(d),
+					{q:d.n>>0,R(d.minus_one(q), d.minus_one_lt(q) )}
+				}
+			),
+			invertcore:[a:J]J = |d|XOR(
+				!a(d),
+				{q:d.n>>0,overflowinvcore(a,b).r(d.minus_one(q))}
+			),
+			'-'=invertcore,
+
+			

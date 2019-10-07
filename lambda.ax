@@ -1,0 +1,199 @@
+
+
+
+
+
+
+
+
+
+
+untyped_strategy:U = Tree<{{},NAT,|_,ara|ara,|_,_,_|()}>,
+untyped_stack:U = Array<J=|_|Array<J=|_|untyped_strategy>>,
+untyped_statement:[s:untyped_stack]U = Tree<{
+    untyped_stack,
+    |s|{
+        local:BOUNDNAT(s.ara),
+        id:BOUNDNAT(s.f(local).ara)
+    },
+    |s,j|s.f(j.local).f(j.id).ara,
+    |s,j,bn|s.append(s.f(j.local).f(j.id).children.f(bn).children),
+},s=s>,
+
+
+
+
+
+
+
+
+
+
+untyped_statement_swaptop:[
+    ?s:untyped_stack,
+    ?rowA:Array<J=|_|untyped_strategy>,
+    ?rowB:Array<J=|_|untyped_strategy>,
+    r:untyped_statement(s.append(rowA).append(rowB))
+]r:untyped_statement(s.append(rowB).append(rowA)) = r.map(
+
+),
+
+#you better not change e... you can probably accomplish this with a map... that's exciting.
+
+untyped_statement_cushion:[
+    ?s:untyped_stack,
+    rowN:Array<J=|_|untyped_strategy>,
+    r:untyped_statement(s)
+]untyped_statement(s.append(rowN)) = ~,
+
+
+
+
+
+Lambda_argument:U = {
+    |localara,share,parsh,locrow|:{
+        localara:NAT,#localara
+        share:{a:AFF,g:a=>>0},#
+        parsh:[BOUNDNAT(localara)]share.a-1=>>0#
+        locrow:Array<localara,J=|bn|untyped_strategy<e=(share.a-1,parsh(bn))>>#
+    },
+    common:untyped_stack,#
+    local:NAT = common.ara,
+    root:untyped_statement(common.append(locrow)),#
+    subs:Array<locrow.ara,|bn|untyped_statement(common.append(locrow.f(bn).children))>,#
+},
+
+lambda_substitute:[LA:Lambda_argument]untyped_statement(common.concatenate(more)) = 
+    INDUCTION(
+        Lambda_argument,
+        |LA|untyped_statement(LA.common.concatenate(LA.more)),
+        |LA|LA.share.a,
+        |LA,R1|
+        INDUCTION(
+            Lambda_argument<(LA.localara,LA.share,LA.parsh,LA.locrow)>,
+            |LA|untyped_statement(LA.common.concatenate(LA.more)),
+            |LA|LA.root.e.a,
+            |LA,R2|
+            activestrat ~= LA.common.append(LA.locrow).f(LA.root.local).f(LA.root.id);
+            descent ~= LA.root.children.map(
+                |bn|untyped_statement(LA.common.append(
+                    activestrat.children.f(bn).children
+                )),
+                |bn,bnk|
+                nurow ~= activestrat.children.f(bn).children;
+                R2((
+                    common = LA.common.append(nurow),
+                    root = untyped_statement_swaptop(bnk),
+                    subs = |bn|untyped_statement_swaptop(untyped_statement_cushion(nurow,LA.subs.f(bn)))
+                ),
+                    ALGEBRA_TOOLS.minus_one_lteq(LA.root.e.a),
+                )
+            )
+            DEC(LA.root.root.local.n.a =>> LA.local.a
+                |s|
+                selected ~= (
+                    LA.root.root.id,
+                    SUBSTITUTION(#LA.root.root.id.a << locrow.ara.a
+                        |w,_|LA.root.root.id.a<<w.ara.a,
+                        LA.common.append(LA.locrow).f(LA.root.root.local.n).NEGATIVE(s),
+                        LA.root.root.id.q
+                    )
+                );
+                pivot ~= LA.locrow.f(selected);
+                R1((
+                    localara = pivot.ara,
+                    share = pivot.e,
+                    parsh = |bn|pivot.children.f(bn).e.g,
+                    locrow = pivot.children,
+                    common = LA.common,
+                    root = LA.subs.f(selected),
+                    subs = descent.map(
+                        |bn|untyped_statement(
+                            LA.common.append(
+                                LA.locrow.f(selected).children.f(bn).children
+                            )
+                        ),
+                        |bn,bnk|SUBSTITUTION(
+                            |w,wq|LA.common.append(
+                                w.f((
+                                    LA.root.root.id,
+                                    SUBSTITUTION(
+                                        |y,_|LA.root.root.id.a<<y.ara.a,
+                                        wq,
+                                        LA.root.root.id.q
+                                    )
+                                )).children.f(bn).children
+                            ),
+                            #LA.common.append(LA.locrow).f(LA.local) == LA.locrow
+                            LA.common.append(LA.locrow).f(LA.root.root.local.n).NEGATIVE(s),
+                            bnk
+                        )
+                    )
+                ),
+                    ALGEBRA_TOOLS.minus_one_lteq(LA.share.a),
+                ),
+                |s|tree_assemble(
+                    LA.root.J,
+                    LA.common,
+                    (
+                        (LA.root.root.local.n,s),
+                        (LA.root.root.id.n,
+                            SUBSTITUTION(
+                                |w,_|LA.root.root.id.n.a << w.ara,
+                                LA.common.append(LA.locrow).f(LA.root.root.local).POSITIVE(s),
+                                LA.root.root.id.q
+                            )
+                        )
+                    ),
+                    descent
+                )
+            ),
+            LA
+        ),
+        LA
+    ),
+
+
+
+
+
+
+semtyped_strategy:[s:untyped_stack]U = Tree<{
+    untyped_stack,
+    |s|{
+        type:untyped_statement(s.append(
+            t.children.map(|_|Tree<{}>,|_,ol|ol.map(|_|{}))
+        )),
+        ara:NAT
+    },
+    |s,j|j.ara,
+    |s,j,bn|s.append(s.f(j.local).f(j.id).children.f(bn).children),
+}>,
+
+
+    {t:Tree<Tree<{id:NAT,local:NAT}>>,t.each(s,
+        |s,t|(
+            untyped_statement<s.append(
+                t.children.map(|_|Tree<{}>,|_,ol|ol.map(|_|{}))
+            ),t>,
+            |_,bn|
+            s.append(
+                t.children.truncate(bn).map(|_|Tree<{}>,|_,ol|ol.map(|_|{}))
+            )
+        )
+    )},
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

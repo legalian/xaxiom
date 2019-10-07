@@ -1,0 +1,127 @@
+
+
+
+
+
+
+
+
+doublenot:[J?:U,j:J]!!J = DEC(!J,|s|CONTRADICTION(s.eval(j),!!J),|s|s),
+doublenot:[J?:U,j:!!J]J = DEC(J,|s|s,|s|CONTRADICTION(j.eval(s))),
+negate_union:[A?:U,B?:[A]U,s:!{a:A,B(a)}][x:A]!B(a) = DEC(B(x),|c|s((x,c),!B(x)),|c|c),
+negate_union:[A?:U,B?:[A]U,s:!{a:A,!B(a)}][x:A]B(x) = DEC(B(x),|c|c,|c|s((x,c),B(x))),
+
+
+NAND:[A:U,B:U]U = !{A,B},
+NAND.construct:[A:U,B:U,a:!A]NAND(A,B) = DEC({a:A,b:B},|s|a(s.a),|s|s),
+NAND.construct:[A:U,B:U,b:!B]NAND(A,B) = DEC({a:A,b:B},|s|b(s.b),|s|s),
+'.'extract:[A?:U,B?:U,o:NAND(A,B),na:A]!B = DEC(B,|s|o((na,s),B),|s|s),
+'.'extract:[A?:U,B?:U,o:NAND(A,B),nb:B]!A = DEC(A,|s|o((s,nb),A),|s|s),
+'.'commute:[A?:U,B?:U,o:NAND(A,B)]NAND(B,A) = DEC({b:B,a:A},|s|o((s.a,s.b)),|s|s),
+
+
+OR:[A:U,B:U]U = !{!A,!B},
+OR.construct:[A:U,B:U,a:A]OR(A,B) = DEC({a:!A,b:!B},|s|s.a(a),|s|s),
+OR.construct:[A:U,B:U,b:B]OR(A,B) = DEC({a:!A,b:!B},|s|s.b(b),|s|s),
+'.'extract:[A?:U,B?:U,o:OR(A,B),na:!A]B = DEC(B,|s|s,|s|o((na,s),B)),
+'.'extract:[A?:U,B?:U,o:OR(A,B),nb:!B]A = DEC(A,|s|s,|s|o((s,nb),A)),
+'.'commute:[A?:U,B?:U,o:OR(A,B)]OR(B,A) = DEC({b:!B,a:!A},|s|o((s.a,s.b)),|s|s),
+
+SYMIMPLIES:[A:U,B:U]U = {a:[B]A,b:[A]B},
+
+XOR:[A:U,B:U]U = !{[B]A,[A]B},
+XOR.construct:[A:U,B:U,a:A,b:!B]XOR(A,B) = DEC({a:[B]A,b:[A]B},|s|b(s.b(a)),|s|s),
+XOR.construct:[A:U,B:U,a:!A,b:B]XOR(A,B) = DEC({a:[B]A,b:[A]B},|s|a(s.a(b)),|s|s),
+'.'extract:[A?:U,B?:U,o:XOR(A,B),na:!A]B = DEC(B,|s|s,|s|o(|xb|s(xb,A),|xa|na(xa,B))),
+'.'extract:[A?:U,B?:U,o:XOR(A,B),nb:!B]A = DEC(A,|s|s,|s|o(|xb|nb(xb,A),|xa|s(xa,B))),
+'.'extract:[A?:U,B?:U,o:XOR(A,B),a:A]!B  = DEC(B,|s|o(|_|a,|_|s),|s|s),
+'.'extract:[A?:U,B?:U,o:XOR(A,B),b:B]!A  = DEC(B,|s|o(|_|s,|_|b),|s|s),
+'.'commute:[A?:U,B?:U,o:XOR(A,B)]XOR(B,A) = DEC({a:[A]B,b:[B]A},|s|o((s.a,s.b)),|s|s),
+
+
+
+
+
+AT_MOST_ONE_OF:[A:U,B:U,C:U]U = {ab:!{A,B},bc:!{B,C},ca:!{C,A}}, #0 1 [2] [3]
+AT_MOST_ONE_OF.construct:[A:U,B:U,C:U,na:!A,nb:!B]AT_MOST_ONE_OF(A,B,C) = (DEC({a:A,b:B},|s|na(s.a),|s|s),DEC({b:B,c:C},|s|nb(s.b),|s|s),DEC({c:C,a:A},|s|na(s.a),|s|s)),
+AT_MOST_ONE_OF.construct:[A:U,B:U,C:U,nb:!B,nc:!C]AT_MOST_ONE_OF(A,B,C) = (DEC({a:A,b:B},|s|nb(s.b),|s|s),DEC({b:B,c:C},|s|nb(s.b),|s|s),DEC({c:C,a:A},|s|nc(s.c),|s|s)),
+AT_MOST_ONE_OF.construct:[A:U,B:U,C:U,nc:!C,na:!A]AT_MOST_ONE_OF(A,B,C) = (DEC({a:A,b:B},|s|na(s.a),|s|s),DEC({b:B,c:C},|s|nc(s.c),|s|s),DEC({c:C,a:A},|s|nc(s.c),|s|s)),
+'.'extract:[A?:U,B?:U,C?:U,o:AT_MOST_ONE_OF(A,B,C),a:A]{!B,!C} = (DEC(B,|s|o.ab(a,s),|s|s),DEC(C,|s|o.ca(s,a),|s|s)),
+'.'extract:[A?:U,B?:U,C?:U,o:AT_MOST_ONE_OF(A,B,C),b:B]{!C,!A} = (DEC(C,|s|o.bc(b,s),|s|s),DEC(A,|s|o.ab(s,b),|s|s)),
+'.'extract:[A?:U,B?:U,C?:U,o:AT_MOST_ONE_OF(A,B,C),c:C]{!A,!B} = (DEC(A,|s|o.ca(c,s),|s|s),DEC(B,|s|o.bc(s,c),|s|s)),
+'.'commute:[A?:U,B?:U,C?:U,o:AT_MOST_ONE_OF(A,B,C)]AT_MOST_ONE_OF(A,C,B) = (o.ab,o.bc,o.ca),
+'.'cycle:  [A?:U,B?:U,C?:U,o:AT_MOST_ONE_OF(A,B,C)]AT_MOST_ONE_OF(B,C,A) = (o.ab,o.bc,o.ca),
+
+
+AT_MOST_TWO_OF:[A:U,B:U,C:U]U = !{A,B,C}#0 1 2 [3]
+AT_MOST_TWO_OF.construct:[A:U,B:U,C:U,na:!A]AT_MOST_TWO_OF(A,B,C) = DEC({a:A,b:B,c:C},|s|na(s.a),|s|s),
+AT_MOST_TWO_OF.construct:[A:U,B:U,C:U,nb:!B]AT_MOST_TWO_OF(A,B,C) = DEC({a:A,b:B,c:C},|s|nb(s.b),|s|s),
+AT_MOST_TWO_OF.construct:[A:U,B:U,C:U,nc:!C]AT_MOST_TWO_OF(A,B,C) = DEC({a:A,b:B,c:C},|s|nc(s.c),|s|s),
+'.'extract:[A?:U,B?:U,C?:U,o:AT_MOST_TWO_OF(A,B,C),a:A,b:B]!C = DEC(C,|s|o((a,b,s)),|s|s),
+'.'extract:[A?:U,B?:U,C?:U,o:AT_MOST_TWO_OF(A,B,C),b:B,c:C]!A = DEC(A,|s|o((s,b,c)),|s|s),
+'.'extract:[A?:U,B?:U,C?:U,o:AT_MOST_TWO_OF(A,B,C),c:C,a:A]!B = DEC(B,|s|o((a,s,c)),|s|s),
+'.'commute:[A?:U,B?:U,C?:U,o:AT_MOST_TWO_OF(A,B,C)]AT_MOST_TWO_OF(A,C,B) = DEC({a:A,c:C,b:B},|s|o((s.a,s.b,s.c)),|s|s),
+'.'cycle:  [A?:U,B?:U,C?:U,o:AT_MOST_TWO_OF(A,B,C)]AT_MOST_TWO_OF(B,C,A) = DEC({b:B,c:C,a:A},|s|o((s.a,s.b,s.c)),|s|s),
+
+
+TRIPLE_OR:[A:U,B:U,C:U]U = !{!A,!B,!C},#[0] 1 2 3
+TRIPLE_OR.construct:[A:U,B:U,C:U,a:A]TRIPLE_OR(A,B,C) = DEC({a:!A,b:!B,c:!C},|s|a(s.a),|s|s),
+TRIPLE_OR.construct:[A:U,B:U,C:U,b:B]TRIPLE_OR(A,B,C) = DEC({a:!A,b:!B,c:!C},|s|b(s.b),|s|s),
+TRIPLE_OR.construct:[A:U,B:U,C:U,c:C]TRIPLE_OR(A,B,C) = DEC({a:!A,b:!B,c:!C},|s|c(s.c),|s|s),
+'.'extract:[A?:U,B?:U,C?:U,o:TRIPLE_OR(A,B,C),a:!A,b:!B]C = DEC(C,|s|s,|s|o((a,b,s))),
+'.'extract:[A?:U,B?:U,C?:U,o:TRIPLE_OR(A,B,C),b:!B,c:!C]A = DEC(A,|s|s,|s|o((s,b,c))),
+'.'extract:[A?:U,B?:U,C?:U,o:TRIPLE_OR(A,B,C),c:!C,a:!A]B = DEC(B,|s|s,|s|o((a,s,c))),
+'.'commute:[A?:U,B?:U,C?:U,o:TRIPLE_OR(A,B,C)]TRIPLE_OR(A,C,B) = DEC({a:!A,c:!C,b:!B},|s|o((s.a,s.b,s.c)),|s|s),
+'.'cycle:  [A?:U,B?:U,C?:U,o:TRIPLE_OR(A,B,C)]TRIPLE_OR(B,C,A) = DEC({b:!B,c:!C,a:!A},|s|o((s.a,s.b,s.c)),|s|s),
+
+
+TWO_OF:[A:U,B:U,C:U]U = !{[A,B]C,[B,C]A,[C,A]B},#[0] [1] 2 [3]
+TWO_OF.construct:[A:U,B:U,C:U,a:A,b:B,nc:!C]TWO_OF(A,B,C) = DEC({[A,B]c:C,[B,C]a:A,[C,A]b:B},|s|nc(s.c(a,b)),|s|s),
+TWO_OF.construct:[A:U,B:U,C:U,a:A,nb:!B,c:C]TWO_OF(A,B,C) = DEC({[A,B]c:C,[B,C]a:A,[C,A]b:B},|s|nb(s.b(c,a)),|s|s),
+TWO_OF.construct:[A:U,B:U,C:U,an:!A,b:B,c:C]TWO_OF(A,B,C) = DEC({[A,B]c:C,[B,C]a:A,[C,A]b:B},|s|na(s.a(b,c)),|s|s),
+'.'extract:[A?:U,B?:U,C?:U,o:TWO_OF(A,B,C),a:!A]{b:B,c:C} = (
+	DEC(B,|s|s,o((|ax,bx|s(bx),|bx,cx|s(bx),|cx,ax|a(ax)))),
+	DEC(C,|s|s,o((|ax,bx|a(ax),|bx,cx|s(cx),|cx,ax|s(cx))))
+),
+'.'extract:[A?:U,B?:U,C?:U,o:TWO_OF(A,B,C),b:!B]{c:C,a:A} = (
+	DEC(C,|s|s,o((|ax,bx|b(bx),|bx,cx|s(cx),|cx,ax|s(cx)))),
+	DEC(A,|s|s,o((|ax,bx|s(ax),|bx,cx|b(bx),|cx,ax|s(ax))))
+),
+'.'extract:[A?:U,B?:U,C?:U,o:TWO_OF(A,B,C),c:!C]{a:A,b:B} = (
+	DEC(A,|s|s,o((|ax,bx|s(ax),|bx,cx|c(cx),|cx,ax|s(ax)))),
+	DEC(B,|s|s,o((|ax,bx|s(bx),|bx,cx|s(bx),|cx,ax|c(cx))))
+),
+'.'extract:[A?:U,B?:U,C?:U,o:TWO_OF(A,B,C),a:A]XOR(B,C) = DEC({b:[C]B,c:[B]C},|s|o((|ax,bx|s.c(bx),|bx,cx|a,|cx,ax|s.b(cx))),|s|s),
+'.'extract:[A?:U,B?:U,C?:U,o:TWO_OF(A,B,C),b:B]XOR(C,A) = DEC({c:[A]C,a:[C]A},|s|o((|ax,bx|s.c(ax),|bx,cx|s.a(cx),|cx,ax|b)),|s|s),
+'.'extract:[A?:U,B?:U,C?:U,o:TWO_OF(A,B,C),c:C]XOR(A,B) = DEC({a:[B]A,b:[A]B},|s|o((|ax,bx|c,|bx,cx|s.a(bx),|cx,ax|s.b(ax))),|s|s),
+'.'commute:[A?:U,B?:U,C?:U,o:TWO_OF(A,B,C)]TWO_OF(A,C,B) = DEC({[A,B]c:C,[C,A]b:B,[B,C]a:A},|s|o((s.c,s.a,s.b)),|s|s),
+'.'cycle:  [A?:U,B?:U,C?:U,o:TWO_OF(A,B,C)]TWO_OF(B,C,A) = DEC({[C,A]b:B,[A,B]c:C,[B,C]a:A},|s|o((s.c,s.a,s.b)),|s|s),
+
+
+
+TRIPLE_XOR:[A:U,B:U,C:U]U = {[A,B]c:C,[B,C]a:A,[C,A]b:B,or:TRIPLE_OR(A,B,C)},
+'.'commute:[A?:U,B?:U,C?:U,o:TRIPLE_XOR(A,B,C)]TRIPLE_XOR(A,C,B) = (o.a,o.c,o.b,o.or.commute),
+'.'cycle:  [A?:U,B?:U,C?:U,o:TRIPLE_XOR(A,B,C)]TRIPLE_XOR(B,C,A) = (o.b,o.c,o.a,o.or.cycle),
+
+
+
+AT_LEAST_TWO_OF:[A:U,B:U,C:U]U = TRIPLE_OR({A,B},{B,C},{C,A}), #[0] [1] 2 3
+AT_LEAST_TWO_OF.construct:[A:U,B:U,C:U,a:A,b:B]AT_LEAST_TWO_OF(A,B,C) = TRIPLE_OR({A,B},{B,C},{C,A}).construct((a,b)),
+AT_LEAST_TWO_OF.construct:[A:U,B:U,C:U,b:B,c:C]AT_LEAST_TWO_OF(A,B,C) = TRIPLE_OR({A,B},{B,C},{C,A}).construct((b,c)),
+AT_LEAST_TWO_OF.construct:[A:U,B:U,C:U,c:C,a:A]AT_LEAST_TWO_OF(A,B,C) = TRIPLE_OR({A,B},{B,C},{C,A}).construct((c,a)),
+'.'extract:[A?:U,B?:U,C?:U,o:AT_LEAST_TWO_OF(A,B,C),na:!A]{B,C} = o.extract(DEC({c:C,a:A},|s|na(s.a),|s|s),DEC({a:A,b:B},|s|na(s.a),|s|s)),
+'.'extract:[A?:U,B?:U,C?:U,o:AT_LEAST_TWO_OF(A,B,C),nb:!B]{C,A} = o.extract(DEC({a:A,b:B},|s|nb(s.b),|s|s),DEC({b:B,c:C},|s|nb(s.b),|s|s)),
+'.'extract:[A?:U,B?:U,C?:U,o:AT_LEAST_TWO_OF(A,B,C),nc:!C]{A,B} = o.extract(DEC({b:B,c:C},|s|nc(s.c),|s|s),DEC({c:C,a:A},|s|nc(s.c),|s|s)),
+
+
+
+
+
+review all of these and make sure contradiction is done correctly.
+
+
+
+
+
+
+

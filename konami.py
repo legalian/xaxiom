@@ -22,8 +22,6 @@ import re
 
 
 
-
-
 # from myplugin.transformer
 
 # print("\n".join([i for i in vars(nexus).keys()]))
@@ -82,7 +80,7 @@ class BuildAxiomCommand(sublime_plugin.ViewEventListener,sublime_plugin.TextComm
 	def is_applicable(cls, settings):
 		syntax = settings.get('syntax')
 		return syntax == 'Packages/myplugin/axiom.sublime-syntax'
-	   
+
 	# def on_query_completions(self, prefix, locations):
 	# 	# elements = ET.parse(
 	# 	#     urllib.request.urlopen(GOOGLE_AC % prefix)

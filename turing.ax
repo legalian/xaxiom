@@ -1,0 +1,263 @@
+
+
+[
+	::'grouptheory.ax',
+
+	NAT_core:adfasdfasdfasdf
+	::=NAT_core,
+	NAT:=J,
+
+
+	::'array.ax'(),
+	::'tree.ax'(),
+] {
+
+	Heap:U,
+	Pointer:[Heap]U,
+	'.'before:[h?:Heap,Pointer(h)]NAT,
+	'.'after:[h?:Heap,Pointer(h)]NAT,
+	Register1:[Heap]U,
+	Register2:[Heap]U,
+	Register4:[Heap]U,
+	Register8:[Heap]U,
+	Register1Ring:[h:Heap]Ring<J=Register1(h)>,
+	Register2Ring:[h:Heap]Ring<J=Register2(h)>,
+	Register4Ring:[h:Heap]Ring<J=Register4(h)>,
+	Register8Ring:[h:Heap]Ring<J=Register8(h)>,
+	::=Register1Ring,
+	::=Register2Ring,
+	::=Register4Ring,
+	::=Register8Ring,
+	'+':[h?:Heap,Pointer(h),Register8(h)]Pointer(h),
+	'-':[h?:Heap,Pointer(h),Pointer(h)]Register8(h),
+	ASSOCIATIVE:[h?:Heap,a:Pointer(h),b:Register8(h),c:Register8(h)](a+b)+c == a+(b+c),
+	pointer_ident_1:[h?:Heap,a:Pointer(h)]a+Register8Ring.0 == a,
+	pointer_ident_2:[h?:Heap,a:Pointer(h)]a-a == Register8Ring.0,
+	pointer_unwrap:[h?:Heap,a:Pointer(h),b:Pointer(h),c:Register8(h)](a+c)-b == a+(b+c),
+	pointer_rev_1:[h?:Heap,a:Pointer(h),b:Pointer(h),c:Register8(h)](a+c)-b == (a-b)+c,
+	pointer_rev_2:[h?:Heap,a:Pointer(h),b:Pointer(h),c:Register8(h)]a-(b+c) == (a-b)-c,
+
+
+
+
+
+
+
+
+
+	register1_core:NRegister(1),
+	register2_core:NRegister(2),
+	register4_core:NRegister(4),
+	register8_core:NRegister(8),
+
+	#need more garuntees on these pointers.
+	#or not... its just a number, isnt it.
+	#uncurry registers/pointers into boolean arrays.
+		#literally make registers and pointers into arrays...
+		#
+
+
+	all logical operators (check)
+	integer addition, subtraction, multiplication (check)
+
+	floats and doubles (.    )
+	integer division, modulus (.     )
+	comparison (.     ) <always 1 int or 0 int>
+	left and right bitwise shifts (.     )
+	logical operators (.     ) <always 1 int or 0 int>
+
+
+	#todo: division (binary operator)
+		#todo: (floats, doubles)<--(how),
+		# orderings/ordering operators,
+		# bitwise operators (including shifts.)
+
+
+
+
+	'+':[h?:Heap,p:Pointer(h),bn:Boundnat(p.after)]{
+		po:Pointer(h),
+	}
+	'-':[h?:Heap,p:Pointer(h),bn:Boundnat(p.before)]{
+
+	}
+
+	DataBlock:={
+		n:NAT,
+		h:Heap,
+		p:Pointer,
+		p.after=>n
+	},
+
+	PreservesPointers:=[
+		f:[Heap]Heap
+		P:[h:Heap,Pointer(h)]U,
+		hi:Heap,p1:Pointer(h),P(hi,p)
+	]{p2:Pointer(f(hi)),P(f(hi),p2)},
+
+	ContainsRef:[h:Heap]Relation<
+		J=Pointer(h),
+		'=>'=[
+			curstype:={
+				a:Pointer(h),
+				b:Pointer(h),
+				allowed:Array<J=Pointer(h)>
+			},
+			noether := NAT_core.noetherian_extension(curstype,|o|o.allowed.ara)
+		]|a,b|noether.noetherian_recursion(
+			U,|x,R|{
+				e:Boundnat(x.allowed.ara),
+				a==allowed.f(e),
+				OR(
+					a==
+
+				)
+			}
+
+	# 	P:[J]U,
+	# 	f:[y:J,[z:J,z<<y]P(z)]P(y),
+	# ]{
+	# 	r?:[x:J]P(x),
+	# 	pred:[x:J]r(x) == f(x,|z,_|r(z))
+
+
+		)
+
+	>
+
+
+	internalrelated(a,b,some) -> internalrelated(a,b,all)
+
+
+
+
+	decodeData:[h:Heap,p:Pointer(h),k:NAT,p.after=>k]Array<8*k,U>,
+	decodePointer:[h:Heap,p:Pointer(h),p.after=>8]Pointer(h),
+
+
+
+	FPointers:[
+		n:NAT,
+		Pi:[h:Heap,p:Pointer(h)]U,
+		[a:Pi,b:Pi]a==b,
+		arguments := [h:Heap]Array<n,{p:Pointer(h),Pi(h,p)}>,
+		Po:[
+			hi:Heap,
+			arguments(hi),
+			ho:Heap,
+			Pointer(ho)
+		]U,
+		output := [hi:Heap,args:arguments(hi)]{{ho:Heap,po:Pointer(ho)},Po(hi,args,ho,po)}
+	]{
+		access:[d:DataBlock<8>,args:arguments(d.h)] {
+			h:Heap,
+			p:Pointer(h)
+		},
+		store:[d:DataBlock<8>,[arguments(d.h)]output] {#storing preserves everything
+			d:DataBlock<8,p=d.p across... >,
+			out:[args:arguments(d.h)]output<access(d,args)>
+		}
+	}
+
+
+	decodeFPointer:[h:Heap,p:Pointer(h),p.after=>8]{
+
+	}
+
+
+
+
+
+	storeData:[h:Heap,p:Pointer(h),k:NAT,p.after=>k]Heap,
+	storePointer:[h:Heap,p:Pointer(h),p.after=>8,[h:Heap]Heap]Heap,
+	storeFPointer:[h:Heap,p:Pointer(h),p.after=>8]Heap,
+
+	Preserving:[h:Heap,]
+
+	# decodeUInt8:[Heap]
+	# decodeUInt16:[Heap]
+	# decodeUInt32:[Heap]
+	# decodeUInt64:[Heap]
+	# decodeInt8:[Heap]
+	# decodeInt16:[Heap]
+	# decodeInt32:[Heap]
+	# decodeInt64:[Heap]
+
+	# decodeFloat:[Heap]
+	# decodeDouble:[Heap]
+
+	|PointerIsStored,storePointer,getPointer|:[
+		h:Heap,
+		P:[h:Heap]U,
+		a:Pointer(h),a.after=>8
+	]{
+		yes:U,
+
+		[yes]{
+
+		}
+		[b:Pointer(h),P(h,b)]{
+			h:Heap,
+
+		}
+
+	}
+
+	storePointer:[
+		h:Heap,
+		P:[h:Heap,p:Pointer(h)]U,
+		a:Pointer(h),a.after=>8,
+		b:Pointer(h),P(h,b)
+	]{
+		h:Heap,
+
+	}
+
+
+	in reality you can add or subtract to the pointer.
+
+
+	continuous block of memory: can add to pointer.
+
+
+	malloc(amt) -> can store pointers, raw data, function pointers.
+
+
+
+	ReserveData:[Pointer]U,
+
+
+
+	Memblock:[n:Nat]{
+		h:Heap,
+		Pointer(h,n)
+	}
+
+
+
+	[hi:HEAP]HENCODE:{
+		ho:HEAP,
+		p:POINTER(ho),
+
+
+	}
+
+
+	POINTER:[HEAP,NAT]U,
+
+
+	uses nats and reals
+		nats for indexing and reals for accuracy of operations.
+
+
+
+	HACC:[HEAP]Array<8*K,U>
+
+
+
+}
+
+
+
+
+

@@ -16,15 +16,25 @@ class MyTransformer(Transformer):
 		return {'associate':'right'}
 #--------------------------------------------------
 	def argument(self,children,meta):
-		if type(children[0]) is str: return SubRow(children[0],children[1])
+		if type(children[0]) is str: return SubRow([k.replace("*****",".") for k in children[0].replace("'.'","*****").split(".")],children[1])
 		return SubRow(None,children[0])
 	def datapack(self,children,meta):
 		if type(children[0]) is str or type(children[0]) is list: return (children[0],children[1])
 		return ("*****",children[0])
 	def declaration(self,children,meta):
 		if type(children[0]) is tuple:
-			return TypeRow(children[0][0],children[1],children[2] if len(children)>2 else None,children[0][1])
-		return TypeRow(None,children[0],children[1] if len(children)>1 else None,{'silent':False,'contractible':False})
+			obj = None
+			if len(children)>2:
+				obj = children[2]
+				if type(children[1]) is Strategy:
+					obj = Lambda(children[1].args.semavail(),obj)
+			return TypeRow(children[0][0],children[1],obj,children[0][1])
+		obj = None
+		if len(children)>1:
+			obj = children[1]
+			if type(children[0]) is Strategy:
+				obj = Lambda(children[0].args.semavail(),obj)
+		return TypeRow(None,children[0],obj,{'silent':False,'contractible':False})
 	def inferreddeclaration(self,children,meta):
 		ty = None if len(children)<3 else Strategy(args=children[1],type=None)
 		return TypeRow(children[0][0],ty,children[-1],children[0][1])
@@ -64,7 +74,7 @@ class MyTransformer(Transformer):
 		args = []
 		for j in children[:-1]:
 			args += j.rows
-		return Strategy(DualSubs(args),pos=meta)
+		return Strategy(DualSubs(args),children[-1],pos=meta)
 	def string(self,children,meta):
 		if str(children[0]).endswith(".ax'"): return str(children[0])
 		return str(children[0]).replace("'","")

@@ -1,4 +1,9 @@
 
+^ -> :
+== != :
++ - :
+* :
+
 {
 
 U:U,#U is special. It is the type that all types and predicates have. (this type theory system avoids girard's paradox because it does not support subtyping.)
@@ -7,58 +12,60 @@ EQ:[A:U,A,A]U,
 '==':[A?:U,a:A,b:A]U = EQ(A,a,b),
 
 IDENTITY:    [A?:U,a:A]a==a,#IDENTITY -> "all elements of all types are equal to themselves."
-SUBSTITUTION:[A?:U,a?:A,b?:A,J:[c:A,a==c]U,q:a==b,J(a,IDENTITY(a))]J(b,q),#this is path induction.
-SUBSTITUTE_GARUNTEE:[A?:U,a?:A,J:[c:A,a==c]U,k:J(a,IDENTITY(a))]SUBSTITUTION(|w,y|J(w,y),IDENTITY(a),k) == k,
 
-'^':         [A?:U,a?:A,b?:A,q:b==a]a==b                     = SUBSTITUTION(|w,_|w==b,q,IDENTITY(b)),
-EQUIVALENCE: [A?:U,B?:U,a:A,q:A==B]B                         = SUBSTITUTION(|w,_|w,q,a),
-PRESERVATION:[A?:U,B?:U,a?:A,b?:A,f:[A]B,q:a==b]f(a) == f(b) = SUBSTITUTION(|w,_|f(a)==f(w),q,IDENTITY(f(a))),
-'->':        [J?:U,a?:J,b?:J,c?:J,q1:a==b,q2:b==c]a==c       = SUBSTITUTION(|w,_|a==w,q2,q1),
-'->':        [J?:U,a?:J,b?:J,c?:J,q1:a==b,q2:[J]b==c]a==c    = SUBSTITUTION(|w,_|a==w,q2(b),q1),
-
-
-
-
-#Types may be nested and unraveled.
-|AND,['.'acc,'.'accb],[UNION,MEMBER,MEMBERB],AND.equal,FUNC,'.'eval,[MAKEFUNC,FUNCASSURANCE],FUNC.equal|:[A:U,B:[A]U]{#For all (types) and (types derived from the first type)...
-    and:U,
-    |acc,accb|:[c:and]{#Given an element of the type representing the union...
-        acc:A,#you may retrieve an element of the first type.
-        B(acc)#you may retrieve an element of the second type as well.
-    },
-    [a:A,b:B(a)]{#Given elements of each type...
-        union:and,#you may construct an element of the type representing the union of two types.
-        member:a == acc(union),#accessing the first element from the union gives you back the same element that you used to construct the union.
-        memberb:SUBSTITUTION(|w,_|B(w),member,b) == accb(union)#gives you back the second element except a becomes acc(union)
-    },
-    [au:and,bu:and,q:acc(au)==acc(bu),SUBSTITUTION(|w,_|B(w),q,accb(au))==accb(bu)]au==bu,#this is special
+A:U,
+a:A,
+b:A,
+J:[c:A,a==c]U,
+q:a==b,
+J(a,IDENTITY(a)),
+J(b,q)
+# SUBSTITUTION:[A?:U,a?:A,b?:A,J:[c:A,a==c]U,q:a==b,J(a,IDENTITY(a))]J(b,q)#,#this is path induction.
 
 
 
-    func:U,
-    eval:[func,a:A]B(a),
-    [b:[a:A]B(a)] {
-        make:func,
-        [a:A]eval(make,a) == b(a)
-    },
-    [af:func,bf:func,[a:A]eval(af,a)==eval(bf,a)]af==bf #this is special
-    # ^^^---- apparently this comes from univalence...
-},
+# SUBSTITUTE_GARUNTEE:[A?:U,a?:A,J:[c:A,a==c]U,k:J(a,IDENTITY(a))]SUBSTITUTION(|w,y|J(w,y),IDENTITY(a),k) == k,
 
-'!':[A:U]U = [A,u:U]u,#the inhabitation of A implies the inhabitation of all things; contradiction.
-'!=':[A?:U,a:A,b:A]U = !(a==b),
+# '^':         [A?:U,a?:A,b?:A,q:b==a]a==b                     = SUBSTITUTION(|w,_|w==b,q,IDENTITY(b)),
+# EQUIVALENCE: [A?:U,B?:U,a:A,q:A==B]B                         = SUBSTITUTION(|w,_|w,q,a),
+# PRESERVATION:[A?:U,B?:U,a?:A,b?:A,f:[A]B,q:a==b]f(a) == f(b) = SUBSTITUTION(|w,_|f(a)==f(w),q,IDENTITY(f(a))),
+# '->':        [J?:U,a?:J,b?:J,c?:J,q1:a==b,q2:b==c]a==c       = SUBSTITUTION(|w,_|a==w,q2,q1)
 
 
-doublenot:[J?:U,j:J]!!J = DEC(!J,|s|CONTRADICTION(s.eval(j),!!J),|s|s),
-doublenot:[J?:U,j:!!J]J = DEC(J,|s|s,|s|CONTRADICTION(j.eval(s))),
-negate_union:[A?:U,B?:[A]U,s:!{a:A,B(a)}][x:A]!B(a) = DEC(B(x),|c|s((x,c),!B(x)),|c|c),
-negate_union:[A?:U,B?:[A]U,s:!{a:A,!B(a)}][x:A]B(x) = DEC(B(x),|c|c,|c|s((x,c),B(x))),
 
-OR:[A:U,B:U]U = !{!A,!B},
-OR.construct:[A:U,B:U,a:A]OR(A,B) = DEC({a:!A,b:!B},|s|s.a(a),|s|s),
-OR.construct:[A:U,B:U,b:B]OR(A,B) = DEC({a:!A,b:!B},|s|s.b(b),|s|s),
-'.'extract:[A?:U,B?:U,o:OR(A,B),na:!A]B = DEC(B,|s|s,|s|o((na,s),B)),
-'.'extract:[A?:U,B?:U,o:OR(A,B),nb:!B]A = DEC(A,|s|s,|s|o((s,nb),A)),
+
+# #Types may be nested and unraveled.
+# |AND,['.'acc,'.'accb],[UNION,MEMBER,MEMBERB],AND.equal,FUNC,'.'eval,[MAKEFUNC,FUNCASSURANCE],FUNC.equal|:[A:U,B:[A]U]{#For all (types) and (types derived from the first type)...
+#     and:U,
+#     |acc,accb|:[c:and]{#Given an element of the type representing the union...
+#         acc:A,#you may retrieve an element of the first type.
+#         B(acc)#you may retrieve an element of the second type as well.
+#     },
+#     [a:A,b:B(a)]{#Given elements of each type...
+#         union:and,#you may construct an element of the type representing the union of two types.
+#         member:a == acc(union),#accessing the first element from the union gives you back the same element that you used to construct the union.
+#         memberb:SUBSTITUTION(|w,_|B(w),member,b) == accb(union)#gives you back the second element except a becomes acc(union)
+#     },
+#     [au:and,bu:and,q:acc(au)==acc(bu),SUBSTITUTION(|w,_|B(w),q,accb(au))==accb(bu)]au==bu,#this is special
+
+
+
+#     func:U,
+#     eval:[func,a:A]B(a),
+#     [b:[a:A]B(a)] {
+#         make:func,
+#         [a:A]eval(make,a) == b(a)
+#     },
+#     [af:func,bf:func,[a:A]eval(af,a)==eval(bf,a)]af==bf #this is special
+#     # ^^^---- apparently this comes from univalence...
+# },
+
+# '!':[A:U]U = [A,u:U]u,#the inhabitation of A implies the inhabitation of all things; contradiction.
+# '!=':[A?:U,a:A,b:A]U = !(a==b)
+
+
+
+
 
 
  
@@ -156,15 +163,8 @@ OR.construct:[A:U,B:U,b:B]OR(A,B) = DEC({a:!A,b:!B},|s|s.b(b),|s|s),
 
 
 
-#  right associative:
 
 
-#  {
-
-#     {
-#         SUBSTITUTION()
-#     }
-#  }
 
 
 
@@ -191,17 +191,6 @@ OR.construct:[A:U,B:U,b:B]OR(A,B) = DEC({a:!A,b:!B},|s|s.b(b),|s|s),
 
 
 
-# berid of putting placeholders in function calls to extract shit. you dont use it and it's a huge performance sink.
-
-# ?          make variable part of the optional plan.
-# !          mark variable as contractible. (you need an extra plan for designating which contractibility function to use.)
-
-
-# ?-         all parameters up until now are made optional.
-# '+'        operator overload.
-# .prop      type property (substitution is safe.)
-# func.prop  unwrap parameters and recall (upon substituting func out, func.prop should be gotten too.)
-
 # autocast to func when there are insufficient parameters.
 
 
@@ -209,15 +198,26 @@ OR.construct:[A:U,B:U,b:B]OR(A,B) = DEC({a:!A,b:!B},|s|s.b(b),|s|s),
 
 
 
-# |homomorph_body,HOMOMORPH| = [A:U,B:U]{#univalent foundations but not homotopy type theory; this type theory system does not support subtyping.
-#     U = {
+# |homomorph_body,HOMOMORPH| := [A:U,B:U]{#univalent foundations but not homotopy type theory; this type theory system does not support subtyping.
+#     homomorph_body := {
 #         f:[A]B,
 #         g:[B]A,
 #         gf:[a:A]g(f(a))==a,
 #         fg:[b:B]f(g(b))==b
 #     },
 #     (A==B) == homomorph_body
+# },
+
+# uni:[A?:U,B?:U]U = {
+#     uni_block:homomorph_body(A==B,homomorph_body(A,B)) = SUBSTITUTION(
+#         |w,_|w,
+#         HOMOMORPH(HOMOMORPH(A,B),homomorph_body(A==B,homomorph_body(A,B))),
+#         HOMOMORPH(A,B)
+#     ),
+#     eq_implies:[q:A==B]homomorph_body(A,B) = uni_block.f(q),
+#     implies_eq:[f:[A]B,g:[B]A,gf:[a:A]g(f(a))==a,fg:[b:B]f(g(b))==b]A==B = uni_block.g((f,g,|a|gf(a),|b|fg(b)))
 # }
+
 
 # UNION_TOOLS: {
 #     |distributive_contractability|:[?A:U,?B:[A]U]{
@@ -390,15 +390,6 @@ OR.construct:[A:U,B:U,b:B]OR(A,B) = DEC({a:!A,b:!B},|s|s.b(b),|s|s),
 
 
 
-#     uni:[A:U,B:U]U = {
-#         uni_block:homomorph_body(A==B,homomorph_body(A,B)) = SUBSTITUTION(
-#             |w,_|w,
-#             HOMOMORPH(HOMOMORPH(A,B),homomorph_body(A==B,homomorph_body(A,B))),
-#             HOMOMORPH(A,B)
-#         ),
-#         eq_implies:[q:A==B]homomorph_body(A,B) = uni_block.f(q),
-#         implies_eq:[f:[A]B,g:[B]A,gf:[a:A]g(f(a))==a,fg:[b:B]f(g(b))==b]A==B = uni_block.g((f,g,|a|gf(a),|b|fg(b)))
-#     }
 
 
 

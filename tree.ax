@@ -1,0 +1,160 @@
+
+
+
+
+
+Tree:U = {
+    J:{
+        S:U,
+        J:[S]U,
+        araget:[?s:S,J(s)]NAT,
+        ya:[?s:S,j:J(s),BOUNDNAT(araget(j))]S
+    }
+    s:J.S,
+    e:{a:AFF,g:a=>>0},
+    r:INDUCTION(
+        {S,{a:AFF,a=>>0}},
+        |_|U,
+        |[_,e]|e,
+        |[s,[a,g]],R|{
+            j:J.J(s),
+            q:[a.a << 1]J.araget(j).a==0,
+            args:Array<
+                J.araget(j),
+                |[n,b]|R(
+                    (J.ya(j,(n,b)),
+                    (a-1,
+                    DEC(a<<1,
+                        |s|CONTRADICTION(n.g.eval(SUBSTITUTION(|w,_|n.a<w,q(s),b)), a-1=>>0 ),
+                        |s|ALGEBRA_TOOLS.trico_translate(s)
+                    ))),
+                    ALGEBRA_TOOLS.minus_one_lteq(a)
+                )
+            >
+        },
+        (s,e)
+    )
+}
+
+.unwrap:[t:Tree]t.r.predicate.b = EQUIVALENCE(t.r,t.r.predicate)
+# Tree.unwrap ~= tree_unwrap;
+.root:[t:Tree]t.J.J(t.s) = t.unwrap.j
+# Tree.root ~= tree_root;
+.ara:[t:Tree]NAT = t.J.araget(t.root)
+# Tree.ara ~= tree_ara;
+
+.children:[t:Tree]
+    Array<
+        t.ara,
+        |[n,b]|Tree<
+            J=t.J
+            s=ya(t.s,t.root,(n,b)),
+            r=t.unwrap.args.f((n,b)),
+            e=(
+                t.e.a-1,
+                DEC(t.e.a<<1,
+                    |s|CONTRADICTION(n.g.eval(SUBSTITUTION(|w,_|n.a<w,t.unwrap.q(s),b)),t.e.a-1=>>0),
+                    |s|ALGEBRA_TOOLS.trico_translate(s)
+                )
+            )
+        >,
+        |_|()
+    > = (),
+# Tree.children ~= tree_children;
+
+.map:[t:Tree,K:Tree.J,s:K.S,f:[s:t.J.S,t.J.J(s),c:K.S]K.J(c)]
+    Tree<
+        J=K,
+        e=t.e,
+        s=s,
+        INDUCTION(
+            {Tree<J=t.J>,K.S},
+            |[t,s]|Tree<J=K,e=t.e,s=s>.r,
+            |[t,s]|t.e,
+            |[t,s],R|
+            EQUIVALENCE(
+                (
+                    f(t.s,t.root,s),
+                    |d|t.unwrap.q(d),
+                    |bn|R(
+                        (t.e-1,t.root.args.f(bn)),
+                        ALGEBRA_TOOLS.minus_one_lteq(t.e)
+                    )
+                ),
+                ^Tree<J=K,e=t.e,s=s>.r.predicate,
+            ),
+            (t,s)
+        )
+    > = (),
+# Tree.map ~= tree_map;
+
+
+
+
+.heighten:[t:Tree,e:AFF,q:e=>>t.e.a]Tree<
+    J=t.J,
+    s=t.s,
+    e=(e,compare_transitive_e(q,t.e.g)),
+    INDUCTION(
+        {
+            t:Tree<J=t.J>,
+            e:AFF,
+            q:e=>>t.e.a
+        }
+        |[t,e,q]|Tree<
+            J=t.J,
+            s=t.s,
+            e=(e,compare_transitive_e(q,t.e.g))
+        >.r,
+        |[t,e,q]|t.e,
+        |[t,e,q],R|EQUIVALENCE((
+            t.root,
+            |z|t.unwrap.q(compare_transitive_ge(z,q))
+            |nb|R((
+                t.children.f(nb),
+                e-1,
+                additive_e(q,TRICHOTOMY_NG(IDENTITY(-1)))
+            ),
+                ALGEBRA_TOOLS.minus_one_lteq(t.e.a)
+            )),^Tree<J=t.J,s=t.s,e=(e,compare_transitive_e(q,t.e.g))>.r.predicate
+        ),
+        (t,e,q)
+    )
+>
+# tree.heighten ~= tree_heighten;
+
+
+
+
+tree_assemble:[
+    K:Tree.J,
+    s:K.s,
+    j:K.J(s),
+    chi:Array<J.araget(j),|bn|Tree<K,K.ya(s,j,bn)>>
+]Tree<
+    K,
+    s,
+    addpositive(
+        positivesum(chi.map(|_|{a:AFF,a=>>0},|bn,bnk|bnk.e)).a,
+        (1,TRICHOTOMY_W(ONE_GT_ZERO))
+    ),
+    EQUIVALENCE(
+        (
+            j,
+            |d|CONTRADICTION(
+                greater_add_both(positivesum(chi.map(|_|{a:AFF,a=>>0},|bn,bnk|bnk.e)).a.g,1).eval(d),    
+                K.araget(j).a==0
+            ),
+            |bn|chi.f(bn).heighten(
+                positivesum(chi.map(|_|{a:AFF,a=>>0},|_,bnk|bnk.e)).a,
+                positivesum(chi.map(|_|{a:AFF,a=>>0},|_,bnk|bnk.e)).f(bn)
+            )
+        ),
+        ^Tree<J=K,e=t.e,s=s>.r.predicate,
+    )
+> = ()
+
+
+
+
+

@@ -1,0 +1,296 @@
+
+
+
+
+{
+
+
+array_group:[vla:U]semigroup(
+	A={},
+	J=vla,
+	0=empty_array(vla),
+	'+'='->',
+
+	ASSOCIATIVE:    [a:J,b:J<a.r>,c:J<b.r>](a+b)+c == a+(b+c),
+
+	R_IDENTITY:     [a:J]a+0==a,
+	L_IDENTITY:     [a:J]0+a==a,
+
+
+
+
+)
+
+
+
+Array:U = {
+    ara:NAT,
+    J:[BOUNDNAT(ara)]U,
+    f:[b:BOUNDNAT(ara)]J(b)
+},
+# array_each:[a:Array,P:[b:BOUNDNAT(a.ara),a.J(b)]U]U = ([b:BOUNDNAT(a.ara)]P(b,a.f(b))),
+# Array.each ~= array_each;
+.append:[?vla:U,a:Array<J=|_|vla>,new:vla]
+    Array<
+        a.ara+1,
+        |_|vla,
+        |[n,_]|DEC(n<<a.ara,
+            |s|a.f((n,s)),
+            |_|new
+        )
+    > = (),
+# Array.append ~= array_append_simple;
+.map:[a:Array,B:[BOUNDNAT(a.ara)]U,f:[bn:BOUNDNAT(a.ara),a.J(bn)]B(bn)]
+    Array<
+        a.ara,
+        |bn|B(bn),
+        |bn|f(a.f(bn))
+    > = (),
+# Array.map ~= array_map;
+.truncate:[a:Array,|n,b|:BOUNDNAT(a.ara)]#b:a.ara>>n
+    Array<
+        n,
+        |n2,b2|a.J((n2,compare_transitive_g(b,b2))),
+        |n2,b2|a.f((n2,compare_transitive_g(b,b2)))
+    > = (),
+# Array.truncate ~= array_truncate;
+# array_delete_simple:[?vla:U,a:Array<J=|_|vla>,kill:BOUNDNAT(a.ara)]
+#     Array<
+#         nat_minus_one(a.ara),
+#         |_|vla,
+#         |[n,b]|DEC(n.a<<kill.a,
+#             |s|a.f((n,ALGEBRA_TOOLS.compare_transitive_g(ALGEBRA_TOOLS.minus_one_less(a.ara.a),b))),
+#             |s|a.f((nat_plus_one(n),
+#                 SUBSTITUTION(
+#                     |w,_|w>>n.a+1,
+#                     assoc_eliminate_add_ref(a.ara.a,1),
+#                     ADDITIVE(b,TRICHOTOMY_NG(IDENTITY(1)))
+#                 )
+#             ))
+#         )
+#     > = (),
+# Array.delete ~= array_delete_simple;
+.concatenate:[?vla:U,a:Array<J=|_|vla>,b:Array<J=|_|vla>]
+    Array<
+        nat_add(a.ara,b.ara),
+        |_|vla,
+        |[n,b]|DEC(n.a<<a.ara.a,
+            |s|a.f((n,s)),
+            |s|a.f((nat_subtract(n,a.ara,s),
+                SUBSTITUTION(
+                    |w,_|n.a-a.ara.a<<w,
+                    assoc_eliminate_add(n.a,a.ara.a),
+                    ADDITIVE(b,TRICHOTOMY_NG(IDENTITY(-a.ara.a)))
+                )
+            ))
+        )
+    > = (),
+# Array.concatenate ~= array_concatenate_simple;
+empty_array:[typ:[BOUNDNAT(nat0)]U]
+    Array<
+        nat0,
+        |bn|typ(bn),
+        |[n,b]|CONTRADICTION(n.g.eval(b),typ((n,b)))
+    > = (),
+}
+
+
+
+
+
+
+
+
+
+positivesum:[l:Array<J=|_|{a:AFF,g:a=>>0}>]{a:{a:AFF,a=>>0},f:[bn:BOUNDNAT(l.ara)]l.f(bn).a <<= a.a} = 
+    INDUCTION(
+        Array<J=|_|{a:AFF,g:a=>>0}>,
+        |l|{a:{a:AFF,g:a=>>0},f:[bn:BOUNDNAT(l.ara)]l.f(bn).a <<= a.a},
+        |l|(l.ara.a,l.ara.g),
+        |l,R|DEC(l.ara.a<<1,
+            |s|(0,TRICHOTOMY_NG(0)),
+            |s|
+            [ol = R(
+                l.truncate(l.ara.minus_one(s)),
+                minus_one_lteq(l.ara)
+            )]
+            (
+                addpositive(
+                    ol.a,
+                    l.f(l.ara.minus_one(s))
+                ),
+                |[n,b]|DEC(n.a<<l.ara.a-1,#produce  l.f((n,b)).a <<= ol.a.a+l.f(l.ara.minus_one(s)).a
+                    |h|SUBSTITUTION(
+                        |w,_| w <<= ol.a.a+l.f(l.ara.minus_one(s)).a,
+                        ADD_IDENTITY_ANNHIALATE(l.f((n,b)).a),
+                        ALGEBRA_TOOLS.additive_e(ol.f((n,h)),l.f(l.ara.minus_one(s)).g)
+                    )
+                    |h|SUBSTITUTION(
+                        |w,_| w <<= ol.a.a+l.f(l.ara.minus_one(s)).a,
+                        ADD_IDENTITY_ANNHIALATE(l.f((n,b)).a),
+                        ALGEBRA_TOOLS.additive_e(
+                            ol.a.g,#ol.a.a =>> 0
+                            TRICHOTOMY_NG(#l.f(l.ara.minus_one(s)).a =>> l.f((n,b)).a
+                                PRESERVATION(#l.f(l.ara.minus_one(s)).a == l.f((n,b)).a
+                                    |w|l.f(w).a,
+                                    nats_be_equal(#l.ara.minus_one(s) == (n,b)
+                                        l.ara.minus_one(s),
+                                        (n,b),
+                                        TRICHOTOMY_E(#l.ara.a-1 == n.a
+                                            nat_pinch(l.ara,(n,b)),
+                                            h
+                                        )
+                                    )
+                                )
+                            )
+                        )
+                    )
+                )
+            )
+        ),
+        l
+    ),
+
+
+
+
+
+
+
+
+
+
+array_vla_equal:[
+    ?vla:U,
+    a:Array<J=|_|vla>,
+    b:Array<J=|_|vla>,
+    q:a.ara.a == b.ara.a,
+    v:a.ara == b.ara = nats_be_equal(a.ara,b.ara,q),
+
+
+
+    f:[bn:BOUNDNAT(b.ara)]a.f(SUBSTITUTION(|w,_|BOUNDNAT(w),v,bn)) == b.f(bn)
+
+    PRESERVATION(
+        |y|a.f(y),
+        union_sub_distrib_a(|_,_|NAT,|w,_,n|n.a<<w.a,v,(shn,),)
+    )
+    f:[shn:NAT,ah:shn.a << a.ara.a,bh: shn.a << b.ara.a] a.f((shn,ah)) == b.f((shn,bh))
+
+
+
+] a == b =
+    Array<J=|_|vla>.equal(
+        a,b,
+        v,
+
+        subaf ~= SUBSTITUTION(|w,_|FUNC(BOUNDNAT(w),|_|vla),v,a.f);
+
+
+        FUNC(BOUNDNAT(b.ara),|_|vla).equal(
+            subaf,b.f,
+            |bn|
+            an ~= SUBSTITUTION(|w,_|BOUNDNAT(w),^v,bn);
+            PRESERVATION(
+                |w|subaf.eval(w)
+                ^substitute_annhialate(v,|w|BOUNDNAT(w),bn),
+            ) ->
+            FUNC_SUB_DISTRIB(|w,_|BOUNDNAT(w),|_,_|vla,v,a.f,an) ->#-> SUBSTITUTION(|w,_|vla,q,a.f(an))
+            NOTHINGPATH(a.f(an),q) ->#-> a.f(an)
+            f(bn)#-> b.f(bn)
+        )
+    ),
+
+
+
+
+
+concat_induction:[
+    ?vla:U,
+    i:Array<J=|_|vla>,
+    # b:Array<J=|_|a.J>,
+
+    P:[untyped_stack]U,
+    base:P(empty_array(|_|vla)),
+    rec:[s:Array<J=|_|vla>,nen:vla]P(s.append(vla)),
+]P(i),
+
+
+concat_append_associative:[
+    ?vla:U,
+    i:Array<J=|_|vla>,
+    more:Array<J=|_|vla>,
+    row:vla
+]i.concatenate(more).append(row) == i.concatenate(more.append(row))
+
+concat_concat_associative:[
+    ?vla:U,
+    i1:Array<J=|_|vla>,
+    i2:Array<J=|_|vla>,
+    i3:vla
+]i1.concatenate(i2).concatenate(i3) == i1.concatenate(i2.concatenate(i3))
+
+
+
+
+
+
+concat_identity_r:[
+    ?vla:U,
+    i:Array<J=|_|vla>
+]i.concatenate(empty_array(|_|vla)) == i =
+    v ~= nats_be_equal(nat_add(i.ara,nat0),i.ara,ADD_IDENTITY(i.ara.a));
+    
+    array_vla_equal(
+        i.concatenate(empty_array(|_|vla)),i,
+        ADD_IDENTITY(i.ara.a),
+        |bn|
+
+            DEC(
+                bn.n.a<<i.ara.a
+
+
+            )
+
+
+
+    )
+
+
+
+array_vla_equal:[
+    ?vla:U,
+    a:Array<J=|_|vla>,
+    b:Array<J=|_|vla>,
+    q:a.ara.a == b.ara.a,
+    v:a.ara == b.ara = nats_be_equal(a.ara,b.ara,q),
+    f:[bn:BOUNDNAT(b.ara)]a.f(SUBSTITUTION(|w,_|BOUNDNAT(w),v,bn)) == b.f(bn)
+]
+
+
+
+concat_identity_l:[
+    ?vla:U,
+    i:Array<J=|_|vla>
+]empty_array(|_|vla).concatenate(i) == i = 
+    Array<J=|_|vla>.equal(
+
+
+    )
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
