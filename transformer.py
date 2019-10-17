@@ -2,6 +2,7 @@
 from lark import Transformer, v_args, Tree
 from .simplifier import *
 
+
 @v_args(meta=True)
 class MyTransformer(Transformer):
 	def start(self,children,meta):
@@ -27,16 +28,16 @@ class MyTransformer(Transformer):
 			if len(children)>2:
 				obj = children[2]
 				if type(children[1]) is Strategy:
-					obj = Lambda(children[1].args.semavail(),obj)
+					obj = Lambda(children[1].args.semavail(),obj,verified=False)
 			return TypeRow(children[0][0],children[1],obj,children[0][1])
 		obj = None
 		if len(children)>1:
 			obj = children[1]
 			if type(children[0]) is Strategy:
-				obj = Lambda(children[0].args.semavail(),obj)
+				obj = Lambda(children[0].args.semavail(),obj,verified=False)
 		return TypeRow(None,children[0],obj,{'silent':False,'contractible':False})
 	def inferreddeclaration(self,children,meta):
-		ty = None if len(children)<3 else Strategy(args=children[1],type=None)
+		ty = None if len(children)<3 else Strategy(args=children[1],type=None,verified=False)
 		return TypeRow(children[0][0],ty,children[-1],children[0][1])
 	def interrobangmarker(self,children,meta):
 		return {'silent':True,'contractible':True}
@@ -64,28 +65,28 @@ class MyTransformer(Transformer):
 		for j in children[lim:]:
 			if safety==None: safety = len(j.subs)
 			args += j.subs
-		return RefTree(name,SubsObject(args),src,safety,pos=meta)
+		return RefTree(name,SubsObject(args,verified=False),src,safety,pos=meta,verified=False)
 	def lamb(self,children,meta):
-		return Lambda(children[0],children[1],pos=meta)
+		return Lambda(children[0],children[1],pos=meta,verified=False)
 	def template(self,children,meta):
-		if len(children): return Template(children[0],children[1],pos=meta)
-		return Template(children[0],SubsObject(pos=meta),pos=meta)
+		if len(children): return Template(children[0],children[1],pos=meta,verified=False)
+		return Template(children[0],SubsObject(pos=meta,verified=False),pos=meta,verified=False)
 	def strategy(self,children,meta):
 		args = []
 		for j in children[:-1]:
 			args += j.rows
-		return Strategy(DualSubs(args),children[-1],pos=meta)
+		return Strategy(DualSubs(args,verified=False),children[-1],pos=meta,verified=False)
 	def string(self,children,meta):
 		if str(children[0]).endswith(".ax'"): return str(children[0])
 		return str(children[0]).replace("'","")
 	def operators(self,children,meta):
-		return OperatorSet(children,pos=meta)
+		return OperatorSet(children,pos=meta,verified=False)
 	def subsobject(self,children,meta):
-		return SubsObject(children,pos=meta)
+		return SubsObject(children,pos=meta,verified=False)
 	def wsubsobject(self,children,meta):
-		return children[0] if len(children) else SubsObject(pos=meta)
+		return children[0] if len(children) else SubsObject(pos=meta,verified=False)
 	def dualsubs(self,children,meta):
-		return DualSubs(children,pos=meta)
+		return DualSubs(children,pos=meta,verified=False)
 	def wdualsubs(self,children,meta):
-		return children[0] if len(children) else DualSubs(pos=meta)
+		return children[0] if len(children) else DualSubs(pos=meta,verified=False)
 

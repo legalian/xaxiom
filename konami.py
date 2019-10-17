@@ -148,6 +148,10 @@ class BuildAxiomCommand(sublime_plugin.ViewEventListener,sublime_plugin.TextComm
 
 				# cheat = StratSeries([ObjStrategy(upcast=b) for b in bank])
 				# cheat = cheat.verify(StratSeries([],exverified=True),errors)
+				print("your monkey matching doesnt work")
+				print("need multiple different alternate comparators and also lazy-flatten-callbacks.")
+				print("maybe lookahead to figure out if types should be supplied(or obj==None), sparing yourself an observation.")
+				#|+5|a(b,c,d)
 				print("--=-=-=-=--momomomo=-=-=-=-=-=-==--=>>>>>>")
 				# try:
 				nobh = ahah[1].verify(ScopeObject([],oprows=ahah[0]))
