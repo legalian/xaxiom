@@ -31,9 +31,22 @@ from inspect import getfullargspec
 
 #treat singluar element when specifying dualsubs as (element).
 
-
-
-
+depth = True
+class UnrecursiveDebugger:
+	def __enter__(self):
+		global depth
+		self.lines = []
+		return self
+	def print(self,*lines):
+		self.lines.append(" ".join([k if type(k) is str else repr(k) for k in lines]))
+	def __exit__(self, type, value, traceback):
+		global depth
+		if isinstance(value,Exception):
+			if not depth: return
+			depth = False
+			print("-=-=-=-=-=-=-=-=-=-")
+			for d in self.lines:
+				print(d)
 
 if True:
 
@@ -195,7 +208,7 @@ if True:
 			invert_op()
 
 
-def debugdebug(F):
+def paranoid(F):
 	# return F
 	def wrapper(*args,**kwargs):
 		global fonocolls
@@ -402,11 +415,11 @@ def debugdebug(F):
 
 
 			if fname == 'concatenate':
-				print("-=-=-=-=-=-=-=-")
-				print("\t",args[0],[k.getSafetyrow() for k in args[0].flat])
-				print("\t",args[1],[k.getSafetyrow() for k in args[1].flat])
-				print("\t",ahjs,[k.getSafetyrow() for k in ahjs.flat])
-				print()
+				# print("-=-=-=-=-=-=-=-")
+				# print("\t",args[0],[k.getSafetyrow() for k in args[0].flat])
+				# print("\t",args[1],[k.getSafetyrow() for k in args[1].flat])
+				# print("\t",ahjs,[k.getSafetyrow() for k in ahjs.flat])
+				# print()
 				assert ahjs.beginlen() == args[0].beginlen()
 				assert len(ahjs) == len(args[1])
 				ahjs.setSafety(0)
@@ -496,8 +509,8 @@ class LanguageError(Exception):
 class ScopeObject:
 	def __init__(self,flat=None,prpush=None,popush=None,oprows=None):
 		self.oprows    = [] if oprows == None else oprows
-		self.prepushes  = [] if prpush == None else prpush
-		self.postpushes = [] if popush == None else popush
+		self.prepushes  = [] if prpush == None else [k for k in prpush if k[0]!=0]
+		self.postpushes = [] if popush == None else [k for k in popush if k[0]!=0]
 		self.flat = [] if flat == None else flat
 		f = len(self.flat)
 		for i in self.postpushes:
@@ -505,11 +518,15 @@ class ScopeObject:
 			assert f>=i[1]-i[0]
 			f+=i[0]
 
+		self.memo = []
 
-	@debugdebug
+
+
+
+	@paranoid
 	def addflat(self,newflat):
 		return ScopeObject(self.flat+newflat.flat,self.prepushes,self.postpushes,self.oprows)
-	@debugdebug
+	@paranoid
 	def invisadd(self,newflat):
 		if len(newflat.flat) == 0: return self
 		return ScopeObject(self.flat+newflat.flat,self.prepushes,self.postpushes+[(-len(newflat.flat),len(self))],self.oprows)
@@ -519,7 +536,7 @@ class ScopeObject:
 	def preerase(self,amt):
 		if amt == 0: return self
 		return ScopeObject(self.flat,self.prepushes+[(len(self)-amt,self.beginlen()+amt-len(self))],self.postpushes,self.oprows)
-	@debugdebug
+	@paranoid
 	def sneakinsert(self,nflat,fillout):
 		if len(nflat.flat) == 0: return self
 		npop = copy.copy(self.postpushes)
@@ -540,7 +557,7 @@ class ScopeObject:
 				if cr>=j[1]-j[0]:cr+=j[0]
 			self.flat[i].setVerified()
 			self.flat[i].setSafetyrow(safe+cr)
-			self.flat[i].type.debugtouch(self)
+			if safe == 0: self.flat[i].type.debugtouch(self)
 
 
 	def trimabsolute(self,amt):
@@ -560,7 +577,11 @@ class ScopeObject:
 		return len(self.flat) + sum([l[0] for l in self.postpushes])
 	def reroll(self):
 		#be careful with reroll...
-		return ScopeObject(self.flat,[(-j[0],j[1]) for j in reversed(self.postpushes)],self.postpushes,self.oprows)
+		databus = copy.copy(self.flat)
+		for j in self.postpushes:
+			databus = databus[:j[1]]+databus[j[1]-j[0]:]
+		return ScopeObject(databus,[],[],self.oprows)
+
 	
 	def pprint(self,indent,prepend,postpend,magic,callback=None,context=None):
 		remapflat = [k.nonsilent() for k in self.flat]
@@ -583,7 +604,7 @@ class ScopeObject:
 
 
 
-	@debugdebug
+	@paranoid
 	def symextract(self,name,subs,carry=None,reqtype=False,safety=None):
 		for k in subs:
 			assert len(k) == 2
@@ -640,18 +661,18 @@ class ScopeObject:
 			#oldcurr's depth push limit is 1 greater than it should be...
 
 			yolcur = oldcurr.verify(indesc.reroll(),RefTree())
-			s1 = repr(oldcurr)
-			s2 = repr(yolcur)
+			# s1 = repr(oldcurr)
+			# s2 = repr(yolcur)
 
-			if type(oldcurr) is LazyEvaluation and type(yolcur) is LazyEvaluation:
-				print("opopopo:     ",oldcurr.indesc,oldcurr.postpushes)
-				print("aksdjfdk     ",indesc.reroll())
-				print("opopopo:     ",yolcur.indesc,yolcur.postpushes,"\n")
+			# if type(oldcurr) is LazyEvaluation and type(yolcur) is LazyEvaluation:
+			# 	print("opopopo:     ",oldcurr.indesc,oldcurr.postpushes)
+			# 	print("aksdjfdk     ",indesc.reroll())
+			# 	print("opopopo:     ",yolcur.indesc,yolcur.postpushes,"\n")
 			# if type()
 
 			# print("becomes:",yolcur)
 			curr = yolcur.addfibration(len(self),cuarg)
-			s3 = repr(yolcur)
+			# s3 = repr(yolcur)
 
 			# print("failure: ",s1,s2,s3)
 			# print("then:",yolcur)
@@ -708,7 +729,9 @@ class ScopeObject:
 			for j in self.prepushes:
 				if row>=j[1]:
 					row += j[0]
-					if row<j[1]: assert False
+					if row<j[1]:
+						print("SOK",row-j[0],j[0],j[1])
+						assert False
 			return compachelper(momo,row)
 		else:
 			for row in reversed(range(len(self.flat))):
@@ -724,65 +747,70 @@ class ScopeObject:
 			if ind in self.oprows[j][0]:
 				return (j,self.oprows[j][1]['associate'])
 	def __repr__(self):
-		hu = copy.copy(self.postpushes)
-		y = 0
+		# hu = copy.copy(self.postpushes)
+		# y = 0
 		output = []
-		for x in range(len(self.flat)):
-			g=0
-			while g<len(hu):
-				if hu[g][1] <= y:
-					y += hu[g][0]
-					output.append("("+str(hu[g][0])+")")
-					del hu[g]
-				else: g+=1
-			output.append(self.flat[x].name)
-			y+=1
-		for g in reversed(range(len(hu))):
-			if hu[g][1] >= y:
-				y += hu[g][0]
-				output.append("("+str(hu[g][0])+")")
-				del hu[g]
-		assert not len(hu)
+		for d in self.flat:
+			output.append((d.name if type(d.name) is str else repr(d.name))+("" if d.obj==None else "|"))
+		# for x in range(len(self.flat)):
+		# 	g=0
+		# 	while g<len(hu):
+		# 		if hu[g][1] <= y:
+		# 			y += hu[g][0]
+		# 			output.append("("+str(hu[g][0])+")")
+		# 			del hu[g]
+		# 		else: g+=1
+		# 	output.append(self.flat[x].name)
+		# 	y+=1
+		# for g in reversed(range(len(hu))):
+		# 	if hu[g][1] >= y:
+		# 		y += hu[g][0]
+		# 		output.append("("+str(hu[g][0])+")")
+		# 		del hu[g]
+		# assert not len(hu)
 		return repr(output)+repr(self.postpushes)+" -- "+repr(self.prepushes)
 
 
 
-	@debugdebug
+	@paranoid
 	def concatenate(self,other):
 		#just trust me that this works... there's 9999x more logic than code
+
 
 		self.setSafety(0)
 		other.setSafety(0)
 
-		# print("-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-ENTER")
+
+		# for row in range(len(self.flat)):
+		# 	pr = row
+		# 	valid = True
+		# 	for amt,lim in self.postpushes+other.prepushes:
+		# 		if pr>=lim and pr<lim-amt: valid=False
+		# 		if pr>=lim: pr+=amt
+		# 	if valid:
+		# 		if pr>=len(other.flat) or other.flat[pr].name != self.flat[row].name:
+		# 			print('-=-'*3)
+		# 			print(self)
+		# 			print([k.getSafetyrow() for k in self.flat])
+		# 			print(other)
+		# 			print([k.getSafetyrow() for k in other.flat])
+		# 			print(pr,row)
+		# 			assert False
+		# with UnrecursiveDebugger() as ud:
+
+		purepostpushes = [k for k in self.postpushes if k[0]<0]
 
 
-		for row in range(len(self.flat)):
-			pr = row
-			valid = True
-			for amt,lim in self.postpushes+other.prepushes:
-				if pr>=lim and pr<lim-amt: valid=False
-				if pr>=lim: pr+=amt
-			if valid:
-				if pr>=len(other.flat) or other.flat[pr].name != self.flat[row].name:
-					print('-=-'*3)
-					print(self)
-					print([k.getSafetyrow() for k in self.flat])
-					print(other)
-					print([k.getSafetyrow() for k in other.flat])
-					print(pr,row)
-					assert False
+		# ud.print("really initial:")
+		# ud.print("\t",self.prepushes)
+		# ud.print("\t",purepostpushes)
+		# ud.print("\t",other.prepushes)
 
-
-
-		# print('-=-'*3)
-		# print(self)
-		# print([k.getSafetyrow() for k in self.flat])
-		# print(other)
-		# print([k.getSafetyrow() for k in other.flat])
 		modo = copy.copy(other.flat)
-		gorsh = copy.copy(self.postpushes+other.prepushes)
+		gorsh = copy.copy(purepostpushes+other.prepushes)
 		norsh = []
+		seethe = copy.copy(self.prepushes)
+		something = []
 		for i in reversed(range(len(gorsh))):
 			if gorsh[i][0]<0:
 				amt,lim = gorsh.pop(i);
@@ -791,129 +819,211 @@ class ScopeObject:
 					else: lim+=gorsh[j][0]
 				norsh.insert(0,(amt,lim))
 		
+		# ud.print("initial:")
+		# ud.print("\t",seethe)
+		# ud.print("\t",gorsh)
+		# ud.print("\t",norsh)
+
+		# ud.print(purepostpushes)
+		# ud.print(gorsh)
+		# ud.print(norsh)
+		for k in range(len(purepostpushes)):
+			assert norsh[k][0] == purepostpushes[k][0]
 
 
-		i=0
-		while i < len(norsh):
+
+		for i in reversed(range(len(norsh))):
 			j = norsh[i][1]
 			while j < norsh[i][1]-norsh[i][0]:
 				# track = []
 				index = j
-				for amt,lim in reversed(norsh[:i]):<><><>><<><> here lies the problem... youd be totalling up forward here, not backward. 
-					if index>=lim:index-=amt
-				if index>len(modo):
-					print('-=-'*3)
-					print(self)
-					print([k.getSafetyrow() for k in self.flat])
-					print(other)
-					print([k.getSafetyrow() for k in other.flat])
-					print(norsh,j)
+				# <><><><><><><><><><><>
+				# for amt,lim in norsh[:i]:
+				# 	if index>=lim:index-=amt
+				# if index>len(modo):
+				# 	ud.print('-=-'*3)
+				# 	ud.print(self)
+				# 	ud.print([k.getSafetyrow() for k in self.flat])
+				# 	ud.print(other)
+				# 	ud.print([k.getSafetyrow() for k in other.flat])
+				# 	ud.print(norsh,j)
 
 
-					print(":"*6,index)
-					print(j,norsh,i)
-					assert False
+				# 	ud.print(":"*6,index)
+				# 	ud.print(j,norsh,i)
+				# 	assert False
 				lidex = j
 				for amt,lim in reversed(norsh[:i]):
 					if lidex>=lim:
 						# track.append((amt,lim))
 						lidex-=amt
-				for k in reversed(range(len(gorsh))):
-					amt,lim = gorsh[k]
-					if lidex>=lim+amt:
-						# track.append((-amt,lim))
+				safedex = lidex
+				for k in reversed(range(-len(seethe),len(gorsh))):
+					if k>=0: amt,lim = gorsh[k]
+					else:    amt,lim = seethe[k]
+					if lidex>=max(lim+amt,lim):
 						lidex-=amt
-					elif lidex>=lim:
-						gorsh[k] = (gorsh[k][0]-1,gorsh[k][1])
-						norsh[i] = (norsh[i][0]-1,norsh[i][1])
+					elif lidex>=lim: # maybe delete gorsh...
+						if k>=0:
+							gorsh[k] = (gorsh[k][0]-1,gorsh[k][1])
+						else:
+							something.append(safedex)
+							seethe[k] = (seethe[k][0]-1,seethe[k][1])
+
+						norsh[i] = (norsh[i][0]+1,norsh[i][1])           
+						if i<len(purepostpushes): purepostpushes[i] = (purepostpushes[i][0]+1,purepostpushes[i][1])
 						lidex = j
-						for k in reversed(range(i)):
-							if lidex>=norsh[k][1]: lidex+=norsh[k][0]
-							else: norsh[k] = (norsh[k][0],norsh[k][1]-1)
-						for k in reversed(range(k+1,len(gorsh))):
-							if lidex>=gorsh[k][1]: lidex+=gorsh[k][0]
-							else: gorsh[k] = (gorsh[k][0],gorsh[k][1]-1)
+						for s in reversed(range(i)):
+							if lidex>=norsh[s][1]: lidex-=norsh[s][0]
+							else:
+								norsh[s] = (norsh[s][0],norsh[s][1]-1)
+								if s<len(purepostpushes): purepostpushes[s] = (purepostpushes[s][0],purepostpushes[s][1]-1)
+						for s in reversed(range(k+1,len(gorsh))):
+							if s>=0:
+								if lidex>=gorsh[s][1]: lidex-=gorsh[s][0]
+								else: gorsh[s] = (gorsh[s][0],gorsh[s][1]-1)
+							else:
+								if lidex>=seethe[s][1]: lidex-=seethe[s][0]
+								else: seethe[s] = (seethe[s][0],seethe[s][1]-1)
+						# ud.print("deleted:",i,j,k)
+						# ud.print("\t",seethe)
+						# ud.print("\t",gorsh)
+						# ud.print("\t",norsh)
 						break
+					if k==0: safedex=lidex
 				else:
+					lidex=safedex
+					for thing in something:
+						if safedex>=thing: lidex+=1
 					acet = []
-					gf = index
-					for amt,lim in self.postpushes:
+					gf = safedex
+					for s in range(len(purepostpushes)):
+						amt,lim = purepostpushes[s]
 						if gf>=lim-amt:
 							acet.insert(0,(-amt,lim))
 							gf+=amt
-					gf = index
-					for amt,lim in gorsh:
+					# ud.print("FRIST ACET:",acet)
+					gf = safedex
+					for amt,lim in gorsh+norsh[:i]:
 						if gf>=lim:
 							acet.append((amt,lim))
 							gf+=amt
 					bocet = []
-					for amt,lim in norsh[:i]+other.postpushes:
+					for amt,lim in norsh[i+1:]+other.postpushes:
 						if gf>=lim-amt:
 							bocet.append((amt,lim))
 							gf+=amt
 					# print("grafted:",lidex," to ",index," as in ",acet)
 					# if acet == [(7,3)]: assert False
 					lido = ScopeObject(modo[:index],acet,bocet,self.oprows)
-					# print(lido.beginlen(),len(lido),self.flat[lidex].getSafetyrow())
-					# print(lido)
-					# print(self)
-					# print(other)
-					# print(lidex,index)
-					print("LIDO:",lido,"AT",modo,"_+_+_",index)
+					# lido.setSafety(0)
+					# ud.print(lido.beginlen(),len(lido),self.flat[lidex].getSafetyrow() if lidex<len(self.flat) else "ERROR")
+					# ud.print(lido)
+					# ud.print(self)
+					# ud.print(other)
+					# ud.print(lidex,index)
+					# ud.print("-=-=-=-",safedex,something)
+					# ud.print("\t",gorsh)
+					# ud.print("\t",norsh)
+					# ud.print("\t",[p.name for p in modo])
+					# ud.print("LIDO:",lido,"_+_+_",index)
 					cufn = self.flat[lidex].vershortcut(lido)
+					# ud.print("SANITY:",cufn.getSafetyrow(),len(lido))
 					modo.insert(index,cufn)
 					j+=1
-			if norsh[i][0] == 0:
-				del norsh[i]
-			else:
-				i+=1
-
-		res = ScopeObject(modo,self.prepushes+gorsh,norsh+other.postpushes,self.oprows)
-
-		for row in range(20):
-			gf0 = row
-			gf1 = row
-			valid = True
-			for amt,lim in gorsh:
-				if gf0>=max(lim,lim-amt): gf0 += amt
-				elif gf0>=min(lim,lim-amt): valid=False
-			for amt,lim in norsh:
-				if gf0>=max(lim,lim-amt): gf0 += amt
-				elif gf0>=min(lim,lim-amt): valid=False
-			for amt,lim in self.postpushes:
-				if gf1>=max(lim,lim-amt): gf1 += amt
-				elif gf1>=min(lim,lim-amt): valid=False
-			for amt,lim in other.prepushes:
-				if gf1>=max(lim,lim-amt): gf1 += amt
-				elif gf1>=min(lim,lim-amt): valid=False
-			if valid: assert gf0==gf1
-
-
-			ul0 = row
-			ul1 = row
-			valid = True
-			for amt,lim in self.prepushes:
-				if ul0>=lim:
-					ul0 += amt
-					if ul0<lim: valid=False
-			for amt,lim in res.prepushes:
-				if ul1>=lim: ul1 += amt
-			if ul0<len(self.flat):
-				if self.flat[ul0].name != res.flat[ul1].name:
-					print("\n\n")
-					print(self)
-					print(other)
-					print(res)
-					print(row,ul0,ul1)
-					print("PRODUCED","----------------------->>>>>>>>>>>>>>>>>",res)
-					assert False
+			# if norsh[i][0] == 0:
+			# 	del norsh[i]
 
 
 
+		# ud.print("final")
+		# ud.print("\t",seethe)
+		# ud.print("\t",gorsh)
+		# ud.print("\t",norsh)
+
+		res = ScopeObject(modo,seethe+gorsh,norsh+other.postpushes,self.oprows)
 
 
+		# for row in range(20):
+		# 	gf0 = row
+		# 	gf1 = row
+		# 	valid = True
+		# 	for amt,lim in self.prepushes:
+		# 		if gf1>=max(lim,lim-amt): gf1 += amt
+		# 		elif gf1>=min(lim,lim-amt): valid= False
+		# 	for amt,lim in self.postpushes:
+		# 		if gf1>=max(lim,lim-amt): gf1 += amt
+		# 		elif gf1>=min(lim,lim-amt):  valid= False
+		# 	for amt,lim in other.prepushes:
+		# 		if gf1>=max(lim,lim-amt): gf1 += amt
+		# 		elif gf1>=min(lim,lim-amt):  valid= False
+
+		# 	if valid:
+
+		# 		for amt,lim in seethe:
+		# 			if gf0>=max(lim,lim-amt): gf0 += amt
+		# 			elif gf0>=min(lim,lim-amt): assert False
+		# 		for amt,lim in gorsh:
+		# 			if gf0>=max(lim,lim-amt): gf0 += amt
+		# 			elif gf0>=min(lim,lim-amt): assert False
+		# 		for amt,lim in norsh:
+		# 			if gf0>=max(lim,lim-amt): gf0 += amt
+		# 			elif gf0>=min(lim,lim-amt): assert False
+		# 		assert gf0==gf1
+
+
+			# ul0 = row
+			# ul1 = row
+			# valid = True
+			# for amt,lim in self.prepushes:
+			# 	if ul0>=lim:
+			# 		ul0 += amt
+			# 		if ul0<lim: valid=False
+			# for amt,lim in res.prepushes:
+			# 	if ul1>=lim: ul1 += amt
+			# if ul0<len(self.flat) and valid:
+			# 	if self.flat[ul0].name != res.flat[ul1].name:
+			# 		ud.print("\n\n")
+			# 		ud.print(self)
+			# 		ud.print(other)
+			# 		ud.print(res)
+			# 		ud.print(row,ul0,ul1)
+			# 		ud.print("PRODUCED","----------------------->>>>>>>>>>>>>>>>>",res)
+			# 		assert False
+
+
+			# ul0 = row
+			# valid = True
+			# for amt,lim in other.postpushes:
+			# 	if ul0>=lim:
+			# 		ul0 += amt
+			# 		if ul0<lim: valid=False
+			# for amt,lim in reversed(res.postpushes):
+			# 	if ul0>=lim: ul0 -= amt
+
+			# if row<len(other.flat) and valid:
+			# 	if other.flat[row].name != res.flat[ul0].name:
+			# 		ud.print("\n\n")
+			# 		ud.print(other)
+			# 		ud.print(other)
+			# 		ud.print(res)
+			# 		ud.print(row,row,ul0)
+			# 		ud.print("PRODUCED","----------------------->>>>>>>>>>>>>>>>>",res)
+			# 		assert False
+
+
+
+		# ud.print()
+		# ud.print("INPUT",self)
+		# ud.print("INPUT",other)
 		# print("PRODUCED","----------------------->>>>>>>>>>>>>>>>>",res)
+		# if res.prepushes == [(0, 5), (3, 8), (6, 3)] and len(res.flat) == 12 and res.flat[-1].name == None and "J" in [e.name for e in res.flat]:
+		# 	assert False
+
+		# self.memo.append()
+
 		return res
+
 
 
 
@@ -945,15 +1055,22 @@ class TypeRow:
 		if type(ty) is Lambda or type(ty) is SubsObject: assert False
 		assert self.type != None or self.obj != None
 		assert type(self.type) is not Strategy or self.type.type != None or self.obj != None
-	@debugdebug
+	@paranoid
 	def ddpush(self,dsc,amt,lim,repls=None):
 		return TypeRow(self.name,self.type.ddpush(dsc,amt,lim,repls),None if self.obj == None else self.obj.ddpush(dsc,amt,lim,repls),self.silent)
-	@debugdebug
+	@paranoid
 	def dpush(self,pushes):
 		return TypeRow(self.name,self.type.dpush(pushes),None if self.obj == None else self.obj.dpush(pushes),self.silent)
 
 	def vershortcut(self,indesc):
-		return TypeRow(self.name,self.type.verify(indesc),None if self.obj == None else self.obj.verify(indesc),self.silent)
+		# print("yabba 22222",indesc,self)
+		self.type.debugtouch(indesc)
+		if type(self.type) is LazyEvaluation: print("11111",self.type.core,self.type.indesc)
+		yob = TypeRow(self.name,self.type.verify(indesc),None if self.obj == None else self.obj.verify(indesc),self.silent)
+		if type(yob.type) is LazyEvaluation: print("22222",yob.type.core,yob.type.indesc)
+		# print("yabba dabba",indesc,yob)
+		yob.type.debugtouch(indesc)
+		return yob
 
 
 
@@ -989,14 +1106,14 @@ class SubRow:
 	def __init__(self,name,obj):
 		self.name = name
 		self.obj  = obj
-	@debugdebug
+	@paranoid
 	def ddpush(self,dsc,amt,lim,repls=None):
 		return SubRow(self.name,self.obj.ddpush(dsc,amt,lim,repls))
-	@debugdebug
+	@paranoid
 	def dpush(self,pushes):
 		return SubRow(self.name,self.obj.dpush(pushes))
 
-	@debugdebug
+	@paranoid
 	def compare(self,dsc,other,odsc=None,thot=None,extract=None,lefpush=None,rigpush=None):
 		return self.obj.compare(dsc,other.obj,odsc,thot,extract,lefpush,rigpush)
 	def prepr(self,context=None):
@@ -1030,7 +1147,7 @@ class Tobj:
 			if safe != None: self.foclnsafety = safe
 			return safe
 
-	@debugdebug
+	@paranoid
 	def flatten(self,indesc,mog,assistmog=None,prep=None,obj=None,trim=False,fillout=None):
 		assert not trim
 		if type(mog) is list: raise LanguageError(self,"invalid renamer pattern.")
@@ -1045,14 +1162,14 @@ class Tobj:
 			t2 = None if obj == None else obj.addlambdas(spap,njprep)
 
 			return ScopeObject([TypeRow(mog,t1,t2)])
-	@debugdebug
+	@paranoid
 	def emptyinst(self,limit,mog,prep=None):
 		if type(mog) is not int: raise LanguageError(self,"invalid renamer pattern.")
 		# if prep != None: assert prep[1]==limit
 		prep = SubsObject() if prep == None else prep[0].dpush([(limit-prep[1],prep[1])])
 
 		return RefTree(name=mog,args=prep)
-	@debugdebug
+	@paranoid
 	def addfibration(self,dsc,args):
 		if len(args) == 0: return self.dpush([(-longcount(args),dsc)])
 		return Strategy(args,self,pos=self)
@@ -1082,30 +1199,71 @@ class LazyEvaluation:
 			self.indesc.setSafety(0)
 
 	def debugtouch(self,asdf):
+		# pass
 		if self.indesc == None:
-			self.core.unspool().debugtouch(asdf)
+			self.core.debugtouch(asdf)
 		else:
 			self.core.debugtouch(self.indesc)
 
+	@paranoid
+	def emptyinst(self,dsc,mog=None,prep=None):
+		return self.unspool().emptyinst(dsc,mog,prep)
 
 
 	def needscarry(self):
 		return True
 
-	@debugdebug
+	@paranoid
 	def addfibration(self,dsc,args):
 		return self.unspool().addfibration(dsc,args)
-
-
-	@debugdebug
+	@paranoid
 	def addlambdas(self,dsc,args):
 		return self.unspool().addlambdas(dsc,args)
 
 
-	@debugdebug
-	def flatten(self,indesc,*args,**kwargs):
-		print("you can do better here. specificically, if the core is a dualsubs or a strategy.")
-		return self.unspool().flatten(indesc,*args,**kwargs)
+	@paranoid
+	def flatten(self,indesc,mog,assistmog=None,prep=None,obj=None,trim=False,fillout=None):
+		if self.exob != None: return self.unspool().flatten(indesc,mog,assistmog,prep,obj,trim,fillout)
+
+
+		if self.indesc == None: jins = indesc.prepushPR(self.postpushes)
+		else: jins = self.indesc.concatenate(indesc.prepushPR(self.postpushes))
+		if fillout != None:
+			for amt,lim in self.indesc.postpushes + indesc.prepushes:
+				if amt<0 and fillout>=lim: fillout -= amt
+
+		if type(self.core) is Strategy or type(self.core) is DualSubs:
+			return self.core.flatten(jins,mog,assistmog,prep,obj,trim,fillout)
+
+		moto = self.core.verify(jins,RefTree(),force=True)
+		if type(moto) is Strategy or type(moto) is DualSubs:
+			return moto.flatten(indesc.reroll(),mog,assistmog,prep,obj,trim,fillout)
+
+
+
+		assert not trim
+		if type(mog) is list: raise LanguageError(moto,"invalid renamer pattern.")
+		if prep != None: njprep = prep[0].unspool().dpush([(len(indesc)-longcount(prep[0])-prep[1],prep[1])],force=True)
+		if prep == None or len(njprep.rows)==0:
+			return ScopeObject([TypeRow(mog,moto,None if obj == None else obj)])
+		else:
+			spap = len(indesc)-longcount(njprep)
+
+			t1 = moto.addfibration(spap,njprep)
+
+			t2 = None if obj == None else obj.addlambdas(spap,njprep)
+
+			return ScopeObject([TypeRow(mog,t1,t2)])
+
+
+
+
+
+
+
+
+		# print("you can do better here. specificically, if the core is a dualsubs or a strategy.")
+		# return self.unspool().flatten(indesc,*args,**kwargs)
 
 
 	def setSafety(self,safe):
@@ -1136,22 +1294,21 @@ class LazyEvaluation:
 		pass
 	def ddpush(self,*args,**kwargs):
 		return self.unspool().ddpush(*args,**kwargs)
-	@debugdebug
+	@paranoid
 	def compare(self,*args,**kwargs):
 		return self.unspool().compare(*args,**kwargs)
-	@debugdebug
+	@paranoid
 	def dpush(self,pushes,force=False):
 		res = LazyEvaluation(self.core,self.indesc,self.carry,self.postpushes+[k for k in pushes if k[0]!=0],self.exob)
 		if force: return res.unspool()
 		return res
-	@debugdebug
+	@paranoid
 	def verify(self,indesc,carry=None,reqtype=False,then=False,exob=None,force=False):
 		assert not reqtype
 		if then: return self.unspool().verify(indesc,carry,reqtype,then,exob)
 
 		if self.indesc == None: jins = indesc.prepushPR(self.postpushes)
-		else:
-			jins = self.indesc.concatenate(indesc.prepushPR(self.postpushes))
+		else: jins = self.indesc.concatenate(indesc.prepushPR(self.postpushes))
 
 		if self.exob == None: bex = exob
 		elif exob == None: bex = self.exob
@@ -1161,17 +1318,17 @@ class LazyEvaluation:
 
 
 		res = LazyEvaluation(self.core,jins,carry,[],bex)
-		if force: res = res.unspool()
+		if force: return res.unspool()
 
 
-		selind = self.indesc
-		#debugdebug
-		if not self.unspool().verify(indesc,carry,reqtype,then,exob).compare(len(indesc),res):
+		# selind = self.indesc
+		# #debugdebug
+		# if not self.unspool().verify(indesc,carry,reqtype,then,exob).compare(len(indesc),res):
 
-			print("\t",selind)
-			print("\t",indesc)
-			print("\t",jins)
-			assert False
+		# 	print("\t",selind)
+		# 	print("\t",indesc)
+		# 	print("\t",jins)
+		# 	assert False
 
 
 
@@ -1182,6 +1339,7 @@ class LazyEvaluation:
 	def unspool(self):
 		better = self.core
 		if self.indesc != None:
+			print("-=-=-=-=-",better,self.indesc)
 			better = better.verify(self.indesc,self.carry,exob=self.exob,force=True)
 		if len(self.postpushes)>0:
 			better = better.dpush(self.postpushes,force=True)
@@ -1209,6 +1367,7 @@ def lazyverify(F):
 	def wrapper(self,indesc,carry=None,reqtype=False,then=False,exob=None,force=False):
 		if self.verified and not then and not force and not reqtype:
 			# assert not reqtype
+			print(type(self),self.getSafety(),indesc.beginlen())
 			return LazyEvaluation(self,indesc,carry,None,exob)
 		return F(self,indesc,carry,reqtype,then,exob)
 	return wrapper
@@ -1262,7 +1421,7 @@ class DualSubs(Tobj):
 		pprintcsv(indent,magic,self.rows,prepend+"{","}"+postpend,callback=callback,context=context)
 	def nonsilent(self):
 		return DualSubs([k.nonsilent() for k in self.rows],pos=self)
-	@debugdebug
+	@paranoid
 	def ddpush(self,dsc,amt,lim,repls=None):
 		left = 0
 		cu = []
@@ -1271,12 +1430,12 @@ class DualSubs(Tobj):
 			left += longcount(self.rows[k].name)
 		return DualSubs(cu)
 	@lazydpush
-	@debugdebug
+	@paranoid
 	def dpush(self,pushes):
 		return DualSubs([i.dpush(pushes) for i in self.rows],pos=self)
 
 
-	@debugdebug
+	@paranoid
 	def compare(self,dsc,other,odsc=None,thot=None,extract=None,lefpush=None,rigpush=None):
 		if type(other.unspool()) is not DualSubs: return False
 		if len(self) != len(other): return False
@@ -1331,7 +1490,7 @@ class DualSubs(Tobj):
 		if mog == None: mog = self.fulavail()
 		return [self.rows[k].type.semavail(mog[k]) if type(mog[k]) is list else mog[k] for k in range(len(self.rows)) if self.rows[k].obj == None]
 
-	@debugdebug
+	@paranoid
 	def flatten(self,indesc,mog=None,assistmog=None,prep=None,obj=None,trim=False,fillout=None):
 		if trim: mog = untrim(self,mog)
 		if mog == None: mog = self.fulavail()
@@ -1389,7 +1548,7 @@ class DualSubs(Tobj):
 
 
 		# you forgot to dpush backwards afterwards...
-	@debugdebug
+	@paranoid
 	def emptyinst(self,limit,mog=None,prep=None):
 		if mog == None: mog,limit = striphuman(limit,self.fulavail())
 		if type(mog) is not list: return super(Tobj,self).emptyinst(limit,mog,prep)
@@ -1399,7 +1558,7 @@ class DualSubs(Tobj):
 	def needscarry(self):
 		return False
 	@lazyverify
-	@debugdebug
+	@paranoid
 	def verify(self,indesc,carry=None,reqtype=False,then=False,exob=None):
 		assert exob == None
 		assertstatequal(len(indesc),self,RefTree(),carry)
@@ -1424,7 +1583,7 @@ class DualSubs(Tobj):
 		return DualSubs(outs,pos=self)
 	# def compactify(self,indesc,inyoks,force=False):
 	# 	return self.peelcompactify(indesc,self.compacassign(inyoks),force=force)
-	@debugdebug
+	@paranoid
 	def peelcompactify(self,indesc,compyoks,then=False,force=False,earlyabort=True):
 		sbu = compyoks[0]
 		mo = (self,)
@@ -1486,7 +1645,7 @@ class DualSubs(Tobj):
 			else:
 				yoks.append((nan,inyoks[s][1][0],inyoks[s][1][1]))
 		return (yoks,fullp(spoken))
-	@debugdebug
+	@paranoid
 	def compacrecurse(self,yoks,trail,prep,indesc,retries=None,force=False,then=False,earlyabort=False):
 		# print("YAYEET",yoks," -=- ",indesc," -=- ",self)
 		def namerical(lim,names,sof):
@@ -1522,13 +1681,14 @@ class DualSubs(Tobj):
 								if not rowtype.compare(lentotal,k[2].dpush([(lentho,lencom1)]),lencom1,thot,retries):
 									for test in self.rows: test.type.unspool()
 									print("error --------",self)
+
 									assert False#debugging
 									if earlyabort: return None
 									assert False
 							obj = k[1].dpush([(lentho,lencom1)])
 							break
 						if earlyabort:
-							obj = k[1].verify(indesc.prepushPO([(lentho,lencom1)]),rowtype)
+							obj = k[1].verify(indesc.prepushPR([(lentho,lencom1)]),rowtype)
 							break
 						if type(k[1].unspool()) is Lambda and not k[1].obj.needscarry() and type(rowtype.unspool()) is Strategy and len(rowtype.args) == len(k[1].si):
 							try:
@@ -1544,7 +1704,7 @@ class DualSubs(Tobj):
 							if not force:
 								retries.append(k)
 								break
-						obj = k[1].verify(indesc.prepushPO([(lentho,lencom1)]),rowtype)
+						obj = k[1].verify(indesc.prepushPR([(lentho,lencom1)]),rowtype)
 						break
 			# yield (n,indesc,self.rows[n],obj)
 			if any(len(o[0])>len(trail)+1 and o[0][:len(trail)+1] == trail+[n] for o in yoks):
@@ -1575,20 +1735,20 @@ class SubsObject(Tobj):
 	def pprint(self,indent,prepend,postpend,magic,callback=None,context=None):
 		pprintcsv(indent,magic,self.subs,prepend+"(",")"+postpend,callback=callback,context=context)
 
-	@debugdebug
+	@paranoid
 	def ddpush(self,dsc,amt,lim,repls=None):
 		return SubsObject([k.ddpush(dsc,amt,lim,repls) for k in self.subs],pos=self)
 	@lazydpush
-	@debugdebug
+	@paranoid
 	def dpush(self,pushes):
 		return SubsObject([k.dpush(pushes) for k in self.subs],pos=self)
 
-	@debugdebug
+	@paranoid
 	def compare(self,dsc,other,odsc=None,thot=None,extract=None,lefpush=None,rigpush=None):
 		if type(other.unspool()) is not SubsObject: return False
 		if len(self.subs) != len(other.subs): return False
 		return all(self.subs[k].compare(dsc,other.subs[k],odsc,thot,extract,lefpush,rigpush) for k in range(len(self.subs)))
-	@debugdebug
+	@paranoid
 	def phase1(self,indesc):
 		return [(s.name,(s.obj,False)) if s.obj.needscarry() or s.obj.verified else (s.name,s.obj.verify(indesc,reqtype=True)) for s in self.subs]
 	def phase1_gentle(self):
@@ -1597,7 +1757,7 @@ class SubsObject(Tobj):
 	def needscarry(self):
 		return True
 	@lazyverify
-	@debugdebug
+	@paranoid
 	def verify(self,indesc,carry=None,reqtype=False,then=False,exob=None):
 		assert type(carry.unspool()) is DualSubs
 		assert exob == None
@@ -1630,7 +1790,7 @@ class Template(Tobj):
 	def needscarry(self):
 		return False
 	@lazyverify
-	@debugdebug
+	@paranoid
 	def verify(self,indesc,carry=None,reqtype=False,then=False,exob=None):
 		assert exob == None
 		#remember to force verification of self.subs.
@@ -1653,16 +1813,16 @@ class Lambda(Tobj):
 		self.si = si
 		self.obj = obj
 		self.sc = sc
-	@debugdebug
+	@paranoid
 	def ddpush(self,dsc,amt,lim,repls=None):
 		return Lambda(self.si,self.obj.ddpush(dsc+self.sc,amt,lim,repls),self.sc,pos=self)
 	@lazydpush
-	@debugdebug
+	@paranoid
 	def dpush(self,pushes):
 		return Lambda(self.si,self.obj.dpush(pushes),self.sc,pos=self)
 
 
-	@debugdebug
+	@paranoid
 	def compare(self,dsc,other,odsc=None,thot=None,extract=None,lefpush=None,rigpush=None):
 		if type(other.unspool()) is not Lambda: return False
 		assert self.sc == other.sc
@@ -1671,7 +1831,7 @@ class Lambda(Tobj):
 		if len(self.si) == 0: return self.obj.needscarry()
 		return True
 	@lazyverify
-	@debugdebug
+	@paranoid
 	def verify(self,indesc,carry=None,reqtype=False,then=False,exob=None):
 		if exob != None and len(exob.subs) < len(self.si):
 			return Lambda(self.si[:len(exob.subs)],Lambda(self.si[len(exob.subs):],self.obj,verified=False),verified=False).verify(indesc,carry,reqtype,then,exob,force=True)
@@ -1750,33 +1910,33 @@ class Strategy(Tobj):
 		self.args = DualSubs(pos=pos) if args == None else args
 		self.type = type
 
-	@debugdebug
+	@paranoid
 	def ddpush(self,dsc,amt,lim,repls=None):
 		return Strategy(self.args.ddpush(dsc,amt,lim,repls),self.type.ddpush(dsc+longcount(self.args),amt,lim,repls),pos=self)
 	@lazydpush
-	@debugdebug
+	@paranoid
 	def dpush(self,pushes):
 		return Strategy(self.args.dpush(pushes),self.type.dpush(pushes),pos=self)
 
-	@debugdebug
+	@paranoid
 	def compare(self,dsc,other,odsc=None,thot=None,extract=None,lefpush=None,rigpush=None):
 		if type(other.unspool()) is not Strategy: return False
 		return self.args.compare(dsc,other.args,odsc,thot,extract,lefpush,rigpush) and self.type.compare(dsc+longcount(self.args),other.type,odsc,thot,extract,lefpush,rigpush)
-	@debugdebug
+	@paranoid
 	def addfibration(self,dsc,args):
 		return Strategy(self.args+args,self.type,pos=self)
 	def fulavail(self):
 		return self.type.fulavail()
 	def semavail(self,mog):
 		return self.type.semavail(mog)
-	@debugdebug
+	@paranoid
 	def emptyinst(self,limit,mog,prep=None):
 		if type(mog) is not list: return super(Tobj,self).emptyinst(limit,mog,prep)
 		sc = longcount(self.args)
 		if prep == None: prep = (SubsObject(),limit)
 		prep = prep[0].dpush([(limit+sc-prep[1],prep[1])],force=True).subs if prep != None else []
 		return Lambda(self.args.semavail(),self.type.emptyinst(limit+sc,mog,(SubsObject(prep+self.args.emptyinst(limit).subs),limit+sc)),sc=sc)
-	@debugdebug
+	@paranoid
 	def flatten(self,indesc,mog=None,assistmog=None,prep=None,obj=None,trim=False,fillout=None):
 
 		ij = self.args.getSafety()
@@ -1806,7 +1966,7 @@ class Strategy(Tobj):
 		if len(self.args) == 0: return self.type.needscarry()
 		return False
 	@lazyverify
-	@debugdebug
+	@paranoid
 	def verify(self,indesc,carry=None,reqtype=False,then=False,exob=None):
 		assert exob == None
 		verargs,thendesc = self.args.verify(indesc,then=True)
@@ -1837,7 +1997,7 @@ class RefTree(Tobj):
 		self.src    = src
 		self.safety = safety
 		assert type(self.args) is SubsObject or self.args == None
-	@debugdebug
+	@paranoid
 	def ddpush(self,dsc,amt,lim,repls=None):
 		gy = self.name
 		if gy >= lim and self.src == None:
@@ -1850,7 +2010,7 @@ class RefTree(Tobj):
 				raise DpushError
 		return RefTree(gy,self.args.ddpush(dsc,amt,lim,repls),None if self.src == None else self.src.ddpush(dsc,amt,lim,repls),pos=self)
 	@lazydpush
-	@debugdebug
+	@paranoid
 	def dpush(self,pushes):
 		gy = self.name
 		for amt,lim in pushes:
@@ -1861,21 +2021,24 @@ class RefTree(Tobj):
 
 
 	def debugtouch(self,indesc):
-		row = self.name
-		if row == 0: return
-		for j in reversed(indesc.postpushes):
-			if row>=j[1]:
-				row -= j[0]
+		pass
+		# row = self.name
+		# if row == 0: return
+		# for j in reversed(indesc.postpushes):
+		# 	if row>=j[1]:
+		# 		row -= j[0]
 
-		if row>=len(indesc.flat):
-			print(self,indesc)
-			assert False
-		if type(indesc.flat[row].type) is RefTree: assert indesc.flat[row].type.name == 0
-		elif type(indesc.flat[row].type) is LazyEvaluation:
-			assert type(indesc.flat[row].type.core) is RefTree
-			assert indesc.flat[row].type.core.name == 0
+		# if row>=len(indesc.flat):
+		# 	print(self,indesc)
+		# 	assert False
+		# if type(indesc.flat[row].type) is RefTree: assert indesc.flat[row].type.name == 0
+		# elif type(indesc.flat[row].type) is LazyEvaluation:
+		# 	# print("wakawaka")
+		# 	# print(self,indesc,indesc.flat[row])
+		# 	assert type(indesc.flat[row].type.core) is RefTree
+		# 	assert indesc.flat[row].type.core.name == 0
 
-	@debugdebug
+	@paranoid
 	def compare(self,dsc,other,odsc=None,thot=None,extract=None,lefpush=None,rigpush=None):
 		if type(other.unspool()) is not RefTree: return False
 		if self.src != None:
@@ -1921,7 +2084,7 @@ class RefTree(Tobj):
 	def needscarry(self):
 		return False
 	@lazyverify
-	@debugdebug
+	@paranoid
 	def verify(self,indesc,carry=None,reqtype=False,then=False,exob=None):
 		p1 = self.args.phase1(indesc)
 		if exob != None: p1 = p1 + exob.phase1_gentle()
@@ -1974,7 +2137,7 @@ class OperatorSet(Tobj):
 	def needscarry(self):
 		return False
 	@lazyverify
-	@debugdebug
+	@paranoid
 	def verify(self,indesc,carry=None,reqtype=False,then=False,exob=None):
 		# return RefTree()
 		fulltree = []
