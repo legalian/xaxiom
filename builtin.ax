@@ -13,21 +13,21 @@ EQ:[A:U,A,A]U,
 
 IDENTITY:    [A?:U,a:A]a==a,#IDENTITY -> "all elements of all types are equal to themselves."
 
-A:U,
-a:A,
-b:A,
-J:[c:A,a==c]U,
-q:a==b,
-J(a,IDENTITY(a)),
-J(b,q)
-# SUBSTITUTION:[A?:U,a?:A,b?:A,J:[c:A,a==c]U,q:a==b,J(a,IDENTITY(a))]J(b,q)#,#this is path induction.
+# A:U,
+# a:A,
+# b:A,
+# J:[c:A,a==c]U,
+# q:a==b,
+# J(a,IDENTITY(a)),
+# J(b,q)
+SUBSTITUTION:[A?:U,a?:A,b?:A,J:[c:A,a==c]U,q:a==b,J(a,IDENTITY(a))]J(b,q),#this is path induction.
 
 
 
-# SUBSTITUTE_GARUNTEE:[A?:U,a?:A,J:[c:A,a==c]U,k:J(a,IDENTITY(a))]SUBSTITUTION(|w,y|J(w,y),IDENTITY(a),k) == k,
+SUBSTITUTE_GARUNTEE:[A?:U,a?:A,J:[c:A,a==c]U,k:J(a,IDENTITY(a))]SUBSTITUTION(|w,y|J(w,y),IDENTITY(a),k) == k#,
 
 # '^':         [A?:U,a?:A,b?:A,q:b==a]a==b                     = SUBSTITUTION(|w,_|w==b,q,IDENTITY(b)),
-# EQUIVALENCE: [A?:U,B?:U,a:A,q:A==B]B                         = SUBSTITUTION(|w,_|w,q,a),
+# EQUIVALENCE: [A?:U,B?:U,a:A,q:A==B]B                         = SUBSTITUTION(|w,_|w,q,a)#,
 # PRESERVATION:[A?:U,B?:U,a?:A,b?:A,f:[A]B,q:a==b]f(a) == f(b) = SUBSTITUTION(|w,_|f(a)==f(w),q,IDENTITY(f(a))),
 # '->':        [J?:U,a?:J,b?:J,c?:J,q1:a==b,q2:b==c]a==c       = SUBSTITUTION(|w,_|a==w,q2,q1)
 
