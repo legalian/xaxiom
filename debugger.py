@@ -281,13 +281,13 @@ class Madscience_debugger(ast.NodeTransformer):
 		# res = self.funcNames[elem[0]]+" "+",".join(sres)
 
 		# print(line," "*(maxlen-len(line)),"<---- (%3.2f% Previously covered; %d Calls)" % self.previously_covered(elem))
-		res = self.funcNames[elem[0]]
-		if self.classowners[elem[0]] != None: res = self.classowners[elem[0]]+"."+res
+		res = self.funcNames[elem]
+		if self.classowners[elem] != None: res = self.classowners[elem]+"."+res
 		return res
 	def readable_stacktrace(self,stacktrace):
 		print("MS Traceback (most recent call last):")
 		# print(stacktrace)
-		lines  = [self.readable_stacktrace_element(elem) for elem in stacktrace]
+		lines  = [self.readable_stacktrace_element(elem[0]) for elem in stacktrace]
 		# print(lines)
 		maxlen = max([len(line) for line in lines])
 		for e in range(len(stacktrace)):
@@ -295,6 +295,14 @@ class Madscience_debugger(ast.NodeTransformer):
 			elem = stacktrace[e]
 
 			print(line," "*(maxlen-len(line)),"<---- (%3.0f%% Previously covered; %d Calls)" % self.previously_covered(elem))
+	def numcalls(self):
+		jnum = {}
+		for j,o in self.encounters.items():
+			if j[0] in jnum:jnum[j[0]]+=o
+			else:jnum[j[0]]=o
+		maxlen = max([len(self.readable_stacktrace_element(ind)) for ind,amt in jnum.items()])
+		for ind,amt in sorted(jnum.items(), key = lambda kv:(kv[1], kv[0])):
+			print(self.readable_stacktrace_element(ind)," "*(maxlen-len(self.readable_stacktrace_element(ind)))," called %d times." % amt)
 
 		# 	if elem not in self.encounters:
 
@@ -387,13 +395,13 @@ try:
 	exec(co, test_namespace)
 	end = time.time()
 	print("elapsed time:",end - start)
+	# madscience_debugger.numcalls();
 except Exception as u:
 	if hasattr(u,'madscience_stack'):
 		madscience_debugger.readable_stacktrace(u.madscience_stack)
-		raise u
 	else:
 		print("Madscience did not catch any errors...")
-		raise u
+	raise u
 
 
 #4.713582992553711

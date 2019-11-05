@@ -41,7 +41,7 @@ PRESERVATION:[A?:U,B?:U,a?:A,b?:A,f:[A]B,q:a==b]f(a) == f(b) = SUBSTITUTION(|w,_
 
 
 
-# #Types may be nested and unraveled.
+#Types may be nested and unraveled.
 # |AND,['.'acc,'.'accb],[UNION,MEMBER,MEMBERB],AND.equal,FUNC,'.'eval,[MAKEFUNC,FUNCASSURANCE],FUNC.equal|:[A:U,B:[A]U]{#For all (types) and (types derived from the first type)...
 #     and:U,
 #     |acc,accb|:[c:and]{#Given an element of the type representing the union...
