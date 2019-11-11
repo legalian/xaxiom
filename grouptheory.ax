@@ -1,23 +1,27 @@
 
 
 
+^ -> :
+! :
+== != :
+=> >> << <= :
++ - :
+* :
+
+
 {
-	::'builtin.ax'
-}
+	::'builtin.ax',
+# }
 
 # # homomorphism =/= homotopy (isomporphism)
 # # 	homomorphism -> specific to group theory structure
 # # 	homotopy ->function with a perfect inverse
 
+
+
 # [
 # 	::'builtin.ax'
 # ]{
-
-
-
-
-
-
 
 
 # #project euler
@@ -28,25 +32,21 @@
 
 
 
-# 	Relation := {
-# 		J:U,
-# 		'=>':[J,J]U,
-# 		'>>':[a:J,b:J]U = !(b=>a),
-# 		'<=':[a:J,b:J]U = b=>a,
-# 		'<<':[a:J,b:J]U = !(a=>b),
-# 		transitive:[a?:J,b?:J,c?:J,a=>b,b=>c]a=>c,
-# 		reflex:[a:J]a=>a
-# 	},
-
-
-# 	Equivalence_relation := Relation<
-# 		|J,'=>','>>',transitive,reflex|->,
-# 		'==':='=>',
-# 		'!=':='>>',
-# 		'->':=transitive,
-# 		symmetric:[a?:J,b?:J,a==b]b==a,
-# 		'^':=symmetric
-# 	>,
+	Relation := {
+		J:U,
+		'=>':[J,J]U,
+		'>>':[a:J,b:J] = !(b=>a),
+		'<=':[a:J,b:J] = b=>a,
+		'<<':[a:J,b:J] = !(a=>b),
+		transitive:[a?:J,b?:J,c?:J,a=>b,b=>c]a=>c,
+		reflex:[a:J]a=>a
+	}
+	# ,
+	# Equivalence_relation := Relation<
+	# 	|J,'=>','>>','<=','<<',transitive|=|J,'==','!=','==','!=','->'|,
+	# 	'^':[a?:J,b?:J,a==b]b==a
+	# >
+	# ,
 # 	Connex_relation := Relation<
 # 		|J,'=>','<=','<<','>>'|->,
 # 		connex:[a?:J,b?:J,a>>b]a=>b,
@@ -587,4 +587,4 @@
 
 
 
-# }
+}

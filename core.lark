@@ -14,8 +14,10 @@ introducer : "|"multilabel(","multilabel)*"|"
 ?operators : opsymbol* object (opsymbol+ object)*
 subsobject : argument(","argument)*
 dualsubs   : declaration (","declaration)*
+mixedsubs  : mixin(","mixin)*
+
 object     : (object".")? label ("("subsobject?")")*  -> reftree
-           | object"<"subsobject?">"                  -> template
+           | object"<"(introducer "=" introducer ",")? mixedsubs?">"                   -> template
            | "("subsobject?")"                        -> wsubsobject
            | "{"dualsubs?"}"                          -> wdualsubs
 
@@ -24,9 +26,14 @@ argument : (assignlabel"=")? lamb
 infermarker : "?:" -> silentmarker | "!:" -> contractmarker | "!?:" -> interrobangmarker | "?!:" -> interrobangmarker | ":"
 datapack    : (createlabel infermarker)|(introducer infermarker)|(infermarker":")
 declaration : datapack ("["dualsubs"]")? "="strategy -> inferreddeclaration
-			| datapack strategy"="strategy
-			| datapack strategy
-			| strategy ("="strategy)?
+            | datapack strategy"="strategy
+            | datapack strategy
+            | strategy ("="strategy)?
+mixin : datapack ("["dualsubs"]")? "="strategy -> inferreddeclaration
+      | datapack strategy"="strategy           -> declaration
+      | datapack strategy                      -> declaration
+      | (assignlabel"=")? lamb                 -> argument
+
 precrowflags : "left-assoc"->leftassoc |"right-assoc"->rightassoc
 precrow : opsymbol* precrowflags? ":"
 start : precrow* strategy

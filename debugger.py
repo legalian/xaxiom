@@ -215,9 +215,9 @@ class Madscience_debugger(ast.NodeTransformer):
 	def visitblock(self,body,kind):
 		if not self.enableCodeCoverage: return
 		if self.hot == None: return
-		for i in reversed(range(len(body))):
+		for i in reversed(range(len(body)+1)):
 			versneaky0 = Expr(value=Call(func=Attribute(value=Name(id='madscience_debug_context', ctx=Load()), attr='log', ctx=Load()), args=[Num(n=self.scopes[self.hot]+i)], keywords=[]))
-			body.insert(i+1,versneaky0)
+			body.insert(i,versneaky0)
 		self.scopes[self.hot]+=len(body)
 	def visit_If(self, node: ast.If):
 		self.generic_visit(node)
@@ -302,7 +302,9 @@ class Madscience_debugger(ast.NodeTransformer):
 			else:jnum[j[0]]=o
 		maxlen = max([len(self.readable_stacktrace_element(ind)) for ind,amt in jnum.items()])
 		for ind,amt in sorted(jnum.items(), key = lambda kv:(kv[1], kv[0])):
-			print(self.readable_stacktrace_element(ind)," "*(maxlen-len(self.readable_stacktrace_element(ind)))," called %d times." % amt)
+			hya = self.readable_stacktrace_element(ind)
+			if ".verify" not in hya and ".flatten" not in hya and "symextract" not in hya: continue
+			print(hya," "*(maxlen-len(hya))," called %d times." % amt)
 
 		# 	if elem not in self.encounters:
 
@@ -367,7 +369,7 @@ filename = sys.argv[1]
 with open(filename, encoding='utf-8') as f: code = f.read()
 
 
-madscience_debugger = Madscience_debugger(True)
+madscience_debugger = Madscience_debugger(False)
 
 test_namespace = {'madscience_debugger': madscience_debugger}
 
@@ -395,7 +397,7 @@ try:
 	exec(co, test_namespace)
 	end = time.time()
 	print("elapsed time:",end - start)
-	# madscience_debugger.numcalls();
+	madscience_debugger.numcalls();
 except Exception as u:
 	if hasattr(u,'madscience_stack'):
 		madscience_debugger.readable_stacktrace(u.madscience_stack)
