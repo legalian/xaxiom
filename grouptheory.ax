@@ -9,6 +9,8 @@
 * :
 
 
+
+
 {
 	::'builtin.ax',
 # }
@@ -18,11 +20,10 @@
 # # 	homotopy ->function with a perfect inverse
 
 
-
 # [
 # 	::'builtin.ax'
 # ]{
-
+ 
 
 # #project euler
 
@@ -40,111 +41,118 @@
 		'<<':[a:J,b:J] = !(a=>b),
 		transitive:[a?:J,b?:J,c?:J,a=>b,b=>c]a=>c,
 		reflex:[a:J]a=>a
-	}
+	},
+	Equivalence_relation := Relation<
+		|J,'=>','>>','<=','<<',transitive|=|J,'==','!=','==','!=','->'|,
+		'^':[a?:J,b?:J,a==b]b==a
+	>,
+	Connex_relation := Relation<
+		|J,'=>','<=','<<','>>'|,
+		connex:[a?:J,b?:J,a>>b]a=>b,
+		reflex = |a|DEC(a=>a,|s|s,|s|s(connex(x)))
+	>,
+	Complete_relation := Connex_relation<
+		|J,'=>','<=','<<','>>'|,
+		infimum:[
+			P:[J]U,Pj:={j:J,p:P(j)},
+			a:J,
+			b:[x:Pj]x.j=>a,
+			Pj
+		]{
+			inf:J,
+			under:[x:Pj]x.j=>inf,
+			over:[al:J,[x:Pj]x.j=>al]al<=inf
+		},
+		supremum:[
+			P:[J]U,Pj:={j:J,p:P(j)},
+			a:J,
+			b:[x:Pj]x.j<=a,
+			pj:Pj,
+			sup := infimum(|j|[x:Pj]x.j<=j,pj.j,|x|x.p(pj),(a,b))
+		]{
+			j:J = sup.inf,
+			over:[x:Pj]x.j<=sup.inf = sup.over(x.j,|z|z.p(x)),
+			under:[al:J,b:[x:Pj]x.j<=al]al=>sup.inf = sup.under((al,b))
+		}
+	>,
+	Conditionally_noether_relation := Complete_relation<
+		|J,'=>','<=','<<','>>'|,
+		new_infimum:[
+			P:[J]U,Pj:={j:J,p:P(j)},
+			a:J,
+			b:[x:Pj]x.j=>a,
+			Pj
+		]{
+			inf:Pj,
+			under:[x:Pj]x.j=>inf.j
+		},
+		infimum = |P,a,b,pj|(
+			new_infimum(P,a,b,pj).pj.j,
+			new_infimum(P,a,b,pj).under,
+			|al,bou|bou(new_infimum(P,a,b,pj).pj)
+		)
+	>,
+	Noether_relation := Conditionally_noether_relation<
+		|J,'=>','<=','<<','>>'|,
+		noether:[P:[J]U,Pj:={j:J,p:P(j)},Pj]{
+			l:Pj,
+			p:[k:Pj]k.j=>l.j
+		},
+		noetherian_induction:[
+			P:[J]U,
+			f:[y:J,[z:J,z<<y]P(z)]P(y),
+			x:J
+		]P(x)
+		 =
+			DEC({j:J,p:!P(j)},
+				|s|[min := noether(|j|!P(j),s)]min.l.p(f(min.l.j,|k,p|DEC(P(k),|h|h,|h|p(min.p((k,h)),P(k))))),#contradiction
+				|s|negate_union(s,x)
+			)
+		# 	,
+		# noetherian_recursion:[
+		# 	P:[J]U,
+		# 	f:[y:J,[z:J,z<<y]P(z)]P(y)
+		# ]{
+		# 	r?:[x:J]P(x),
+		# 	pred:[x:J]r(x) == f(x,|z,_|r(z))
+		# } = |u|noetherian_induction(
+		# 		|j|{
+		# 			r?:[x:J]P(x),
+		# 			pred:[x:J,q:x<=j]r(x) == f(x,|z,_|r(z))
+		# 		},
+		# 		|j,R||x,q|PRESERVATION(
+		# 			|w|f(x,|z,q2|w(z,DEC(z=>j,|s|q2(transitive(s,q),z<<j),|s|s))),
+		# 			|z,q3|R(z,q3).pred(z,connex(q3)),
+		# 			A=[z:J,z<<j]P(z)
+		# 		),
+		# 		u
+		# 	).pred(u,reflex(u)),
+		# connex = |a,b,q|[
+		# 	P:[x:J]U = OR(x==a,x==b),
+		# 	Pj:U = {j?:J,p:P(j)},
+		# 	pa:Pj = P(a).construct(IDENTITY(a)),
+		# 	pb:Pj = P(b).construct(IDENTITY(b)),
+		# 	min:= noether(P,a)
+		# ]DEC(min.l.j==a,
+		# 	|s|SUBSTITUTION(|w|a=>w,min.l.p.extract(s),min.p(pa)),
+		# 	|s|q(SUBSTITUTION(|w|b=>w,s,min.p(pb)))#b=>a
+		# ),
+		# new_infimum = |P,a,b,pj|noether(P,pj)
+	>
 	# ,
-	# Equivalence_relation := Relation<
-	# 	|J,'=>','>>','<=','<<',transitive|=|J,'==','!=','==','!=','->'|,
-	# 	'^':[a?:J,b?:J,a==b]b==a
-	# >
-	# ,
-# 	Connex_relation := Relation<
-# 		|J,'=>','<=','<<','>>'|->,
-# 		connex:[a?:J,b?:J,a>>b]a=>b,
-# 		reflex = |a|DEC(a=>a,|s|s,|s|s(connex(x)))
-# 	>,
-# 	Complete_relation := Connex_relation<
-# 		|J,'=>','<=','<<','>>'|->,
-# 		infimum:[
-# 			P:[J]U,Pj:={j:J,p:P(j)},
-# 			a:J,
-# 			b:[x:Pj]x.j=>a,
-# 			Pj
-# 		]{
-# 			inf:J,
-# 			under:[x:Pj]x.j=>inf,
-# 			over:[al:J,[x:Pj]x.j=>al]al<=inf
-# 		},
-# 		supremum:[
-# 			P:[J]U,Pj:={j:J,p:P(j)},
-# 			a:J,
-# 			b:[x:Pj]x.j<=a,
-# 			pj:Pj,
-# 			sup := infimum(|j|[x:Pj]x.j<=j,pj.j,|x|x.p(pj),(a,b))
-# 		]{
-# 			j:J = sup.inf,
-# 			over:[x:Pj]x.j<=sup = sup.over(x.j,|z|z.p(x)),
-# 			under:[al:J,bb:[x:J,P(x)]x<=al]al=>sup = sup.under((al,bb))
-# 		}
-# 	>,
-# 	Conditionally_noether_relation := Complete_relation<
-# 		|J,'=>','<=','<<','>>'|->,
-# 		new_infimum:[
-# 			P:[J]U,Pj:={j:J,p:P(j)},
-# 			a:J,
-# 			b:[Pj]x=>a,
-# 			Pj
-# 		]{
-# 			pj:Pj,
-# 			under:[Pj]pj.j=>inf
-# 		},
-# 		infimum = |P,a,b,pj|(
-# 			new_infimum(P,a,b,pj).pj.j,
-# 			new_infimum(P,a,b,pj).under,
-# 			|al,bou|bou(new_infimum(P,a,b,pj).pj)
-# 		)
-# 	>,
-# 	Noether_relation := Conditionally_noether_relation<
-# 		|J,'=>','<=','<<','>>'|->,
-# 		noether:[P:[J]U,Pj:={j:J,p:P(j)},Pj]{
-# 			l:Pj,
-# 			p:[k:Pj]k.j=>l.j
-# 		},
-# 		connex = |a,b,q|[
-# 			P:[x:J]U = OR(x==a,x==b),
-# 			Pj:U = {j?:J,p:P(j)},
-# 			pa:Pj = P(a).construct(IDENTITY(a)),
-# 			pb:Pj = P(b).construct(IDENTITY(b)),
-# 			min:= noether(P,a)
-# 		]DEC(min.l.j==a,
-# 			|s|SUBSTITUTION(|w|a=>w,min.l.p.extract(s),min.p(pa)),
-# 			|s|q(SUBSTITUTION(|w|b=>w,s,min.p(pb)))#b=>a
-# 		),
-# 		new_infimum = |P,a,b,pj|noether(P,pj),
-# 		noetherian_induction:[
-# 			P:[J]U,
-# 			f:[y:J,[z:J,z<<y]P(z)]P(y),
-# 			x:J
-# 		]P(x) = 
-# 			DEC({j:J,p:!P(j)},
-# 				|s|[min = noether(|j|!P(j),s)]min.l.p(f(min.l.j,|k,p|DEC(P(k),|h|h,|h|p(min.p((k,h)),P(k))))),#contradiction
-# 				|s|negate_union(s,x)
-# 			),
-# 		noetherian_recursion:[
-# 			P:[J]U,
-# 			f:[y:J,[z:J,z<<y]P(z)]P(y),
-# 		]{
-# 			r?:[x:J]P(x),
-# 			pred:[x:J]r(x) == f(x,|z,_|r(z))
-# 		} = |u|noetherian_induction(
-# 				|j|{
-# 					r?:[x:J]P(x),
-# 					pred:[x:J,q:x<=j]r(x) == f(x,|z,_|r(z))
-# 				},
-# 				|j,R||x,q|PRESERVATION(
-# 					A=[z:J,z<<j]P(z),
-# 					|w|f(x,|z,q2|w(z,DEC(z=>j|s|q2(transitive(s,q),z<<j)|s|s))),
-# 					|z,q3|R(z,q3).pred(z,connex(q3))
-# 				),
-# 				u
-# 			).pred(u,reflex(u))
-# 	>,
+
+
+
+
+
 # 	Dual_conditionally_noetherian_relation:Conditionally_noether_relation<
 # 		|J,'=>','<=',transitive,reflex|->
 # 		converse:Conditionally_noether_relation<J=J,'=>'='<=',
 # 			transitive=|a,b,c,q1,q2|transitive(q2,q1),
 # 			reflex=|a|reflex(a)
 # 		>
-# 	>,
+# 	>
+# ,
 # 	Truncating_noetherian_relation:Noether_relation<
 # 		|J,'=>','<=',transitive,reflex|->
 # 		converse:Conditionally_noether_relation<J=J,'=>'='<=',

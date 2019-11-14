@@ -4,7 +4,7 @@ import os
 import sys
 
 
-from .transformer import MyTransformer
+# from .transformer import MyTransformer
 
 # from .nexus import MyTransformer
 # from .nexus import *
@@ -12,7 +12,6 @@ from .transformer import MyTransformer
 from .simplifier import *
 
 import functools
-
 import copy
 import re
 
@@ -62,6 +61,7 @@ class BuildAxiomCommand(sublime_plugin.ViewEventListener,sublime_plugin.TextComm
 		self.needs_update = False
 
 		# self.tooltipranges = []
+
 		# self.insertpoints = []
 
 		self.curtree = None
@@ -92,33 +92,33 @@ class BuildAxiomCommand(sublime_plugin.ViewEventListener,sublime_plugin.TextComm
 
 
 	def update_selector_phantoms(self):
+		return
+		# self.selectorphantoms = []
+		# if self.curtree is None: return
+		# ranges = []
+		# for den in self.view.sel():
+		# 	if den.a!=den.b:
+		# 		ranges.append(den.begin())
+		# 		continue
+		# 	#do work here
 
-		self.selectorphantoms = []
-		if self.curtree is None: return
-		ranges = []
-		for den in self.view.sel():
-			if den.a!=den.b:
-				ranges.append(den.begin())
-				continue
-			#do work here
-
-		diagno = []
-		scope = Scope([])
-		diagnostics(self.curtree,scope,ranges,self.view,diagno)
-		for diag in diagno:
-			if diag[1] == None:
-				error = '<span style="color:#FF00FF">~error~ = '+str(diag[0])+' . . . \n(~nosig~)</span>'
-			else:
-				if diag[5] == 1:
-					error = '<span style="color:#FF00FF">'+str(diag[2])+' = '+str(diag[0])+' . . . \n('+str(diag[1])+') (found by name only)</span>'
-				else:
-					error = '<span style="color:#FF00FF">'+str(diag[2])+' = '+str(diag[0])+' . . . \n('+str(diag[1])+')</span>'
-			self.selectorphantoms.append(sublime.Phantom(
-				sublime.Region(self.view.text_point(diag[3],diag[4])),#carry cig type
-				error,
-				sublime.LAYOUT_BELOW
-			))
-		self.update_phantoms()
+		# diagno = []
+		# scope = Scope([])
+		# diagnostics(self.curtree,scope,ranges,self.view,diagno)
+		# for diag in diagno:
+		# 	if diag[1] == None:
+		# 		error = '<span style="color:#FF00FF">~error~ = '+str(diag[0])+' . . . \n(~nosig~)</span>'
+		# 	else:
+		# 		if diag[5] == 1:
+		# 			error = '<span style="color:#FF00FF">'+str(diag[2])+' = '+str(diag[0])+' . . . \n('+str(diag[1])+') (found by name only)</span>'
+		# 		else:
+		# 			error = '<span style="color:#FF00FF">'+str(diag[2])+' = '+str(diag[0])+' . . . \n('+str(diag[1])+')</span>'
+		# 	self.selectorphantoms.append(sublime.Phantom(
+		# 		sublime.Region(self.view.text_point(diag[3],diag[4])),#carry cig type
+		# 		error,
+		# 		sublime.LAYOUT_BELOW
+		# 	))
+		# self.update_phantoms()
 
 
 	def update_syntax_phantoms(self):
@@ -138,7 +138,8 @@ class BuildAxiomCommand(sublime_plugin.ViewEventListener,sublime_plugin.TextComm
 			# self.insertpoints = [0] + self.insertpoints + [len(document)]
 			# document = '\xA5'.join([document[self.insertpoints[i]:self.insertpoints[i+1]] for i in range(len(self.insertpoints)-1)])
 			try:
-				ahah = MyTransformer().transform(self.l.parse(document))
+				compilefiles({"currentfile"},{"currentfile":document},l=self.l,basepath=os.path.dirname(os.path.realpath(__file__))+"/")
+				# ahah = MyTransformer().transform(self.l.parse(document))
 				#ahah = self.l.parse(document)
 
 
@@ -148,36 +149,36 @@ class BuildAxiomCommand(sublime_plugin.ViewEventListener,sublime_plugin.TextComm
 
 				# cheat = StratSeries([ObjStrategy(upcast=b) for b in bank])
 				# cheat = cheat.verify(StratSeries([],exverified=True),errors)
-				print("your monkey matching doesnt work")
-				print("need multiple different alternate comparators and also lazy-flatten-callbacks.")
-				print("maybe lookahead to figure out if types should be supplied(or obj==None), sparing yourself an observation.")
 				#|+5|a(b,c,d)
-				print("--=-=-=-=--momomomo=-=-=-=-=-=-==--=>>>>>>")
-				# try:
-				nobh = ahah[1].verify(ScopeObject([],oprows=ahah[0]))
-				print(nobh)
-				print("--=-=-=-=--=-=-=-=-=-=-==--=>>>>>>")
+				# print("--=-=-=-=--momomomo=-=-=-=-=-=-==--=>>>>>>")
+				# # try:
+				# nobh = ahah[1].verify(ScopeObject([],oprows=ahah[0]))
+				# print(nobh)
+				# print("--=-=-=-=--=-=-=-=-=-=-==--=>>>>>>")
 				# except ErrorObject as u:
 				# 	pass
 				# except RuntimeError:
 				# 	print("RECURSION DEPTH EXCEEDED")
 
+				# assert False
+				# print()
+				# print()
+				# print()
+				# print(task)
+				# print(ErrorObject.rer)
 
-				print()
-				print()
-				print()
-				print(task)
-				print(ErrorObject.rer)
+				# # print(parseobjkind(ahah.children[1]))
+				# # attempt = Strategy(parsed=ahah)
+				# # for node in bank:
+				# self.curtree = None
 
-				# print(parseobjkind(ahah.children[1]))
-				# attempt = Strategy(parsed=ahah)
-				# for node in bank:
-				self.curtree = None
-
-				#syntaxreports(self.curtree,self)
-				self.syntaxphantoms = ErrorObject.reports(self,wclist)
+				# #syntaxreports(self.curtree,self)
+				# self.syntaxphantoms = ErrorObject.reports(self,wclist)
 
 				# self.curtree = attempt
+
+
+
 			except UnexpectedInput as u:
 				self.syntaxphantoms.append(sublime.Phantom(
 					sublime.Region(self.view.text_point(u.line-1,u.column-1)),
@@ -185,10 +186,19 @@ class BuildAxiomCommand(sublime_plugin.ViewEventListener,sublime_plugin.TextComm
 					sublime.LAYOUT_INLINE
 				))
 				self.curtree = None
+			except LanguageError as u:
+				self.syntaxphantoms.append(sublime.Phantom(
+					sublime.Region(self.view.text_point(u.row-1,u.column-1)),
+					'<span style="color:red">█Language Error: '+u.message+' </span>',
+					sublime.LAYOUT_BELOW
+				))
+				self.curtree = None
 		self.update_phantoms()
 	def update_phantoms(self):
 		self.phantom_set.update([])
 		self.phantom_set.update(self.syntaxphantoms+self.selectorphantoms)
+
+
 
 
 
