@@ -9,29 +9,16 @@
 * :
 
 
-
-
 {
 	::'builtin.ax',
-# }
 
 # # homomorphism =/= homotopy (isomporphism)
 # # 	homomorphism -> specific to group theory structure
 # # 	homotopy ->function with a perfect inverse
 
-
-# [
-# 	::'builtin.ax'
-# ]{
- 
-
 # #project euler
 
-
 # # make an structure thats just for releasable memory objects.
-
-
-
 
 	Relation := {
 		J:U,
@@ -43,13 +30,15 @@
 		reflex:[a:J]a=>a
 	},
 	Equivalence_relation := Relation<
-		|J,'=>','>>','<=','<<',transitive|=|J,'==','!=','==','!=','->'|,
-		'^':[a?:J,b?:J,a==b]b==a
+		|J,'=>','>>','<=','<<',transitive|=|J,'==','!=','==','!=','->'|,#notation changes for equivalence relation...
+		'^':[a?:J,b?:J,a==b]b==a#symmetric property
 	>,
 	Connex_relation := Relation<
 		|J,'=>','<=','<<','>>'|,
 		connex:[a?:J,b?:J,a>>b]a=>b,
-		reflex = |a|DEC(a=>a,|s|s,|s|s(connex(x)))
+		reflex = |a|DEC(a=>a,|s|s,|s|s(connex(s),a=>a))
+		#reflexivity can be implied from connexity so might as well include the proof.
+		#this way, when a user is supplying a connex relation, they don't need to prove reflexivity.
 	>,
 	Complete_relation := Connex_relation<
 		|J,'=>','<=','<<','>>'|,
@@ -87,13 +76,14 @@
 			under:[x:Pj]x.j=>inf.j
 		},
 		infimum = |P,a,b,pj|(
-			new_infimum(P,a,b,pj).pj.j,
+			new_infimum(P,a,b,pj).inf.j,
 			new_infimum(P,a,b,pj).under,
-			|al,bou|bou(new_infimum(P,a,b,pj).pj)
+			|al,bou|bou(new_infimum(P,a,b,pj).inf)
 		)
 	>,
+
 	Noether_relation := Conditionally_noether_relation<
-		|J,'=>','<=','<<','>>'|,
+		|J,'=>','<=','<<','>>',reflex,transitive,connex|,
 		noether:[P:[J]U,Pj:={j:J,p:P(j)},Pj]{
 			l:Pj,
 			p:[k:Pj]k.j=>l.j
@@ -102,48 +92,46 @@
 			P:[J]U,
 			f:[y:J,[z:J,z<<y]P(z)]P(y),
 			x:J
-		]P(x)
-		 =
+		]P(x) =
 			DEC({j:J,p:!P(j)},
-				|s|[min := noether(|j|!P(j),s)]min.l.p(f(min.l.j,|k,p|DEC(P(k),|h|h,|h|p(min.p((k,h)),P(k))))),#contradiction
+				|s|[min := noether(|j|!P(j),s)]min.l.p(f(min.l.j,|k,p|DEC(P(k),|h|h,|h|p(min.p((k,h)),P(k)))),P(x)),#proof by contradiction
 				|s|negate_union(s,x)
-			)
-		# 	,
-		# noetherian_recursion:[
-		# 	P:[J]U,
-		# 	f:[y:J,[z:J,z<<y]P(z)]P(y)
-		# ]{
-		# 	r?:[x:J]P(x),
-		# 	pred:[x:J]r(x) == f(x,|z,_|r(z))
-		# } = |u|noetherian_induction(
-		# 		|j|{
-		# 			r?:[x:J]P(x),
-		# 			pred:[x:J,q:x<=j]r(x) == f(x,|z,_|r(z))
-		# 		},
-		# 		|j,R||x,q|PRESERVATION(
-		# 			|w|f(x,|z,q2|w(z,DEC(z=>j,|s|q2(transitive(s,q),z<<j),|s|s))),
-		# 			|z,q3|R(z,q3).pred(z,connex(q3)),
-		# 			A=[z:J,z<<j]P(z)
-		# 		),
-		# 		u
-		# 	).pred(u,reflex(u)),
-		# connex = |a,b,q|[
-		# 	P:[x:J]U = OR(x==a,x==b),
-		# 	Pj:U = {j?:J,p:P(j)},
-		# 	pa:Pj = P(a).construct(IDENTITY(a)),
-		# 	pb:Pj = P(b).construct(IDENTITY(b)),
-		# 	min:= noether(P,a)
-		# ]DEC(min.l.j==a,
-		# 	|s|SUBSTITUTION(|w|a=>w,min.l.p.extract(s),min.p(pa)),
-		# 	|s|q(SUBSTITUTION(|w|b=>w,s,min.p(pb)))#b=>a
-		# ),
-		# new_infimum = |P,a,b,pj|noether(P,pj)
+			),
+		noetherian_recursion:[
+			P:[J]U,
+			f:[y:J,[z:J,z<<y]P(z)]P(y)
+		]{
+			r?:[x:J]P(x),
+			pred:[x:J]r(x) == f(x,|z,_|r(z))
+		} = (pred=|u|noetherian_induction(
+				|j|{
+					r?:[x:J]P(x),
+					pred:[x:J,q:x<=j]r(x) == f(x,|z,_|r(z))
+				},
+				|j,R|(pred=|x,q|PRESERVATION(
+					|w|f(x,|z,q2|w(z,DEC(z=>j,|s|q2(transitive(s,q),z<<j),|s|s))),
+					|z,q3|R(z,q3).pred(z,connex(q3)),
+					A = [z:J,z<<j]P(z),
+					a = |z,qz|R(z,qz).r(z),
+					b = |z,qz|f(z,|l,_|R(z,qz).r(l))
+				)),
+				u
+			).pred(u,reflex(u))),
+		connex = |a,b,q|[
+			P:[x:J]U = OR(x==a,x==b),
+			Pj:U = {j?:J,p:P(j)},
+			pa:Pj = P(a).construct(IDENTITY(a)),
+			pb:Pj = P(b).construct(IDENTITY(b)),
+			min:= noether(P,a)
+		]DEC(min.l.j==a,
+			|s|SUBSTITUTION(|w|a=>w,min.l.p.extract(s),min.p(pa)),
+			|s|q(SUBSTITUTION(|w|b=>w,s,min.p(pb)))#b=>a
+		),
+		new_infimum = |P,a,b,pj|noether(P,pj)
 	>
 	# ,
 
-
-
-
+	# Inductive_Type
 
 # 	Dual_conditionally_noetherian_relation:Conditionally_noether_relation<
 # 		|J,'=>','<=',transitive,reflex|->
@@ -169,8 +157,6 @@
 # 	>,
 
 
-
-
 # 	relation_exhibits_antisymmetry
 
 # 	ordered group:
@@ -182,14 +168,6 @@
 # 		relation exhibits antisymmetry with the given equivalence relation.
 # 		relation is transitive forward and backward with the equivalence relation.
 # 		relation is translation invariant. (but only with positive translations)
-
-
-
-
-
-
-
-
 
 
 

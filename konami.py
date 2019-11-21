@@ -2,15 +2,8 @@ import sublime, sublime_plugin
 from lark import Lark, UnexpectedInput, Transformer, v_args, InlineTransformer, Tree
 import os
 import sys
-
-
-# from .transformer import MyTransformer
-
-# from .nexus import MyTransformer
-# from .nexus import *
-
+import colorsys
 from .simplifier import *
-
 import functools
 import copy
 import re
@@ -18,8 +11,6 @@ import re
 
 
 # reloadself()
-
-
 
 # from myplugin.transformer
 
@@ -52,6 +43,8 @@ class BuildAxiomCommand(sublime_plugin.ViewEventListener,sublime_plugin.TextComm
 
 		
 		self.update_syntax_phantoms()
+
+
 
 
 	def __init__(self, view):
@@ -121,6 +114,8 @@ class BuildAxiomCommand(sublime_plugin.ViewEventListener,sublime_plugin.TextComm
 		# self.update_phantoms()
 
 
+
+
 	def update_syntax_phantoms(self):
 		self.syntaxphantoms = []
 
@@ -143,8 +138,6 @@ class BuildAxiomCommand(sublime_plugin.ViewEventListener,sublime_plugin.TextComm
 				#ahah = self.l.parse(document)
 
 
-
-				
 				# errors = ErrorObject()
 
 				# cheat = StratSeries([ObjStrategy(upcast=b) for b in bank])
@@ -167,6 +160,8 @@ class BuildAxiomCommand(sublime_plugin.ViewEventListener,sublime_plugin.TextComm
 				# print(task)
 				# print(ErrorObject.rer)
 
+
+
 				# # print(parseobjkind(ahah.children[1]))
 				# # attempt = Strategy(parsed=ahah)
 				# # for node in bank:
@@ -177,8 +172,6 @@ class BuildAxiomCommand(sublime_plugin.ViewEventListener,sublime_plugin.TextComm
 
 				# self.curtree = attempt
 
-
-
 			except UnexpectedInput as u:
 				self.syntaxphantoms.append(sublime.Phantom(
 					sublime.Region(self.view.text_point(u.line-1,u.column-1)),
@@ -187,9 +180,22 @@ class BuildAxiomCommand(sublime_plugin.ViewEventListener,sublime_plugin.TextComm
 				))
 				self.curtree = None
 			except LanguageError as u:
+				fullmessage = "<div style='background-color:#9A274E;border-radius:5px;'><div style='color:#282923;margin-left:10px;margin-right:10px'>Language Error:</div><div style='background-color:#612839;padding:10px;'>"+u.message+"</div></div>"
 				self.syntaxphantoms.append(sublime.Phantom(
 					sublime.Region(self.view.text_point(u.row-1,u.column-1)),
-					'<span style="color:red">█Language Error: '+u.message+' </span>',
+					fullmessage,
+					sublime.LAYOUT_BELOW
+				))
+				self.curtree = None
+			except TypeMismatch as u:
+				# sto1 = []
+				# sto2 = []
+				# u.expected.pmultiline(sto1,0,"Expected: ","",40,FormatterObject(u.context))
+				# u.got.pmultiline(sto2,0,"Got: ","",40,FormatterObject(u.context))
+				fullmessage = "<div style='background-color:#9A274E;border-radius:5px;'><div style='color:#282923;margin-left:10px;margin-right:10px'>Type mismatch:</div><div style='background-color:#612839;padding:10px;'>"+u.expected+"<br>"+u.got+"</div></div>"
+				self.syntaxphantoms.append(sublime.Phantom(
+					sublime.Region(self.view.text_point(u.row-1,u.column-1)),
+					fullmessage,
 					sublime.LAYOUT_BELOW
 				))
 				self.curtree = None
@@ -199,6 +205,16 @@ class BuildAxiomCommand(sublime_plugin.ViewEventListener,sublime_plugin.TextComm
 		self.phantom_set.update(self.syntaxphantoms+self.selectorphantoms)
 
 
+
+
+		"""
+					<div style="margin:5px;position:relative;">
+						<div style="left:0;top:0;position:absolute;background-color:black;border-color:white;border-style:solid;border-width:5px 5px 5px 5px;">
+
+						</div>
+						<div style="left:100;top:100;position:absolute;background-color:black;border-color:white;border-style:solid;border-width:5px 5px 5px 5px;">third line</div>
+					</div>
+					"""
 
 
 

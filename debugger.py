@@ -163,6 +163,7 @@ class Madscience_debugger(ast.NodeTransformer):
 				print("You defined an exit pattern, "+node.name+", and then you define a function with different first N parameters from it.")
 				assert False
 
+
 		node.body = [
 			*shobb,
 			*node.body[:fpad],
@@ -336,8 +337,6 @@ class Madscience_debugger(ast.NodeTransformer):
 
 
 #you automatically have 0.
-
-
 
 
 
