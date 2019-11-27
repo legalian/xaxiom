@@ -20,7 +20,6 @@
 	# 	::=Q    <--- Q must be a union or a fibration into a union. imports all types in Q into the current space.
 
 
-
 {
 U:U,
 #U is special. It is the type that all types and predicates have.
@@ -31,8 +30,7 @@ U:U,
 	#because "has type of" is not a relation or predicate, girard's paradox cannot be expressed in this system
 	#U is the only object allowed to appear in its own type.
 
-EQ:[A:U,A,A]U,
-'==':[A?:U,a:A,b:A]U = EQ(A,a,b),
+'==':[A?:U,a:A,b:A]U,
 #operator overloading-> any function that takes one or two positional arguments can be named an operator.
 #the = here means any usage of == is rewritten behind the scenes to be an EQ call. == and EQ are then judgementally equivalent.
 #the question mark after the A means that, when supplying positional arguments, you skip the A and just provide a and b. The compiler then tries to infer A for you.
@@ -51,6 +49,7 @@ PRESERVATION:[A?:U,B?:U,a?:A,b?:A,f:[A]B,q:a==b]f(a) == f(b) = SUBSTITUTION(|w,_
 '->':        [J?:U,a?:J,b?:J,c?:J,q1:a==b,q2:b==c]a==c       = SUBSTITUTION(|w,_|a==w,q2,q1),          #this is the transitive property of equality. I prove it with path induction.
 
 
+
 '!':[A:U]U = [A,u:U]u,#This is negation;the inhabitation of A implies the inhabitation of all things, which is a contradiction.
 '!=':[A?:U,a:A,b:A]U = !(a==b),
 
@@ -66,8 +65,7 @@ PRESERVATION:[A?:U,B?:U,a?:A,b?:A,f:[A]B,q:a==b]f(a) == f(b) = SUBSTITUTION(|w,_
     [pos:K]a(pos) = EQUIVALENCE(dec,Dec.POSITIVE(pos)),
     [neg:!K]b(neg) = EQUIVALENCE(dec,Dec.NEGATIVE(neg))
 },
-
-
+#the following block is kind of built into the language itself...
 # |AND,['.'acc,'.'accb],[UNION,MEMBER,MEMBERB],AND.equal,FUNC,'.'eval,[MAKEFUNC,FUNCASSURANCE],FUNC.equal|:[A:U,B:[A]U]{#For all (types) and (types derived from the first type)...
 #     and:U,
 #     |acc,accb|:[c:and]{#Given an element of the type representing the union...
@@ -90,7 +88,6 @@ PRESERVATION:[A?:U,B?:U,a?:A,b?:A,f:[A]B,q:a==b]f(a) == f(b) = SUBSTITUTION(|w,_
 #     [af:func,bf:func,[a:A]eval(af,a)==eval(bf,a)]af==bf #this is special
 #     # ^^^---- apparently this comes from the univalence axiom... but the proof is long and I couldn't follow it.
 # },
-
 
 #all the below logic is just for convenience for the user's sake. Everything below has a proof.
 #this part is ugly but at least all the ugliness is confined to one file.
@@ -131,85 +128,128 @@ XOR.construct:[A:U,B:U,a:!A,b:B]XOR(A,B) = DEC({a:[B]A,b:[A]B},|s|a(s.a(b),XOR(A
 '.'commute:[A?:U,B?:U,o:XOR(A,B)]XOR(B,A) = DEC({a:[A]B,b:[B]A},|s|o((s.b,s.a),XOR(B,A)),|s|s)
 ,
 
-AT_MOST_ONE_OF:[A:U,B:U,C:U]U = {ab:!{A,B},bc:!{B,C},ca:!{C,A}}, #0 1 [2] [3]
-AT_MOST_ONE_OF.construct:[A:U,B:U,C:U,na:!A,nb:!B]AT_MOST_ONE_OF(A,B,C) = (DEC({a:A,b:B},|s|na(s.a,!{A,B}),|s|s),DEC({b:B,c:C},|s|nb(s.b,!{B,C}),|s|s),DEC({c:C,a:A},|s|na(s.a,!{C,A}),|s|s)),
-AT_MOST_ONE_OF.construct:[A:U,B:U,C:U,nb:!B,nc:!C]AT_MOST_ONE_OF(A,B,C) = (DEC({a:A,b:B},|s|nb(s.b,!{A,B}),|s|s),DEC({b:B,c:C},|s|nb(s.b,!{B,C}),|s|s),DEC({c:C,a:A},|s|nc(s.c,!{C,A}),|s|s)),
-AT_MOST_ONE_OF.construct:[A:U,B:U,C:U,nc:!C,na:!A]AT_MOST_ONE_OF(A,B,C) = (DEC({a:A,b:B},|s|na(s.a,!{A,B}),|s|s),DEC({b:B,c:C},|s|nc(s.c,!{B,C}),|s|s),DEC({c:C,a:A},|s|nc(s.c,!{C,A}),|s|s)),
-'.'extract:[A?:U,B?:U,C?:U,o:AT_MOST_ONE_OF(A,B,C),a:A]{b:!B,c:!C} = (DEC(B,|s|o.ab((a,s),!B),|s|s),DEC(C,|s|o.ca((s,a),!C),|s|s)),
-'.'extract:[A?:U,B?:U,C?:U,o:AT_MOST_ONE_OF(A,B,C),b:B]{c:!C,a:!A} = (DEC(C,|s|o.bc((b,s),!C),|s|s),DEC(A,|s|o.ab((s,b),!A),|s|s)),
-'.'extract:[A?:U,B?:U,C?:U,o:AT_MOST_ONE_OF(A,B,C),c:C]{a:!A,b:!B} = (DEC(A,|s|o.ca((c,s),!A),|s|s),DEC(B,|s|o.bc((s,c),!B),|s|s)),
-'.'commute:[A?:U,B?:U,C?:U,o:AT_MOST_ONE_OF(A,B,C)]AT_MOST_ONE_OF(A,C,B) = (o.ca.commute,o.bc.commute,o.ab.commute),
-'.'cycle:  [A?:U,B?:U,C?:U,o:AT_MOST_ONE_OF(A,B,C)]AT_MOST_ONE_OF(B,C,A) = (o.bc,o.ca,o.ab),
+
+
+#[0] [1]  2   3
+#[0]  1  [2]  3
+#[0]  1   2  [3]
+TRIPLE_OR:[A:U,B:U,C:U]U = !{!A,!B,!C},                                      #[0]  1   2   3
+	TRIPLE_OR.construct:[A:U,B:U,C:U,a:A]TRIPLE_OR(A,B,C) = DEC({a:!A,b:!B,c:!C},|s|s.a(a,!{!A,!B,!C}),|s|s),
+	TRIPLE_OR.construct:[A:U,B:U,C:U,b:B]TRIPLE_OR(A,B,C) = DEC({a:!A,b:!B,c:!C},|s|s.b(b,!{!A,!B,!C}),|s|s),
+	TRIPLE_OR.construct:[A:U,B:U,C:U,c:C]TRIPLE_OR(A,B,C) = DEC({a:!A,b:!B,c:!C},|s|s.c(c,!{!A,!B,!C}),|s|s),
+	'.'T_OR_extract:[A?:U,B?:U,C?:U,o:TRIPLE_OR(A,B,C),a:!A,b:!B]C = DEC(C,|s|s,|s|o((a,b,s),C)),
+	'.'T_OR_extract:[A?:U,B?:U,C?:U,o:TRIPLE_OR(A,B,C),b:!B,c:!C]A = DEC(A,|s|s,|s|o((s,b,c),A)),
+	'.'T_OR_extract:[A?:U,B?:U,C?:U,o:TRIPLE_OR(A,B,C),c:!C,a:!A]B = DEC(B,|s|s,|s|o((a,s,c),B)),
+	'.'commute:[A?:U,B?:U,C?:U,o:TRIPLE_OR(A,B,C)]TRIPLE_OR(A,C,B) = DEC({a:!A,c:!C,b:!B},|s|o((s.a,s.b,s.c),TRIPLE_OR(A,C,B)),|s|s),
+	'.'cycle:  [A?:U,B?:U,C?:U,o:TRIPLE_OR(A,B,C)]TRIPLE_OR(B,C,A) = DEC({b:!B,c:!C,a:!A},|s|o((s.a,s.b,s.c),TRIPLE_OR(B,C,A)),|s|s),
+	'.'T_OR_case_by_case:[A?:U,B?:U,C?:U,o:TRIPLE_OR(A,B,C),T?:U,at:[A]T,bt:[B]T,ct:[C]T]T = DEC(A,at,|na|DEC(B,bt,|nb|ct(o.T_OR_extract(na,nb)))),
+
+TRIPLE_AND:[A:U,B:U,C:U] = {a:A,b:B,c:C},                                    #[0] [1] [2]  3 
+TWO_OF:[A:U,B:U,C:U]U = !{[A,B]C,[B,C]A,[C,A]B},                             #[0] [1]  2  [3]
+	TWO_OF.construct:[A:U,B:U,C:U,a:A,b:B,nc:!C]TWO_OF(A,B,C) = DEC({c:[A,B]C,a:[B,C]A,b:[C,A]B},|s|nc(s.c(a,b),TWO_OF(A,B,C)),|s|s),
+	TWO_OF.construct:[A:U,B:U,C:U,a:A,nb:!B,c:C]TWO_OF(A,B,C) = DEC({c:[A,B]C,a:[B,C]A,b:[C,A]B},|s|nb(s.b(c,a),TWO_OF(A,B,C)),|s|s),
+	TWO_OF.construct:[A:U,B:U,C:U,na:!A,b:B,c:C]TWO_OF(A,B,C) = DEC({c:[A,B]C,a:[B,C]A,b:[C,A]B},|s|na(s.a(b,c),TWO_OF(A,B,C)),|s|s),
+	'.'TWO_OF_extract:[A?:U,B?:U,C?:U,o:TWO_OF(A,B,C),a:!A]{b:B,c:C} = (
+		DEC(B,|s|s,|s|o((|ax,bx|s(bx,C),|bx,cx|s(bx,A),|cx,ax|a(ax,B)),B)),
+		DEC(C,|s|s,|s|o((|ax,bx|a(ax,C),|bx,cx|s(cx,A),|cx,ax|s(cx,B)),C))
+	),
+	'.'TWO_OF_extract:[A?:U,B?:U,C?:U,o:TWO_OF(A,B,C),b:!B]{c:C,a:A} = (
+		DEC(C,|s|s,|s|o((|ax,bx|b(bx,C),|bx,cx|s(cx,A),|cx,ax|s(cx,B)),C)),
+		DEC(A,|s|s,|s|o((|ax,bx|s(ax,C),|bx,cx|b(bx,A),|cx,ax|s(ax,B)),A))
+	),
+	'.'TWO_OF_extract:[A?:U,B?:U,C?:U,o:TWO_OF(A,B,C),c:!C]{a:A,b:B} = (
+		DEC(A,|s|s,|s|o((|ax,bx|s(ax,C),|bx,cx|c(cx,A),|cx,ax|s(ax,B)),A)),
+		DEC(B,|s|s,|s|o((|ax,bx|s(bx,C),|bx,cx|s(bx,A),|cx,ax|c(cx,B)),B))
+	),
+	'.'TWO_OF_extract:[A?:U,B?:U,C?:U,o:TWO_OF(A,B,C),a:A]XOR(B,C) = DEC({b:[C]B,c:[B]C},|s|o((|ax,bx|s.c(bx),|bx,cx|a,|cx,ax|s.b(cx)),XOR(B,C)),|s|s),
+	'.'TWO_OF_extract:[A?:U,B?:U,C?:U,o:TWO_OF(A,B,C),b:B]XOR(C,A) = DEC({c:[A]C,a:[C]A},|s|o((|ax,bx|s.c(ax),|bx,cx|s.a(cx),|cx,ax|b),XOR(C,A)),|s|s),
+	'.'TWO_OF_extract:[A?:U,B?:U,C?:U,o:TWO_OF(A,B,C),c:C]XOR(A,B) = DEC({a:[B]A,b:[A]B},|s|o((|ax,bx|c,|bx,cx|s.a(bx),|cx,ax|s.b(ax)),XOR(A,B)),|s|s),
+	'.'commute:[A?:U,B?:U,C?:U,o:TWO_OF(A,B,C)]TWO_OF(A,C,B) = DEC({b:[A,C]B,a:[C,B]A,c:[B,A]C},|s|o((|a,b|s.c(b,a),|b,c|s.a(c,b),|c,a|s.b(a,c)),TWO_OF(A,C,B)),|s|s),
+	'.'cycle:  [A?:U,B?:U,C?:U,o:TWO_OF(A,B,C)]TWO_OF(B,C,A) = DEC({a:[B,C]A,b:[C,A]B,c:[A,B]C},|s|o((s.c,s.a,s.b),TWO_OF(B,C,A)),|s|s),
+AT_LEAST_TWO_OF:[A:U,B:U,C:U]U = TRIPLE_OR({A,B},{B,C},{C,A}),               #[0] [1]  2   3 
+	AT_LEAST_TWO_OF.construct:[A:U,B:U,C:U,a:A,b:B]AT_LEAST_TWO_OF(A,B,C) = TRIPLE_OR({A,B},{B,C},{C,A}).construct(AND(A,B).construct(a,b)),
+	AT_LEAST_TWO_OF.construct:[A:U,B:U,C:U,b:B,c:C]AT_LEAST_TWO_OF(A,B,C) = TRIPLE_OR({A,B},{B,C},{C,A}).construct(AND(B,C).construct(b,c)),
+	AT_LEAST_TWO_OF.construct:[A:U,B:U,C:U,c:C,a:A]AT_LEAST_TWO_OF(A,B,C) = TRIPLE_OR({A,B},{B,C},{C,A}).construct(AND(C,A).construct(c,a)),
+	'.'ATLEAST_TWO_OF_extract:[A?:U,B?:U,C?:U,o:AT_LEAST_TWO_OF(A,B,C),na:!A]{B,C} = o.T_OR_extract(DEC({c:C,a:A},|s|na(s.a,!{c:C,a:A}),|s|s),DEC({a:A,b:B},|s|na(s.a,!{c:A,a:B}),|s|s)),
+	'.'ATLEAST_TWO_OF_extract:[A?:U,B?:U,C?:U,o:AT_LEAST_TWO_OF(A,B,C),nb:!B]{C,A} = o.T_OR_extract(DEC({a:A,b:B},|s|nb(s.b,!{c:A,a:B}),|s|s),DEC({b:B,c:C},|s|nb(s.b,!{c:B,a:C}),|s|s)),
+	'.'ATLEAST_TWO_OF_extract:[A?:U,B?:U,C?:U,o:AT_LEAST_TWO_OF(A,B,C),nc:!C]{A,B} = o.T_OR_extract(DEC({b:B,c:C},|s|nc(s.c,!{c:B,a:C}),|s|s),DEC({c:C,a:A},|s|nc(s.c,!{c:C,a:A}),|s|s)),
+ONE_OF:[A:U,B:U,C:U]U = !{ab:[C]OR(A,B),bc:[A]OR(B,C),ca:[B]OR(C,A)},        #[0]  1  [2] [3]
+TRIPLE_XOR:[A:U,B:U,C:U]U = !{ab:[C]XOR(A,B),bc:[A]XOR(B,C),ca:[B]XOR(C,A)}, #[0]  1  [2]  3
+ONE_OR_TWO_OF:[A:U,B:U,C:U]U = !{bc:[A]{B,C},ca:[B]{C,A},ab:[C]{A,B}},       #[0]  1   2  [3]
+
+
+
 
 
 AT_MOST_TWO_OF:[A:U,B:U,C:U]U = !{A,B,C},#0 1 2 [3]
-AT_MOST_TWO_OF.construct:[A:U,B:U,C:U,na:!A]AT_MOST_TWO_OF(A,B,C) = DEC({a:A,b:B,c:C},|s|na(s.a,!{A,B,C}),|s|s),
-AT_MOST_TWO_OF.construct:[A:U,B:U,C:U,nb:!B]AT_MOST_TWO_OF(A,B,C) = DEC({a:A,b:B,c:C},|s|nb(s.b,!{A,B,C}),|s|s),
-AT_MOST_TWO_OF.construct:[A:U,B:U,C:U,nc:!C]AT_MOST_TWO_OF(A,B,C) = DEC({a:A,b:B,c:C},|s|nc(s.c,!{A,B,C}),|s|s),
-'.'extract:[A?:U,B?:U,C?:U,o:AT_MOST_TWO_OF(A,B,C),a:A,b:B]!C = DEC(C,|s|o((a,b,s),!C),|s|s),
-'.'extract:[A?:U,B?:U,C?:U,o:AT_MOST_TWO_OF(A,B,C),b:B,c:C]!A = DEC(A,|s|o((s,b,c),!A),|s|s),
-'.'extract:[A?:U,B?:U,C?:U,o:AT_MOST_TWO_OF(A,B,C),c:C,a:A]!B = DEC(B,|s|o((a,s,c),!B),|s|s),
-'.'commute:[A?:U,B?:U,C?:U,o:AT_MOST_TWO_OF(A,B,C)]AT_MOST_TWO_OF(A,C,B) = DEC({a:A,c:C,b:B},|s|o((s.a,s.b,s.c),!{A,C,B}),|s|s),
-'.'cycle:  [A?:U,B?:U,C?:U,o:AT_MOST_TWO_OF(A,B,C)]AT_MOST_TWO_OF(B,C,A) = DEC({b:B,c:C,a:A},|s|o((s.a,s.b,s.c),!{B,C,A}),|s|s),
+	AT_MOST_TWO_OF.construct:[A:U,B:U,C:U,na:!A]AT_MOST_TWO_OF(A,B,C) = DEC({a:A,b:B,c:C},|s|na(s.a,!{A,B,C}),|s|s),
+	AT_MOST_TWO_OF.construct:[A:U,B:U,C:U,nb:!B]AT_MOST_TWO_OF(A,B,C) = DEC({a:A,b:B,c:C},|s|nb(s.b,!{A,B,C}),|s|s),
+	AT_MOST_TWO_OF.construct:[A:U,B:U,C:U,nc:!C]AT_MOST_TWO_OF(A,B,C) = DEC({a:A,b:B,c:C},|s|nc(s.c,!{A,B,C}),|s|s),
+	'.'extract:[A?:U,B?:U,C?:U,o:AT_MOST_TWO_OF(A,B,C),a:A,b:B]!C = DEC(C,|s|o((a,b,s),!C),|s|s),
+	'.'extract:[A?:U,B?:U,C?:U,o:AT_MOST_TWO_OF(A,B,C),b:B,c:C]!A = DEC(A,|s|o((s,b,c),!A),|s|s),
+	'.'extract:[A?:U,B?:U,C?:U,o:AT_MOST_TWO_OF(A,B,C),c:C,a:A]!B = DEC(B,|s|o((a,s,c),!B),|s|s),
+	'.'commute:[A?:U,B?:U,C?:U,o:AT_MOST_TWO_OF(A,B,C)]AT_MOST_TWO_OF(A,C,B) = DEC({a:A,c:C,b:B},|s|o((s.a,s.b,s.c),!{A,C,B}),|s|s),
+	'.'cycle:  [A?:U,B?:U,C?:U,o:AT_MOST_TWO_OF(A,B,C)]AT_MOST_TWO_OF(B,C,A) = DEC({b:B,c:C,a:A},|s|o((s.a,s.b,s.c),!{B,C,A}),|s|s),
 
-
-TRIPLE_OR:[A:U,B:U,C:U]U = !{!A,!B,!C},#[0] 1 2 3
-TRIPLE_OR.construct:[A:U,B:U,C:U,a:A]TRIPLE_OR(A,B,C) = DEC({a:!A,b:!B,c:!C},|s|s.a(a,!{!A,!B,!C}),|s|s),
-TRIPLE_OR.construct:[A:U,B:U,C:U,b:B]TRIPLE_OR(A,B,C) = DEC({a:!A,b:!B,c:!C},|s|s.b(b,!{!A,!B,!C}),|s|s),
-TRIPLE_OR.construct:[A:U,B:U,C:U,c:C]TRIPLE_OR(A,B,C) = DEC({a:!A,b:!B,c:!C},|s|s.c(c,!{!A,!B,!C}),|s|s),
-'.'extract:[A?:U,B?:U,C?:U,o:TRIPLE_OR(A,B,C),a:!A,b:!B]C = DEC(C,|s|s,|s|o((a,b,s),C)),
-'.'extract:[A?:U,B?:U,C?:U,o:TRIPLE_OR(A,B,C),b:!B,c:!C]A = DEC(A,|s|s,|s|o((s,b,c),A)),
-'.'extract:[A?:U,B?:U,C?:U,o:TRIPLE_OR(A,B,C),c:!C,a:!A]B = DEC(B,|s|s,|s|o((a,s,c),B)),
-'.'commute:[A?:U,B?:U,C?:U,o:TRIPLE_OR(A,B,C)]TRIPLE_OR(A,C,B) = DEC({a:!A,c:!C,b:!B},|s|o((s.a,s.b,s.c),TRIPLE_OR(A,C,B)),|s|s),
-'.'cycle:  [A?:U,B?:U,C?:U,o:TRIPLE_OR(A,B,C)]TRIPLE_OR(B,C,A) = DEC({b:!B,c:!C,a:!A},|s|o((s.a,s.b,s.c),TRIPLE_OR(B,C,A)),|s|s)
-
-,
+AT_MOST_ONE_OF:[A:U,B:U,C:U]U = {ab:!{A,B},bc:!{B,C},ca:!{C,A}}, #0 1 [2] [3]
+	AT_MOST_ONE_OF.construct:[A:U,B:U,C:U,na:!A,nb:!B]AT_MOST_ONE_OF(A,B,C) = (DEC({a:A,b:B},|s|na(s.a,!{A,B}),|s|s),DEC({b:B,c:C},|s|nb(s.b,!{B,C}),|s|s),DEC({c:C,a:A},|s|na(s.a,!{C,A}),|s|s)),
+	AT_MOST_ONE_OF.construct:[A:U,B:U,C:U,nb:!B,nc:!C]AT_MOST_ONE_OF(A,B,C) = (DEC({a:A,b:B},|s|nb(s.b,!{A,B}),|s|s),DEC({b:B,c:C},|s|nb(s.b,!{B,C}),|s|s),DEC({c:C,a:A},|s|nc(s.c,!{C,A}),|s|s)),
+	AT_MOST_ONE_OF.construct:[A:U,B:U,C:U,nc:!C,na:!A]AT_MOST_ONE_OF(A,B,C) = (DEC({a:A,b:B},|s|na(s.a,!{A,B}),|s|s),DEC({b:B,c:C},|s|nc(s.c,!{B,C}),|s|s),DEC({c:C,a:A},|s|nc(s.c,!{C,A}),|s|s)),
+	'.'extract:[A?:U,B?:U,C?:U,o:AT_MOST_ONE_OF(A,B,C),a:A]{b:!B,c:!C} = (DEC(B,|s|o.ab((a,s),!B),|s|s),DEC(C,|s|o.ca((s,a),!C),|s|s)),
+	'.'extract:[A?:U,B?:U,C?:U,o:AT_MOST_ONE_OF(A,B,C),b:B]{c:!C,a:!A} = (DEC(C,|s|o.bc((b,s),!C),|s|s),DEC(A,|s|o.ab((s,b),!A),|s|s)),
+	'.'extract:[A?:U,B?:U,C?:U,o:AT_MOST_ONE_OF(A,B,C),c:C]{a:!A,b:!B} = (DEC(A,|s|o.ca((c,s),!A),|s|s),DEC(B,|s|o.bc((s,c),!B),|s|s)),
+	'.'commute:[A?:U,B?:U,C?:U,o:AT_MOST_ONE_OF(A,B,C)]AT_MOST_ONE_OF(A,C,B) = (o.ca.commute,o.bc.commute,o.ab.commute),
+	'.'cycle:  [A?:U,B?:U,C?:U,o:AT_MOST_ONE_OF(A,B,C)]AT_MOST_ONE_OF(B,C,A) = (o.bc,o.ca,o.ab),
 
 
 
-TWO_OF:[A:U,B:U,C:U]U = !{[A,B]C,[B,C]A,[C,A]B},#[0] [1] 2 [3]
-TWO_OF.construct:[A:U,B:U,C:U,a:A,b:B,nc:!C]TWO_OF(A,B,C) = DEC({c:[A,B]C,a:[B,C]A,b:[C,A]B},|s|nc(s.c(a,b),TWO_OF(A,B,C)),|s|s),
-TWO_OF.construct:[A:U,B:U,C:U,a:A,nb:!B,c:C]TWO_OF(A,B,C) = DEC({c:[A,B]C,a:[B,C]A,b:[C,A]B},|s|nb(s.b(c,a),TWO_OF(A,B,C)),|s|s),
-TWO_OF.construct:[A:U,B:U,C:U,na:!A,b:B,c:C]TWO_OF(A,B,C) = DEC({c:[A,B]C,a:[B,C]A,b:[C,A]B},|s|na(s.a(b,c),TWO_OF(A,B,C)),|s|s),
-'.'extract:[A?:U,B?:U,C?:U,o:TWO_OF(A,B,C),a:!A]{b:B,c:C} = (
-	DEC(B,|s|s,|s|o((|ax,bx|s(bx,C),|bx,cx|s(bx,A),|cx,ax|a(ax,B)),B)),
-	DEC(C,|s|s,|s|o((|ax,bx|a(ax,C),|bx,cx|s(cx,A),|cx,ax|s(cx,B)),C))
-),
-'.'extract:[A?:U,B?:U,C?:U,o:TWO_OF(A,B,C),b:!B]{c:C,a:A} = (
-	DEC(C,|s|s,|s|o((|ax,bx|b(bx,C),|bx,cx|s(cx,A),|cx,ax|s(cx,B)),C)),
-	DEC(A,|s|s,|s|o((|ax,bx|s(ax,C),|bx,cx|b(bx,A),|cx,ax|s(ax,B)),A))
-),
-'.'extract:[A?:U,B?:U,C?:U,o:TWO_OF(A,B,C),c:!C]{a:A,b:B} = (
-	DEC(A,|s|s,|s|o((|ax,bx|s(ax,C),|bx,cx|c(cx,A),|cx,ax|s(ax,B)),A)),
-	DEC(B,|s|s,|s|o((|ax,bx|s(bx,C),|bx,cx|s(bx,A),|cx,ax|c(cx,B)),B))
-),
-'.'extract:[A?:U,B?:U,C?:U,o:TWO_OF(A,B,C),a:A]XOR(B,C) = DEC({b:[C]B,c:[B]C},|s|o((|ax,bx|s.c(bx),|bx,cx|a,|cx,ax|s.b(cx)),XOR(B,C)),|s|s),
-'.'extract:[A?:U,B?:U,C?:U,o:TWO_OF(A,B,C),b:B]XOR(C,A) = DEC({c:[A]C,a:[C]A},|s|o((|ax,bx|s.c(ax),|bx,cx|s.a(cx),|cx,ax|b),XOR(C,A)),|s|s),
-'.'extract:[A?:U,B?:U,C?:U,o:TWO_OF(A,B,C),c:C]XOR(A,B) = DEC({a:[B]A,b:[A]B},|s|o((|ax,bx|c,|bx,cx|s.a(bx),|cx,ax|s.b(ax)),XOR(A,B)),|s|s),
-'.'commute:[A?:U,B?:U,C?:U,o:TWO_OF(A,B,C)]TWO_OF(A,C,B) = DEC({b:[A,C]B,a:[C,B]A,c:[B,A]C},|s|o((|a,b|s.c(b,a),|b,c|s.a(c,b),|c,a|s.b(a,c)),TWO_OF(A,C,B)),|s|s),
-'.'cycle:  [A?:U,B?:U,C?:U,o:TWO_OF(A,B,C)]TWO_OF(B,C,A) = DEC({a:[B,C]A,b:[C,A]B,c:[A,B]C},|s|o((s.c,s.a,s.b),TWO_OF(B,C,A)),|s|s)
+
+TRIPLE_NOR:[A:U,B:U,C:U]U = {a:!A,b:!B,c:!C},#0 [1] [2] [3]
+	TRIPLE_NOR.construct:[A:U,B:U,C:U,na:!A,nb:!B,nc:!C]TRIPLE_NOR(A,B,C) = (na,nb,nc)#,
+
+# A:U,
+# B:[A]U,
+# C:[a:A,b:B(a)]U,
+# D:[a:A,b:B(a),c:C(a,b)]U,
+
+# a1:A,
+# a2:A,
+# b1:B(a1),
+# b2:B(a2),
+# c1:C(a1,b1),
+# c2:C(a2,b2),
+# d1:D(a1,b1,c1),
+# d2:D(a2,b2,c2),
+# a:a1 == a2,
+# b:'=='(SUBSTITUTION(|a,_|B(a),a,b1,A=A,a=a1,b=a2),b2,A=B(a2)),
+# c:SUBSTITUTION(|[a,b],_|C(a,b),(a,b),c1,A={a:A,B(a)},a=(a1,b1),b=(a2,b2)) == c2,
+# d:SUBSTITUTION(|[a,b,c],_|D(a,b,c),(a,b,c),d1,A={a:A,b:B(a),c:C(a,b)},a=(a1,b1,c1),b=(a2,b2,c2)) == d2
+
+# # tape is both input and output.<<<<
+
+# ,
+# a:a1 == a2,
+# |b,c|:SUBSTITUTION(A,a1,a2,|a,_|B(a),a,b1) == b2,
+# d:SUBSTITUTION({a:A,B(a)},(a1,b1),(a2,b2),|[a,b],_|C(a,b),(a,b),c1) == c2
+
+}
 
 
-,
+
+
+
+# K:U,
+# A:f(K)
+# D:[d(A)]U
+# X:D(A) <--- tries to disable K...
+
 
 # TRIPLE_XOR:[A:U,B:U,C:U]U = {c:[A,B]C,a:[B,C]A,b:[C,A]B,or:TRIPLE_OR(A,B,C)},
 # '.'commute:[A?:U,B?:U,C?:U,o:TRIPLE_XOR(A,B,C)]TRIPLE_XOR(A,C,B) = (o.a,o.c,o.b,o.or.commute),
 # '.'cycle:  [A?:U,B?:U,C?:U,o:TRIPLE_XOR(A,B,C)]TRIPLE_XOR(B,C,A) = (o.a,o.b,o.c,o.or.cycle),
 
 
-
-
-AT_LEAST_TWO_OF:[A:U,B:U,C:U]U = TRIPLE_OR({A,B},{B,C},{C,A}), #[0] [1] 2 3
-AT_LEAST_TWO_OF.construct:[A:U,B:U,C:U,a:A,b:B]AT_LEAST_TWO_OF(A,B,C) = TRIPLE_OR({A,B},{B,C},{C,A}).construct(AND(A,B).construct(a,b)),
-AT_LEAST_TWO_OF.construct:[A:U,B:U,C:U,b:B,c:C]AT_LEAST_TWO_OF(A,B,C) = TRIPLE_OR({A,B},{B,C},{C,A}).construct(AND(B,C).construct(b,c)),
-AT_LEAST_TWO_OF.construct:[A:U,B:U,C:U,c:C,a:A]AT_LEAST_TWO_OF(A,B,C) = TRIPLE_OR({A,B},{B,C},{C,A}).construct(AND(C,A).construct(c,a)),
-'.'extract:[A?:U,B?:U,C?:U,o:AT_LEAST_TWO_OF(A,B,C),na:!A]{B,C} = o.extract(DEC({c:C,a:A},|s|na(s.a,!{c:C,a:A}),|s|s),DEC({a:A,b:B},|s|na(s.a,!{c:A,a:B}),|s|s)),
-'.'extract:[A?:U,B?:U,C?:U,o:AT_LEAST_TWO_OF(A,B,C),nb:!B]{C,A} = o.extract(DEC({a:A,b:B},|s|nb(s.b,!{c:A,a:B}),|s|s),DEC({b:B,c:C},|s|nb(s.b,!{c:B,a:C}),|s|s)),
-'.'extract:[A?:U,B?:U,C?:U,o:AT_LEAST_TWO_OF(A,B,C),nc:!C]{A,B} = o.extract(DEC({b:B,c:C},|s|nc(s.c,!{c:B,a:C}),|s|s),DEC({c:C,a:A},|s|nc(s.c,!{c:C,a:A}),|s|s))
-
-
-
-
+# lambdaless flag..........
 
 
 
@@ -219,16 +259,8 @@ AT_LEAST_TWO_OF.construct:[A:U,B:U,C:U,c:C,a:A]AT_LEAST_TWO_OF(A,B,C) = TRIPLE_O
 
 
 
-
-
-
-
  
-
 # !([a:A]B(a)) == {a:A,!B(a)}
-
-
-
 
 
 
@@ -282,7 +314,11 @@ AT_LEAST_TWO_OF.construct:[A:U,B:U,C:U,c:C,a:A]AT_LEAST_TWO_OF(A,B,C) = TRIPLE_O
 
 #  best way to provide the fact that functions are equal...?
 
- 
+# A:U
+# B:[A]U
+# C:[a:A,B(a)]U
+
+# {a:A,b:B(a),c:C(a,b)}
 
 
 
@@ -298,7 +334,6 @@ AT_LEAST_TWO_OF.construct:[A:U,B:U,C:U,c:C,a:A]AT_LEAST_TWO_OF(A,B,C) = TRIPLE_O
 
 
 
-
 #  {a:A,b:P(a),c:K(b)} <-- impossible; will never occur
 
 
@@ -306,16 +341,61 @@ AT_LEAST_TWO_OF.construct:[A:U,B:U,C:U,c:C,a:A]AT_LEAST_TWO_OF(A,B,C) = TRIPLE_O
 
 #  {a:A,b:P(a),c:K(a,b)} <-- possible; will occur
 
-#  a:a1 == a2
-#  b:SUBSTITUTION(|w,_|B(w),a,b1) == b2
-#  c:
+# A:U,
+# B:[A]U,
+# C:[a:A,b:B(a)]U,
+# a1:A,
+# a2:A,
+# b1:B(a1),
+# b2:B(a2),
+# c1:C(a1,b1),
+# c2:C(a2,b2),
+
+
+# SUBSTITUTION:[A?:U,a?:A,b?:A,J:[c:A,a==c]U,q:a==b,J(a,REFLEXIVITY(a))]J(b,q),#this is path induction.
+
+
+
+# SUBSTITUTION(
+# 	|wb,_|C(a2,wb),
+# 	b,
+# 	SUBSTITUTION(
+# 		|wa,waq|C(wa,SUBSTITUTION(|wb,_|B(wb),waq,b1)),
+# 		a,
+
+# 	)#C(a1,b1)->C(a2,SUBSTITUTION(|w,_|B(w),a,b1))
+# ),
+
+
+# C(a2,b2) = 
+# SUBSTITUTION(
+# 	|wb,qb|
+
+
+# 	SUBSTITUTION(
+# 		|wa,qa|C(wa,SUBSTITUTION(|w,_|B(wa),qa,b1)),
+# 		a,
+# 		c1
+# 	),
+# 	b
+
+
+
+
+# )
+
+
+
+
+
+ # SUBSTITUTION(|[a,b],_|C(a,b),(a,b),c1)
 
 
 
 
 #  {a:A,b:B(a),c:C(a,b)}
 
-#  SUBSTITUTION(|[a,b],_|C(a,b),(a,b),c1)
+#  
 
 
 
@@ -337,11 +417,9 @@ AT_LEAST_TWO_OF.construct:[A:U,B:U,C:U,c:C,a:A]AT_LEAST_TWO_OF(A,B,C) = TRIPLE_O
 
 
 
-
 #  SUBSTITUTION(|w,wq|[A(w,wq)]B(w,wq),q,yo)(SUBSTITUTION(|w,wq|A(w,wq),q,inp))
 #  == 
 #  SUBSTITUTION( |w,wq|B(w,wq),q,yo(inp) )
-
 
 
 
@@ -384,6 +462,7 @@ AT_LEAST_TWO_OF.construct:[A:U,B:U,C:U,c:C,a:A]AT_LEAST_TWO_OF(A,B,C) = TRIPLE_O
 #             )
 #     }
 # }
+
 
 # UNIVALENCE_TOOLS:{
 #     split_substitution:[?A:U,?a:A,?b:A,J:[c:A,a==c,d:A,a==d]U,q:a==b,k:J(a,REFLEXIVITY(a),a,REFLEXIVITY(a))]SUBSTITUTION(|w,wq|f(w,wq,w,wq),q,k) ==
@@ -432,9 +511,6 @@ AT_LEAST_TWO_OF.construct:[A:U,B:U,C:U,c:C,a:A]AT_LEAST_TWO_OF(A,B,C) = TRIPLE_O
 #                 |y|^SUBSTITUTE_GARUNTEE(|w,wq|f(w,wq),k) -> y -> SUBSTITUTE_GARUNTEE(|w,wq|f(w,wq),l))
 #             SUBSTITUTE_GARUNTEE(|w,wq|f(w,wq),k)
 #         ).eval(g),
-
-
-
 
 
 
@@ -581,4 +657,4 @@ AT_LEAST_TWO_OF.construct:[A:U,B:U,C:U,c:C,a:A]AT_LEAST_TWO_OF(A,B,C) = TRIPLE_O
 
 
 
-}
+

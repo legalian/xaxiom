@@ -10,6 +10,7 @@ import re
 
 
 
+
 # reloadself()
 
 # from myplugin.transformer
@@ -20,9 +21,14 @@ import re
 # print(vars(sys.modules["myplugin.transformer"]))
 
 
+
 # class BuildAxiomCommand(sublime_plugin.TextCommand):
 # 	def run(self):
 # 		print("hello world")
+
+
+
+
 
 class BuildAxiomCommand(sublime_plugin.ViewEventListener,sublime_plugin.TextCommand):
 	def run(self,kwar,action="parse"):
@@ -74,6 +80,10 @@ class BuildAxiomCommand(sublime_plugin.ViewEventListener,sublime_plugin.TextComm
 		syntax = settings.get('syntax')
 		return syntax == 'Packages/myplugin/axiom.sublime-syntax'
 
+
+
+
+
 	# def on_query_completions(self, prefix, locations):
 	# 	# elements = ET.parse(
 	# 	#     urllib.request.urlopen(GOOGLE_AC % prefix)
@@ -82,6 +92,11 @@ class BuildAxiomCommand(sublime_plugin.ViewEventListener,sublime_plugin.TextComm
 	# 	sugs = [["hoe","wak"],["asda","wawejk"],["hrhr","ohoh"]]
 
 	# 	return (sugs,sublime.INHIBIT_WORD_COMPLETIONS|sublime.INHIBIT_EXPLICIT_COMPLETIONS)
+
+
+
+
+
 
 
 	def update_selector_phantoms(self):
@@ -137,7 +152,6 @@ class BuildAxiomCommand(sublime_plugin.ViewEventListener,sublime_plugin.TextComm
 				# ahah = MyTransformer().transform(self.l.parse(document))
 				#ahah = self.l.parse(document)
 
-
 				# errors = ErrorObject()
 
 				# cheat = StratSeries([ObjStrategy(upcast=b) for b in bank])
@@ -160,8 +174,6 @@ class BuildAxiomCommand(sublime_plugin.ViewEventListener,sublime_plugin.TextComm
 				# print(task)
 				# print(ErrorObject.rer)
 
-
-
 				# # print(parseobjkind(ahah.children[1]))
 				# # attempt = Strategy(parsed=ahah)
 				# # for node in bank:
@@ -172,6 +184,9 @@ class BuildAxiomCommand(sublime_plugin.ViewEventListener,sublime_plugin.TextComm
 
 				# self.curtree = attempt
 
+
+
+
 			except UnexpectedInput as u:
 				self.syntaxphantoms.append(sublime.Phantom(
 					sublime.Region(self.view.text_point(u.line-1,u.column-1)),
@@ -180,25 +195,24 @@ class BuildAxiomCommand(sublime_plugin.ViewEventListener,sublime_plugin.TextComm
 				))
 				self.curtree = None
 			except LanguageError as u:
-				fullmessage = "<div style='background-color:#9A274E;border-radius:5px;'><div style='color:#282923;margin-left:10px;margin-right:10px'>Language Error:</div><div style='background-color:#612839;padding:10px;'>"+u.message+"</div></div>"
 				self.syntaxphantoms.append(sublime.Phantom(
 					sublime.Region(self.view.text_point(u.row-1,u.column-1)),
-					fullmessage,
+					u.tohtml(),
 					sublime.LAYOUT_BELOW
 				))
 				self.curtree = None
-			except TypeMismatch as u:
-				# sto1 = []
-				# sto2 = []
-				# u.expected.pmultiline(sto1,0,"Expected: ","",40,FormatterObject(u.context))
-				# u.got.pmultiline(sto2,0,"Got: ","",40,FormatterObject(u.context))
-				fullmessage = "<div style='background-color:#9A274E;border-radius:5px;'><div style='color:#282923;margin-left:10px;margin-right:10px'>Type mismatch:</div><div style='background-color:#612839;padding:10px;'>"+u.expected+"<br>"+u.got+"</div></div>"
-				self.syntaxphantoms.append(sublime.Phantom(
-					sublime.Region(self.view.text_point(u.row-1,u.column-1)),
-					fullmessage,
-					sublime.LAYOUT_BELOW
-				))
-				self.curtree = None
+			# except TypeMismatch as u:
+			# 	# sto1 = []
+			# 	# sto2 = []
+			# 	# u.expected.pmultiline(sto1,0,"Expected: ","",40,FormatterObject(u.context))
+			# 	# u.got.pmultiline(sto2,0,"Got: ","",40,FormatterObject(u.context))
+			# 	fullmessage = "<div style='background-color:#9A274E;border-radius:5px;'><div style='color:#282923;margin-left:10px;margin-right:10px'>Type mismatch:</div><div style='background-color:#612839;padding:10px;'>"+u.expected+"<br>"+u.got+"</div></div>"
+			# 	self.syntaxphantoms.append(sublime.Phantom(
+			# 		sublime.Region(self.view.text_point(u.row-1,u.column-1)),
+			# 		fullmessage,
+			# 		sublime.LAYOUT_BELOW
+			# 	))
+			# 	self.curtree = None
 		self.update_phantoms()
 	def update_phantoms(self):
 		self.phantom_set.update([])
@@ -206,8 +220,8 @@ class BuildAxiomCommand(sublime_plugin.ViewEventListener,sublime_plugin.TextComm
 
 
 
-
 		"""
+
 					<div style="margin:5px;position:relative;">
 						<div style="left:0;top:0;position:absolute;background-color:black;border-color:white;border-style:solid;border-width:5px 5px 5px 5px;">
 
