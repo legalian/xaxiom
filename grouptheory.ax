@@ -26,33 +26,31 @@
 		'>>':[a:J,b:J] = !(b=>a),
 		'<=':[a:J,b:J] = b=>a,
 		'<<':[a:J,b:J] = !(a=>b),
-		transitive1:[a?:J,b?:J,c?:J,a=>b,b=>c]a=>c,
-		transitive2:[a?:J,b?:J,c?:J,q1:a<=b,q2:b<=c]a<=c = transitive1(q2,q1),
-		sharptransitive1:[a?:J,b?:J,c?:J,q1:a=>b,q2:b>>c]a>>c = DEC(c=>a,|s|q2(transitive1(s,q1),a>>c),|s|s),
-		sharptransitive2:[a?:J,b?:J,c?:J,q1:a>>b,q2:b=>c]a>>c = DEC(c=>a,|s|q1(transitive2(s,q2),a>>c),|s|s),
-		sharptransitive3:[a?:J,b?:J,c?:J,q1:a=>b,q2:b>>c]a>>c = DEC(c=>a,|s|q2(transitive1(s,q1),a>>c),|s|s),
-		sharptransitive4:[a?:J,b?:J,c?:J,q1:a>>b,q2:b=>c]a>>c = DEC(c=>a,|s|q1(transitive2(s,q2),a>>c),|s|s),
+		transitive:[a?:J,b?:J,c?:J,a=>b,b=>c]a=>c,
+		transitive:[a?:J,b?:J,c?:J,q1:a<=b,q2:b<=c]a<=c = transitive(q2,q1),
+		sharptransitive:[a?:J,b?:J,c?:J,q1:a=>b,q2:b>>c]a>>c = DEC(c=>a,|s|q2(transitive(s,q1),a>>c),|s|s),
+		sharptransitive:[a?:J,b?:J,c?:J,q1:a>>b,q2:b=>c]a>>c = DEC(c=>a,|s|q1(transitive(s,q2),a>>c),|s|s),
+		sharptransitive:[a?:J,b?:J,c?:J,q1:a=>b,q2:b>>c]a>>c = DEC(c=>a,|s|q2(transitive(s,q1),a>>c),|s|s),
+		sharptransitive:[a?:J,b?:J,c?:J,q1:a>>b,q2:b=>c]a>>c = DEC(c=>a,|s|q1(transitive(s,q2),a>>c),|s|s),
 		reflex:[a:J]a=>a
 	},
 	Equivalence_relation := Relation<
-		|J,'=>','>>','<=','<<',transitive1|=|J,'==','!=','==','!=','->'|,#notation changes for equivalence relation...
+		|J,'=>','>>','<=','<<',transitive|=|J,'==','!=','==','!=','->'|,#notation changes for equivalence relation...
 		'^':[a?:J,b?:J,a==b]b==a#symmetric property
 	>,
 	Connex_relation := Relation<
-		|J,'=>','<=','<<','>>',sharptransitive1,sharptransitive2,sharptransitive3,sharptransitive4,transitive1,transitive2|,
+		|J,'=>','<=','<<','>>',sharptransitive|,
 		connex:[a?:J,b?:J,a>>b]a=>b,
-		sharptransitive5:[a?:J,b?:J,c?:J,q1:a>>b,q2:b>>c]a>>c = DEC(c=>a,|s|q2(connex(sharptransitive1(s,q1)),a>>c),|s|s),
-		sharptransitive6:[a?:J,b?:J,c?:J,q2:b>>c,q1:a>>b]a>>c = DEC(c=>a,|s|q2(connex(sharptransitive1(s,q1)),a>>c),|s|s),
+		sharptransitive:[a?:J,b?:J,c?:J,q1:a>>b,q2:b>>c]a>>c = DEC(c=>a,|s|q2(connex(sharptransitive(s,q1)),a>>c),|s|s),
+		sharptransitive:[a?:J,b?:J,c?:J,q2:b>>c,q1:a>>b]a>>c = DEC(c=>a,|s|q2(connex(sharptransitive(s,q1)),a>>c),|s|s),
 		reflex = |a|DEC(a=>a,|s|s,|s|s(connex(s),a=>a))
 		#reflexivity can be implied from connexity so might as well include the proof.
 		#this way, when a user is supplying a connex relation, they don't need to prove reflexivity.
 		# make sure length of parameters exactly matches the length of the argument piece you break off in the end.
 		# make sure ? arguments are ignored on verified structures.
-
-
 	>,
 	Complete_relation := Connex_relation<
-		|J,'=>','<=','<<','>>',adsfjasdfkjaskldjfh|,
+		|J,'=>','<=','<<','>>'|,
 		infimum:[
 			P:[J]U,Pj:={j:J,p:P(j)},
 			a:J,
@@ -93,7 +91,7 @@
 		)
 	>,
 	Noether_relation := Conditionally_noether_relation<
-		|J,'=>','<=','<<','>>',reflex,transitive1,transitive2,sharptransitive1,sharptransitive2,sharptransitive3,sharptransitive4,sharptransitive5,sharptransitive6,connex|,
+		|J,'=>','<=','<<','>>',reflex,transitive,sharptransitive,connex|,
 		noether:[P:[J]U,Pj:={j:J,p:P(j)},Pj]{
 			l:Pj,
 			p:[k:Pj]k.j=>l.j
@@ -117,19 +115,53 @@
 			pred=|u|noetherian_induction(
 				|j|{
 					r:[x:J,x<<j]P(x),
-					pred:[x:J,xq:x<<j]r(x,xq) == f(x,|z,zq|r(z,sharptransitive5(xq,zq)))
+					pred:[x:J,xq:x<<j]r(x,xq) == f(x,|z,zq|r(z,sharptransitive(xq,zq)))
 				},
-				|j,R|
-					(
-						r=|x,xq|f(x,|z,zq|R(x,xq).r(z,zq)),
-						pred=|x,xq|PRESERVATION(
-							|w|f(j,|z,zq|w(z,zq)),#function extensionality is built in. / make sure context always represents the names correctly.
-							|z,zq|R(x,xq).pred(z,zq),
-							A = [z:J,z<<j]P(z)
-							# a = |z,qz|R(z,qz).r(z),
-							# b = |z,qz|f(z,|l,_|R(z,qz).r(l))
-						)
-					),
+				|j,R|[
+					R_collapse_pred:[
+						aj:J,qa:aj<<j,
+						bj:J,qb:bj<<j,
+						Ra:=R(aj,qa),
+						Rb:=R(bj,qb),
+						R_comp_pack:={
+							x:J,
+							qxa:x<<aj,
+							qxb:x<<bj,
+							pred := Ra.r(x,qxa) == Rb.r(x,qxb)
+						},
+						rc:R_comp_pack
+					] rc.pred =
+					noetherian_induction(
+						|j|[rc:R_comp_pack<j>]rc.pred,
+						|j,R2,rc|
+						Ra.pred(rc.x,rc.qxa) ->#f(x,|z,zq|Ra.r(z,sharptransitive(xq,zq)))
+						PRESERVATION(
+							f(rc.x),
+							|z,qz|R2(z,qz,(sharptransitive(rc.qxa,qz),sharptransitive(rc.qxb,qz))),
+							A=[z:J,z<<rc.x]P(z),
+							# a=|t,tq|f(t,|z,zq|Ra.r(z,sharptransitive(rc.qxa,sharptransitive(tq,zq)))),
+							# b=|t,tq|f(t,|z,zq|Rb.r(z,sharptransitive(rc.qxb,sharptransitive(tq,zq))))
+							a=|z,zq|Ra.r(z,sharptransitive(rc.qxa,zq)),
+							b=|z,zq|Rb.r(z,sharptransitive(rc.qxb,zq))
+						) ->
+						^Rb.pred(rc.x,rc.qxb),
+						rc.x
+					)(rc)
+				](
+					r=|x,xq|f(x,|z,zq|R(x,xq).r(z,zq)),#R() needs to be called on the subordinate stuff, not just x- it needs to be part of r.
+					pred=|x,xq|PRESERVATION(
+						f(x),
+						|t,tq|R(x,xq).pred(t,tq) ->#this gives you x,xq every time- that's just how the dereferencing works.
+							PRESERVATION(
+								f(x),
+								|g,gq|R_collapse_pred(x,xq,t,sharptransitive(xq,tq),(g,gq,tq)),
+								A = [z:J,z<<x]P(z)
+							),
+						A = [z:J,z<<x]P(z),
+						a = |z,zq|R(x,xq).r(z,zq),
+						b = |z,zq|f(z,|l,lq|R(x,xq).r(l,sharptransitive(zq,lq)))
+					)
+				),
 					# (
 					# 	r=|x,xq|f(x,|z,zq|R(z,sharptransitive(xq,zq)).r(z,reflex(z))),#
 					# 	pred=PRESERVATION(
@@ -143,7 +175,6 @@
 				u
 			).pred(u)
 		),
-
 
 
 
@@ -184,6 +215,7 @@
 		# 		u
 		# 	).pred(u)
 		# ),
+
 
 		connex = |a,b,q|[
 			P:[x:J]U = OR(x==a,x==b),

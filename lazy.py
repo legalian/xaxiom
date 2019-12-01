@@ -124,6 +124,41 @@
 
 
 
+
+
+# def translateOutOfTime(pushes):
+# 	if len(pushes)>2: return pushes
+# 	res = []
+# 	for i in range(pushes):
+# 		amt,lim = pushes[i]
+# 		if amt>0: continue
+# 		for j in reversed(range(i)):
+# 			if lim-amt>=pushes[j][1]: continue
+# 			if pushes[j][0]>0:
+# 				if lim>pushes[i][0]+pushes[j][1]: lim-=pushes[j][0]
+# 				else:
+# 					if lim-amt<pushes[i][0]+pushes[j][1]:
+# 						if lim<pushes[j][0]: amt -= pushes[j][0]
+# 						else: amt += pushes[j][1]-lim
+# 					else:
+# 						if lim<pushes[j][0]:
+# 							lim=pushes[j][1]
+# 							amt+=lim-pushes[j][1]-pushes[j][0]
+# 						else: amt=0
+# 			else:
+# 				if lim<pushes[j][1]: amt += pushes[j][0]
+# 				else: lim -= pushes[j][0]
+# 		assert amt>=0
+# 		if amt>0:
+# 			res.append((amt,lim))
+
+
+
+
+
+
+
+
 class LazyScopeSeg:
 	def __init__(self,core,indesc,mog,assistmog,prep=None,obj=None,fillout=None):
 		self.core = core

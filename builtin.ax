@@ -50,6 +50,7 @@ PRESERVATION:[A?:U,B?:U,a?:A,b?:A,f:[A]B,q:a==b]f(a) == f(b) = SUBSTITUTION(|w,_
 
 
 
+
 '!':[A:U]U = [A,u:U]u,#This is negation;the inhabitation of A implies the inhabitation of all things, which is a contradiction.
 '!=':[A?:U,a:A,b:A]U = !(a==b),
 

@@ -187,6 +187,7 @@ class BuildAxiomCommand(sublime_plugin.ViewEventListener,sublime_plugin.TextComm
 
 
 
+
 			except UnexpectedInput as u:
 				self.syntaxphantoms.append(sublime.Phantom(
 					sublime.Region(self.view.text_point(u.line-1,u.column-1)),
@@ -229,6 +230,7 @@ class BuildAxiomCommand(sublime_plugin.ViewEventListener,sublime_plugin.TextComm
 						<div style="left:100;top:100;position:absolute;background-color:black;border-color:white;border-style:solid;border-width:5px 5px 5px 5px;">third line</div>
 					</div>
 					"""
+
 
 
 
