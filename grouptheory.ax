@@ -10,7 +10,6 @@
 # pos,y,P
 
 
-
 {
 	::'builtin.ax',
 # # homomorphism =/= homotopy (isomporphism)
@@ -35,7 +34,7 @@
 		reflex:[a:J]a=>a
 	},
 	Equivalence_relation := Relation<
-		|J,'=>','>>','<=','<<',transitive|=|J,'==','!=','==','!=','->'|,#notation changes for equivalence relation...
+		|J,'=>','>>','<=','<<',transitive|=|J,'===','=!=','===','=!=','->'|,#notation changes for equivalence relation...
 		'^':[a?:J,b?:J,a==b]b==a#symmetric property
 	>,
 	Connex_relation := Relation<
@@ -48,6 +47,7 @@
 		#this way, when a user is supplying a connex relation, they don't need to prove reflexivity.
 		# make sure length of parameters exactly matches the length of the argument piece you break off in the end.
 		# make sure ? arguments are ignored on verified structures.
+
 	>,
 	Complete_relation := Connex_relation<
 		|J,'=>','<=','<<','>>'|,
@@ -91,7 +91,7 @@
 		)
 	>,
 	Noether_relation := Conditionally_noether_relation<
-		|J,'=>','<=','<<','>>',reflex,transitive,sharptransitive,connex|,
+		|J,'=>','<=','<<','>>',reflex,transitive,transitive,sharptransitive,sharptransitive,sharptransitive,sharptransitive,sharptransitive,sharptransitive,connex|,
 		noether:[P:[J]U,Pj:={j:J,p:P(j)},Pj]{
 			l:Pj,
 			p:[k:Pj]k.j=>l.j
@@ -101,16 +101,20 @@
 			f:[y:J,[z:J,z<<y]P(z)]P(y),
 			x:J
 		]P(x) =
-			DEC({j:J,p:!P(j)},
-				|s|[min := noether(|j|!P(j),s)]min.l.p(f(min.l.j,|k,p|DEC(P(k),|h|h,|h|p(min.p((k,h)),P(k)))),P(x)),#proof by contradiction
-				|s|negate_union(s,x)
+			# DEC({j:J,p:!P(j)},
+			# 	|s|[min := noether(|j|!P(j),s)]min.l.p(f(min.l.j,|k,p|DEC(P(k),|h|h,|h|p(min.p((k,h)),P(k)))),P(x)),#proof by contradiction
+			# 	|s|negate_union(s,x)
+			# ),
+			DEC(P(x),
+				|s|s,
+				|s|[min := noether(|j|!P(j),(x,s))]min.l.p(f(min.l.j,|k,p|DEC(P(k),|h|h,|h|p(min.p((k,h)),P(k)))),P(x))#proof by contradiction
 			),
 		noetherian_recursion:[
 			P:[J]U,
 			f:[y:J,[z:J,z<<y]P(z)]P(y)
 		]{
 			r:[x:J]P(x),
-			pred:[x:J]r(x) == f(x,|z,_|r(z))#provide a call context for ().
+			pred:[x:J]r(x) == f(x,|z,_|r(z))
 		} = (
 			pred=|u|noetherian_induction(
 				|j|{
@@ -133,7 +137,7 @@
 					] rc.pred =
 					noetherian_induction(
 						|j|[rc:R_comp_pack<j>]rc.pred,
-						|j,R2,rc|
+						|_,R2,rc|
 						Ra.pred(rc.x,rc.qxa) ->#f(x,|z,zq|Ra.r(z,sharptransitive(xq,zq)))
 						PRESERVATION(
 							f(rc.x),
@@ -431,8 +435,6 @@
 # 		>,
 # 		mult = mult
 # 	},
-
-
 
 
 

@@ -32,8 +32,8 @@ class Madscience_debug_context:
 			# print("there was an error:",type,value,self.owner.readable_path())
 			if not hasattr(value,'madscience_stack'):
 				value.madscience_stack = self.owner.freeze_stack()
-		assert self.owner.stack.pop() is self
-
+		# assert self.owner.stack.pop() is self
+		self.owner.stack.pop()
 
 class Madscience_debugger(ast.NodeTransformer):
 	def __init__(self,enableCodeCoverage=False):
