@@ -116,3 +116,157 @@ def conditionalverify(F):
 		# return self
 	return wrapper
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	# pjson  -> touches,PJID
+	# (PJID) -> [verified]
+
+
+	# pJSONout -> (adds to jain and returns int? nah)
+
+
+	# - before verifying, recursively assign PJIDs for anything with a match.
+
+	# - verifying an unverified structure twice kills the program
+	# - verifying an unverified structure that has a PJID already will search jain for a match to skip some computation.
+	# - verifying an unverified structure assigns it a PJID in jainprime
+
+	# ->>>>>>>>> verifying a file reference should also compare an md5 to make sure it didnt change.
+
+
+	# - from json should also accept a DPUSH variable-> always applies to all.
+
+
+
+
+	# def softdetect(self,ranges):
+	# 	return self.type.softdetect(ranges) or self.obj!=None and self.obj.softdetect(ranges)
+
+
+	# def lambdaalt(self,args,si=None):
+	# 	vers = []
+	# 	for ver in self.altversion:
+	# 		try: vers.append(ver.addlambdas(args,si))
+	# 		except DpushError: vers = vers + ver.lambdaalt(args,si)
+	# 	return vers
+
+
+
+
+
+# each time you construct a Tobj...
+
+
+
+
+	# alternates are always sorted by root index
+	#when comparing, alternates compare only to alternates and following sorted order, and if that fails, the object itself is compared separately.
+
+	# verify should preserve alternates. (and set verified flag)
+
+	# compare should use alternates.
+
+
+	# maintain alternates under verify and dpush and etc etc. (ddpush?)
+
+#lazyeval should work without alternates.
+
+
+
+# could probably use comparison decorator for alternates.
+
+
+
+
+
+
+	# def getCreativeLabel(self,amt):
+	# 	mlab = 0
+	# 	for g in self.flat:
+	# 		if g.name=="_" and mlab==0: mlab=1
+	# 		if len(g)>=3 and g.startswith("_") and g.endswith("_") and g[1:-1].isnumeric():
+	# 			mlab = max(mlab,int(g[1:-1])+1)
+	# 	return ["_" if mlab==0 and amt==1 else "_"+(mlab+a)+"_" for a in range(amt)]
+
+
+# class Computation:
+# 	def __init__(self,wildin=None,spaces=None,verjson=None):
+# 		self.wildin   = {} if wildin == None else wildin
+# 		self.spaces   = {} if spaces == None else spaces
+# 		self.jsonobjs = [] if verjson == None else verjson
+# 	def registerAndExtract(self,add,ver):
+# 		self.wildin[add] = len(self.jsonobjs)
+# 		space = {}
+# 		self.spaces[len(self.jsonobjs)] = space
+# 		self.jsonobjs.append(ver.toJSON())
+# 		return Computation(self,space,self.spaces,self.jsonobjs)
+# 	def register(self,add,ver):
+# 		self.wildin[add] = len(self.jsonobjs)
+# 		self.jsonobjs.append(ver.toJSON())
+# 	def toJSON(self):
+# 		return {
+# 			"unverstructures":[{"k":list(k),"v":v} for k,v in self.wildin.items()]
+# 			"spaces":[{"k":k,"v":[{"k":list(k),"v":v} for k,v in p.items()]} for k,p in self.spaces.items()],
+# 			"verstructures":self.jsonobjs
+# 		}
+
+
+
+# class JSONComputationTransformer:
+# 	def main(self,json):
+# 		return Computation(
+# 			{tuple(a["k"]):a["v"] for a in json["unverstructures"]},
+# 			{a["k"]:{tuple(b["k"]):b["v"] for b in a["v"]} for a in json["spaces"]},
+# 			json["verstructures"]
+# 		)
+
+# (indesc,rowtype,othertype,obj,blame=yoks[k][1],soften=earlyabort,extract=yoks,thot=thot,odsc=lencom1)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
