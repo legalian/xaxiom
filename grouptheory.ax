@@ -9,7 +9,6 @@
 
 # pos,y,P
 
-
 {
 	::'builtin.ax',
 # # homomorphism =/= homotopy (isomporphism)
@@ -19,6 +18,7 @@
 # #project euler
 
 # # make an structure thats just for releasable memory objects.
+
 	Relation := {
 		J:U,
 		'=>':[J,J]U,
@@ -157,9 +157,9 @@
 						f(x),
 						|t,tq|R(x,xq).pred(t,tq) ->#this gives you x,xq every time- that's just how the dereferencing works.
 							PRESERVATION(
-								f(x),
+								f(t),
 								|g,gq|R_collapse_pred(x,xq,t,sharptransitive(xq,tq),(g,gq,tq)),
-								A = [z:J,z<<x]P(z)
+								A = [z:J,z<<t]P(z)
 							),
 						A = [z:J,z<<x]P(z),
 						a = |z,zq|R(x,xq).r(z,zq),
@@ -179,6 +179,7 @@
 				u
 			).pred(u)
 		),
+
 
 
 
@@ -221,6 +222,7 @@
 		# ),
 
 
+
 		connex = |a,b,q|[
 			P:[x:J]U = OR(x==a,x==b),
 			Pj:U = {j?:J,p:P(j)},
@@ -234,8 +236,6 @@
 		new_infimum = |P,a,b,pj|noether(P,pj)
 	>
 	# ,
-
-
 
 
 

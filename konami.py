@@ -97,8 +97,6 @@ class BuildAxiomCommand(sublime_plugin.ViewEventListener,sublime_plugin.TextComm
 
 
 
-
-
 	def update_selector_phantoms(self):
 		return
 		# self.selectorphantoms = []
@@ -129,8 +127,6 @@ class BuildAxiomCommand(sublime_plugin.ViewEventListener,sublime_plugin.TextComm
 		# self.update_phantoms()
 
 
-
-
 	def update_syntax_phantoms(self):
 		self.syntaxphantoms = []
 
@@ -151,6 +147,9 @@ class BuildAxiomCommand(sublime_plugin.ViewEventListener,sublime_plugin.TextComm
 				compilefiles({"currentfile"},{"currentfile":document},l=self.l,basepath=os.path.dirname(os.path.realpath(__file__))+"/")
 				# ahah = MyTransformer().transform(self.l.parse(document))
 				#ahah = self.l.parse(document)
+
+
+
 
 				# errors = ErrorObject()
 
@@ -218,6 +217,9 @@ class BuildAxiomCommand(sublime_plugin.ViewEventListener,sublime_plugin.TextComm
 	def update_phantoms(self):
 		self.phantom_set.update([])
 		self.phantom_set.update(self.syntaxphantoms+self.selectorphantoms)
+
+
+
 
 
 

@@ -30,7 +30,13 @@ U:U,
 	#because "has type of" is not a relation or predicate, girard's paradox cannot be expressed in this system
 	#U is the only object allowed to appear in its own type.
 
+
+
+
 '==':[A?:U,a:A,b:A]U,
+
+
+
 #operator overloading-> any function that takes one or two positional arguments can be named an operator.
 #the = here means any usage of == is rewritten behind the scenes to be an EQ call. == and EQ are then judgementally equivalent.
 #the question mark after the A means that, when supplying positional arguments, you skip the A and just provide a and b. The compiler then tries to infer A for you.
@@ -50,10 +56,8 @@ PRESERVATION:[A?:U,B?:U,a?:A,b?:A,f:[A]B,q:a==b]f(a) == f(b) = SUBSTITUTION(|w,_
 
 
 
-
 '!':[A:U]U = [A,u:U]u,#This is negation;the inhabitation of A implies the inhabitation of all things, which is a contradiction.
 '!=':[A?:U,a:A,b:A]U = !(a==b),
-
 
 # Types may be nested and unraveled.
 #the following is actually inconsistant because of a technicality and needs to be revised......
@@ -79,6 +83,7 @@ PRESERVATION:[A?:U,B?:U,a?:A,b?:A,f:[A]B,q:a==b]f(a) == f(b) = SUBSTITUTION(|w,_
 #         memberb:SUBSTITUTION(|w,_|B(w),member,b) == accb(union)#gives you back the second element except a becomes acc(union)
 #     },
 #     [au:and,bu:and,q:acc(au)==acc(bu),SUBSTITUTION(|w,_|B(w),q,accb(au))==accb(bu)]au==bu,#this is special; the compiler is going to try to apply this one automatically.
+
 
 #     func:U,
 #     eval:[func,a:A]B(a),
@@ -129,8 +134,6 @@ XOR.construct:[A:U,B:U,a:!A,b:B]XOR(A,B) = DEC({a:[B]A,b:[A]B},|s|a(s.a(b),XOR(A
 '.'commute:[A?:U,B?:U,o:XOR(A,B)]XOR(B,A) = DEC({a:[A]B,b:[B]A},|s|o((s.b,s.a),XOR(B,A)),|s|s)
 ,
 
-
-
 #[0] [1]  2   3
 #[0]  1  [2]  3
 #[0]  1   2  [3]
@@ -177,7 +180,6 @@ AT_LEAST_TWO_OF:[A:U,B:U,C:U]U = TRIPLE_OR({A,B},{B,C},{C,A}),               #[0
 ONE_OF:[A:U,B:U,C:U]U = !{ab:[C]OR(A,B),bc:[A]OR(B,C),ca:[B]OR(C,A)},        #[0]  1  [2] [3]
 TRIPLE_XOR:[A:U,B:U,C:U]U = !{ab:[C]XOR(A,B),bc:[A]XOR(B,C),ca:[B]XOR(C,A)}, #[0]  1  [2]  3
 ONE_OR_TWO_OF:[A:U,B:U,C:U]U = !{bc:[A]{B,C},ca:[B]{C,A},ab:[C]{A,B}},       #[0]  1   2  [3]
-
 
 
 
