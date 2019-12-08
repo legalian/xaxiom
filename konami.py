@@ -11,25 +11,6 @@ import re
 
 
 
-# reloadself()
-
-# from myplugin.transformer
-
-# print("\n".join([i for i in vars(nexus).keys()]))
-# print(vars(nexus))
-
-# print(vars(sys.modules["myplugin.transformer"]))
-
-
-
-# class BuildAxiomCommand(sublime_plugin.TextCommand):
-# 	def run(self):
-# 		print("hello world")
-
-
-
-
-
 class BuildAxiomCommand(sublime_plugin.ViewEventListener,sublime_plugin.TextCommand):
 	def run(self,kwar,action="parse"):
 		# action = kwar.get("action","parse")#view.run_command('build_axiom',{'action':'clear'})
@@ -41,15 +22,7 @@ class BuildAxiomCommand(sublime_plugin.ViewEventListener,sublime_plugin.TextComm
 			self.phantom_set.update([])
 
 	def on_post_save(self):
-		# global MyTransformer, StratSeries, ErrorObject
-		# reloadself()
-		# MyTransformer = vars(sys.modules["myplugin.transformer"])["MyTransformer"]
-		# StratSeries = vars(sys.modules["myplugin.metastructures"])["StratSeries"]
-		# ErrorObject = vars(sys.modules["myplugin.metastructures"])["ErrorObject"]
-
-		
 		self.update_syntax_phantoms()
-
 
 
 
@@ -81,52 +54,6 @@ class BuildAxiomCommand(sublime_plugin.ViewEventListener,sublime_plugin.TextComm
 		return syntax == 'Packages/myplugin/axiom.sublime-syntax'
 
 
-
-
-
-	# def on_query_completions(self, prefix, locations):
-	# 	# elements = ET.parse(
-	# 	#     urllib.request.urlopen(GOOGLE_AC % prefix)
-	# 	# ).getroot().findall("./CompleteSuggestion/suggestion")
-
-	# 	sugs = [["hoe","wak"],["asda","wawejk"],["hrhr","ohoh"]]
-
-	# 	return (sugs,sublime.INHIBIT_WORD_COMPLETIONS|sublime.INHIBIT_EXPLICIT_COMPLETIONS)
-
-
-
-
-
-	def update_selector_phantoms(self):
-		return
-		# self.selectorphantoms = []
-		# if self.curtree is None: return
-		# ranges = []
-		# for den in self.view.sel():
-		# 	if den.a!=den.b:
-		# 		ranges.append(den.begin())
-		# 		continue
-		# 	#do work here
-
-		# diagno = []
-		# scope = Scope([])
-		# diagnostics(self.curtree,scope,ranges,self.view,diagno)
-		# for diag in diagno:
-		# 	if diag[1] == None:
-		# 		error = '<span style="color:#FF00FF">~error~ = '+str(diag[0])+' . . . \n(~nosig~)</span>'
-		# 	else:
-		# 		if diag[5] == 1:
-		# 			error = '<span style="color:#FF00FF">'+str(diag[2])+' = '+str(diag[0])+' . . . \n('+str(diag[1])+') (found by name only)</span>'
-		# 		else:
-		# 			error = '<span style="color:#FF00FF">'+str(diag[2])+' = '+str(diag[0])+' . . . \n('+str(diag[1])+')</span>'
-		# 	self.selectorphantoms.append(sublime.Phantom(
-		# 		sublime.Region(self.view.text_point(diag[3],diag[4])),#carry cig type
-		# 		error,
-		# 		sublime.LAYOUT_BELOW
-		# 	))
-		# self.update_phantoms()
-
-
 	def update_syntax_phantoms(self):
 		self.syntaxphantoms = []
 
@@ -144,47 +71,11 @@ class BuildAxiomCommand(sublime_plugin.ViewEventListener,sublime_plugin.TextComm
 			# self.insertpoints = [0] + self.insertpoints + [len(document)]
 			# document = '\xA5'.join([document[self.insertpoints[i]:self.insertpoints[i+1]] for i in range(len(self.insertpoints)-1)])
 			try:
-				compilefiles({"currentfile"},{"currentfile":document},l=self.l,basepath=os.path.dirname(os.path.realpath(__file__))+"/")
-				# ahah = MyTransformer().transform(self.l.parse(document))
-				#ahah = self.l.parse(document)
-
-
-
-
-				# errors = ErrorObject()
-
-				# cheat = StratSeries([ObjStrategy(upcast=b) for b in bank])
-				# cheat = cheat.verify(StratSeries([],exverified=True),errors)
-				#|+5|a(b,c,d)
-				# print("--=-=-=-=--momomomo=-=-=-=-=-=-==--=>>>>>>")
-				# # try:
-				# nobh = ahah[1].verify(ScopeObject([],oprows=ahah[0]))
-				# print(nobh)
-				# print("--=-=-=-=--=-=-=-=-=-=-==--=>>>>>>")
-				# except ErrorObject as u:
-				# 	pass
-				# except RuntimeError:
-				# 	print("RECURSION DEPTH EXCEEDED")
-
-				# assert False
-				# print()
-				# print()
-				# print()
-				# print(task)
-				# print(ErrorObject.rer)
-
-				# # print(parseobjkind(ahah.children[1]))
-				# # attempt = Strategy(parsed=ahah)
-				# # for node in bank:
-				# self.curtree = None
-
-				# #syntaxreports(self.curtree,self)
-				# self.syntaxphantoms = ErrorObject.reports(self,wclist)
-
-				# self.curtree = attempt
-
-
-
+				# print(os.path.dirname(os.path.realpath(__file__)))
+				# basepath=os.path.dirname(os.path.realpath(__file__))+"/"
+				basepath = os.path.dirname(os.path.realpath(self.view.file_name()))+"/"
+				print(basepath)
+				compilefiles({"currentfile"},{"currentfile":document},l=self.l,basepath=basepath)
 
 
 			except UnexpectedInput as u:
@@ -201,18 +92,6 @@ class BuildAxiomCommand(sublime_plugin.ViewEventListener,sublime_plugin.TextComm
 					sublime.LAYOUT_BELOW
 				))
 				self.curtree = None
-			# except TypeMismatch as u:
-			# 	# sto1 = []
-			# 	# sto2 = []
-			# 	# u.expected.pmultiline(sto1,0,"Expected: ","",40,FormatterObject(u.context))
-			# 	# u.got.pmultiline(sto2,0,"Got: ","",40,FormatterObject(u.context))
-			# 	fullmessage = "<div style='background-color:#9A274E;border-radius:5px;'><div style='color:#282923;margin-left:10px;margin-right:10px'>Type mismatch:</div><div style='background-color:#612839;padding:10px;'>"+u.expected+"<br>"+u.got+"</div></div>"
-			# 	self.syntaxphantoms.append(sublime.Phantom(
-			# 		sublime.Region(self.view.text_point(u.row-1,u.column-1)),
-			# 		fullmessage,
-			# 		sublime.LAYOUT_BELOW
-			# 	))
-			# 	self.curtree = None
 		self.update_phantoms()
 	def update_phantoms(self):
 		self.phantom_set.update([])
@@ -223,38 +102,8 @@ class BuildAxiomCommand(sublime_plugin.ViewEventListener,sublime_plugin.TextComm
 
 
 
-
-
-		"""
-
-					<div style="margin:5px;position:relative;">
-						<div style="left:0;top:0;position:absolute;background-color:black;border-color:white;border-style:solid;border-width:5px 5px 5px 5px;">
-
-						</div>
-						<div style="left:100;top:100;position:absolute;background-color:black;border-color:white;border-style:solid;border-width:5px 5px 5px 5px;">third line</div>
-					</div>
-					"""
-
-
-
-
-	# def handle_timeout(self):
-	# 	self.timeout_scheduled = False
-	# 	if self.needs_update:
-	# 		self.needs_update = False
-	# 		self.update_phantoms()
-
-	def on_selection_modified(self):
-		self.update_selector_phantoms()
-
-	# def on+
-	# def on_modified(self):
-	# 	# Call update_phantoms(), but not any more than 10 times a second
-	# 	if self.timeout_scheduled:
-	# 		self.needs_update = True
-	# 	else:
-	# 		sublime.set_timeout(lambda: self.handle_timeout(), 100)
-	# 		self.update_syntax_phantoms()
+	# def on_selection_modified(self):
+	# 	self.update_selector_phantoms()
 
 
 
