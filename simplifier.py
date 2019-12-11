@@ -14,9 +14,7 @@ import random
 
 
 
-
 depth = 0
-
 len_check = re.compile('::lt::((?!::gt::).)*::gt::')
 def nonhtmllength(html):
 	return len(len_check.sub('',html))
@@ -384,6 +382,10 @@ def _dbgExit_flatten(self,delta,mog,assistmog,prep,obj,fillout,ahjs):
 
 
 def _dbgEnter_verify(self,indesc,carry,reqtype,then):
+	# if type(self) is RefTree:
+	# 	print("VERIFY ENTER: ",type(self),self.name)
+	# else:
+	# 	print("VERIFY ENTER: ",type(self))
 
 	indesc.setSafety(0)
 	self.setSafety(indesc.beginlen())#self is not slotted for indesc(begin) in verify
@@ -494,6 +496,8 @@ class LanguageError(Exception):
 			name,row,cr,indesc,error = self.choices[choice]
 			pushedrow = row.spush(ScopeDelta([(len(indesc)-cr,   min(cr,len(indesc))  )]))
 
+			# print(indesc)
+			# print(len(indesc.flat))
 
 			formatted = htmlformat(pushedrow,indesc,name+":")
 			if choice==self.callpattern:
@@ -775,7 +779,7 @@ class FormatterObject:
 		self.magic = magic
 		self.context = [k.name for k in context.flatnamespace()] if type(context) is ScopeObject else context
 		self.forhtml = forhtml
-		self.forbiddenrange = (forbidrange if forbidrange!=None else ScopeDelta()) - (context.prepushes if type(context) is ScopeObject else ScopeDelta())#[] if forbidrange==None else forbidrange
+		self.forbiddenrange = (forbidrange if forbidrange!=None else ScopeDelta()) - (context.prepushes+context.postpushes if type(context) is ScopeObject else ScopeDelta([]))#[] if forbidrange==None else forbidrange
 		self.littleeasier = littleeasier
 		self.colormap = {} if colormap==None else colormap
 
@@ -1015,6 +1019,8 @@ class ScopeObject:
 		def _dbgExit(ahjs):
 			ahjs.setSafety(0)
 		if len(newflat.flat) == 0: return self
+
+
 		return ScopeObject(self.flat+newflat.flat,self.prepushes+ScopeDelta([(len(newflat.flat),len(self.flat))]),self.postpushes,self.oprows)
 
 
@@ -1026,13 +1032,13 @@ class ScopeObject:
 		if amt == 0: return self
 		# return ScopeObject(self.flat,self.prepushes+[(len(self)-amt,self.beginlen()+amt-len(self))],self.postpushes,self.oprows)
 		return ScopeObject(self.flat,self.prepushes+ScopeDelta([(amt,len(self.flat)-amt)]),self.postpushes,self.oprows)
-	def sneakinsert(self,nflat,fillout):
-		def _dbgEnter():
-			self.setSafety(0)
-		def _dbgExit(ahjs):
-			ahjs.setSafety(0)
-		if len(nflat.flat) == 0: return self
-		return ScopeObject(self.flat[:fillout] + nflat.flat + [k.spush(ScopeDelta([(len(nflat.flat),self.postpushes.translateGentle(fillout))])) for k in self.flat[fillout:]],self.prepushes+ScopeDelta([(len(nflat.flat),fillout)]),self.postpushes.pushchangethru(len(nflat.flat),fillout),self.oprows)
+	# def sneakinsert(self,nflat,fillout):
+	# 	def _dbgEnter():
+	# 		self.setSafety(0)
+	# 	def _dbgExit(ahjs):
+	# 		ahjs.setSafety(0)
+	# 	if len(nflat.flat) == 0: return self
+	# 	return ScopeObject(self.flat[:fillout] + nflat.flat + [k.spush(ScopeDelta([(len(nflat.flat),self.postpushes.translateGentle(fillout))])) for k in self.flat[fillout:]],self.prepushes+ScopeDelta([(len(nflat.flat),fillout)]),self.postpushes.pushchangethru(len(nflat.flat),fillout),self.oprows)
 
 
 	def setSafety(self,safe):
@@ -1070,9 +1076,9 @@ class ScopeObject:
 		return ScopeObject(self.flat,pushes+self.prepushes,self.postpushes,self.oprows)
 		# res.memo = [(pushes+pres,com,res) for pres,com,res in self.memo]
 		# return res
-	def postpushPO(self,pushes):
-		if pushes.isempty(): return self
-		return ScopeObject(self.flat,self.prepushes,self.postpushes+pushes,self.oprows)
+	# def postpushPO(self,pushes):
+	# 	if pushes.isempty(): return self
+	# 	return ScopeObject(self.flat,self.prepushes,self.postpushes+pushes,self.oprows)
 		# return res
 
 
@@ -1085,10 +1091,9 @@ class ScopeObject:
 	def flatnamespace(self):
 		# def _dbgEnter():
 			# self.setSafety(0)
-		# def _dbgExit(ahjs):
-		# 	# ahjs.setSafety(0)
-		# 	assert len(ahjs) == ahjs.beginlen()
-		# 	assert len(ahjs) == len(self)
+		def _dbgExit(ahjs):
+			# ahjs.setSafety(0)
+			assert len(ahjs) == len(self)
 		databus = [TypeRow(k.name,None,k.obj) for k in self.flat]
 		for amt,lim in self.postpushes.pushes:
 			databus = databus[:lim]+databus[lim-amt:]
@@ -1624,6 +1629,9 @@ def altPmultiline(F):
 				# 	print("previous value has alternates...???")
 				thissucks = thissucks + ([] if a.altversion==None else a.altversion.evaluate(context))
 				continue
+			# else:
+			# 	if context.context!=None and not context.forbiddenrange.isempty():
+			# 		print("Refused to drop possibility: ",context.forbiddenrange,a.prepr(FormatterObject(None)),a.prepr(FormatterObject(context.context)))
 			complete.append([])
 			a.pmultiline(context,complete[-1],*args,**kwargs)
 		if len(complete):
@@ -1653,6 +1661,9 @@ def altPrepr(F):
 					# 	print("previous value has alternates...???")
 					thissucks = thissucks + ([] if a.altversion==None else a.altversion.evaluate(context))
 					continue
+				# else:
+				# 	if context.context!=None and not context.forbiddenrange.isempty():
+				# 		print("Refused to drop possibility: ",context.forbiddenrange,a.prepr(FormatterObject(None)),a.prepr(FormatterObject(context.context)))
 				complete.append(a.prepr(context,*args,**kwargs))
 			if len(complete):
 				m = complete[0]
@@ -2223,6 +2234,8 @@ class DualSubs(Tobj):
 										obj,ntyp = yoks[k][1].obj.verify(indesc.trimabsolute(len(thot)).addflat(yasatflat),reqtype=True)
 										obj  =  obj.addlambdasphase2(yoks[k][1].si,pos=yoks[k][1])
 										ntyp = ntyp.addfibration(yasat)
+										# print("assigned: ",row.name)
+										# print("assigned: ",indesc.flat[len(indesc.flat)-lentho-1+yoks[k][0][0]])
 										yoks[k] = (yoks[k][0],obj,ntyp)
 										st = len(yoks)
 										obj  =  obj.spush(ScopeDelta([(lentho,lencom1)]))
@@ -2542,6 +2555,8 @@ class Template(Tobj):
 		self.rows = [] if rows == None else rows
 		self.subs = [] if subs == None else subs
 		self.src = src
+
+		self.altversion = None
 		transferlines(self,pos)
 	def primToJSON(self):
 		return (
@@ -2810,8 +2825,8 @@ class Strategy(Tobj):
 	def verify(self,indesc,carry=None,reqtype=False,then=False):
 		verargs,thendesc = self.args.verify(indesc,then=True)
 		if len(verargs) == 0:
-			thendesc = thendesc.posterase(len(indesc))
-			return self.type.verify(thendesc,carry,reqtype=reqtype,then=then)
+			# thendesc = thendesc.posterase(len(indesc))
+			return self.type.verify(thendesc,carry.spush(ScopeDelta([(longcount(verargs),len(indesc))])),reqtype=reqtype,then=then).spush(ScopeDelta([(-longcount(verargs),len(indesc))]))
 
 		assertstatequal(indesc,self,carry,RefTree(verdepth=len(indesc)))
 		vertype = self.type.verify(thendesc,RefTree(verdepth=len(thendesc)))
@@ -2932,6 +2947,7 @@ class RefTree(Tobj):
 				outp = outp.addalts(altversion)
 			return outp
 	def spush(self,pushes):
+		# print("SPUSHING: ",self)
 		gy = self.name
 		if self.src==None and self.name!=0: gy = pushes.translate(self.name)
 		return RefTree(gy,self.args.spush(pushes),None if self.src == None else self.src.spush(pushes),pos=self,verdepth=None if self.verdepth==None else self.verdepth+pushes.lenchange(),altversion=None if self.altversion==None else self.altversion.dpush_v(pushes),cold=self.cold)
@@ -2997,6 +3013,7 @@ class RefTree(Tobj):
 		return False
 	
 	def verify(self,indesc,carry=None,reqtype=False,then=False):
+		# print("VERIFY ENTER: ",type(self),self.name,self.src==None)
 		assert not then
 		if type(self.name) is str and self.name.endswith(".ax'"):
 			print([k for k in indesc.oprows.dependencies.keys()])
@@ -3009,7 +3026,10 @@ class RefTree(Tobj):
 		p1 = self.args.phase1(indesc)
 		errorcontext = []
 		if self.src == None:
+			print("symextract ENTER: ",type(self),self.name)
 			tra = indesc.symextract(self.name,p1,carry=carry,reqtype=reqtype,safety=self.safety,pos=self,errorcontext=errorcontext)
+			print("symextract EXIT: ",type(self),self.name)
+
 
 			if tra != None: return tra
 			for a in range(len(indesc.flat)):
@@ -3168,6 +3188,7 @@ class OperatorSet(Tobj):
 	@initTobj
 	def __init__(self,array,pos=None):
 		self.array = array
+		self.altversion = None
 		transferlines(self,pos)
 	def needscarry(self):
 		return False
@@ -3227,6 +3248,7 @@ class OperatorSet(Tobj):
 					self.array[token].pmultiline(context,out,indent,rowprep,postpend,callback=callback)
 				else:
 					self.array[token].pmultiline(context,out,indent,rowprep,"",callback=None)
+				rowprep = ""
 
 
 
@@ -3456,12 +3478,15 @@ def compilefiles(files,overrides=None,l=None,basepath="",redoAll=False,verbose=F
 # 	raise u
 
 
+compilefiles({"grouptheory.ax"},verbose=True,basepath="/Users/parkerlawrence/dev/agi/")
+
 def _dbgTest():
 	# compilefiles({"grouptheory.ax","builtin.ax"},redoAll=True)
 	# try:
 	try:
 	# 	# compilefiles({"grouptheory.ax","builtin.ax"},redoAll=True)
-		compilefiles({"builtin.ax"},verbose=True)
+		# print("compiling")
+		compilefiles({"grouptheory.ax"},verbose=True,basepath="/Users/parkerlawrence/dev/agi/")
 	except LanguageError as u:
 		u.tohtml()
 		raise u
