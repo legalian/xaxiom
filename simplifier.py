@@ -612,14 +612,14 @@ class Altversions:
 		self.subtree   = subtree
 	def dpush_v(self,pushes,exob=None):
 		return Altversions(self.alternate,[(0,pushes,exob)] if self.effects==None else (self.effects+[(0,pushes,exob)]),self.subtree)
-	def ddpush_v(self,amt,lim,repls,replsrc):
-		return Altversions(self.alternate,[(1,amt,lim,repls,replsrc)] if self.effects==None else (self.effects+[(1,amt,lim,repls,replsrc)]),self.subtree)
+	# def ddpush_v(self,amt,lim,repls,replsrc):
+	# 	return Altversions(self.alternate,[(1,amt,lim,repls,replsrc)] if self.effects==None else (self.effects+[(1,amt,lim,repls,replsrc)]),self.subtree)
 	def addfibration_v(self,args):
-		return Altversions(self.alternate,[(2,args)] if self.effects==None else (self.effects+[(2,args)]),self.subtree)
+		return Altversions(self.alternate,[(1,args)] if self.effects==None else (self.effects+[(2,args)]),self.subtree)
 	def extractfibration_v(self,amt):
-		return Altversions(self.alternate,[(3,amt)] if self.effects==None else (self.effects+[(3,amt)]),self.subtree)
+		return Altversions(self.alternate,[(2,amt)] if self.effects==None else (self.effects+[(3,amt)]),self.subtree)
 	def addlambda_p2_v(self,si):
-		return Altversions(self.alternate,[(4,si)] if self.effects==None else (self.effects+[(4,si)]),self.subtree)
+		return Altversions(self.alternate,[(3,si)] if self.effects==None else (self.effects+[(4,si)]),self.subtree)
 
 	def __add__(self,other):
 		if other==None: return self
@@ -639,10 +639,10 @@ class Altversions:
 			try:
 				for step in self.effects:
 					if   step[0]==0: yo = yo.dpush(step[1],exob=step[2])
-					elif step[0]==1: yo = yo.ddpush(step[1],step[2],step[3],step[4])
-					elif step[0]==2: yo = yo.addfibration(step[1])
-					elif step[0]==3: yo = yo.extractfibration(None,[None]*step[1])[1]
-					elif step[0]==4: yo = yo.addlambdasphase2(step[1])
+					# elif step[0]==1: yo = yo.ddpush(step[1],step[2],step[3],step[4])
+					elif step[0]==1: yo = yo.addfibration(step[1])
+					elif step[0]==2: yo = yo.extractfibration(None,[None]*step[1])[1]
+					elif step[0]==3: yo = yo.addlambdasphase2(step[1])
 				outp.append(yo)
 			except DpushError:
 				# print("Dropped possibility because dpush error encountered.",step)
@@ -691,6 +691,10 @@ class ScopeDelta:
 				assert j[3]>=0
 				assert j[0]+j[1]<=j[2]
 				assert j[2]+j[3]<=safe
+			elif len(j)==3:
+				assert j[1]<=safe
+				assert j[1]-j[0]<=safe
+				safe+=j[0]+len(j[2])
 			else:
 				for key,symbol in j[0]:
 					if symbol.verdepth>key:
@@ -726,11 +730,16 @@ class ScopeDelta:
 				if   fug>=j[0] and fug<j[0]+j[1]: fug+=j[2]-j[0]
 				elif fug>=j[2] and fug<j[2]+j[3]: fug+=j[0]-j[2]
 				elif fug>=j[0]+j[1] and fug<j[2]: fug+=j[3]-j[1]
+			elif len(j)==3:
+				changefar += j[0]
+				if fug>=j[1]:
+					if fug+j[0]<j[1]: return (j[2],ScopeDelta(self.pushes[:i]),ScopeDelta(self.pushes[i+1:]))
+					fug+=j[0]+len(j[2])
 			else:
 				for key,symbol in j[0]:
 					if fug==key:
 						return (symbol,ScopeDelta(self.pushes[i+1:]),fug,changefar)
-			
+			#teleport
 		return fug
 	def subset(self,fug):
 		track = []
@@ -754,17 +763,17 @@ class ScopeDelta:
 	def translateGentle(self,fug):
 		return self.gentlesubset(fug).translate(fug)
 	def lenchange(self):
-		return sum(j[0] for j in self.pushes if len(j)==2)
+		return sum(j[0] if len(j)==2 else j[0]+len(j[2]) for j in self.pushes if len(j)==2 or len(j)==3)
 
-	def pushchangethru(self,pamt,plim):
-		track = []
-		for amt,lim in self.pushes:
-			if plim>=lim-amt:
-				plim+=amt
-				track.append((amt,lim))
-			else:
-				track.append((amt,lim+pamt))
-		return ScopeDelta(track)
+	# def pushchangethru(self,pamt,plim):
+	# 	track = []
+	# 	for amt,lim in self.pushes:
+	# 		if plim>=lim-amt:
+	# 			plim+=amt
+	# 			track.append((amt,lim))
+	# 		else:
+	# 			track.append((amt,lim+pamt))
+	# 	return ScopeDelta(track)
 
 
 
@@ -1282,8 +1291,8 @@ class TypeRow:
 			"silent":self.silent
 		}
 
-	def ddpush(self,amt,lim,repls=None,replsrc=None):
-		return TypeRow(self.name,self.type.ddpush(amt,lim,repls,replsrc),None if self.obj == None else self.obj.ddpush(amt,lim,repls,replsrc),self.silent)
+	# def ddpush(self,amt,lim,repls=None,replsrc=None):
+	# 	return TypeRow(self.name,self.type.ddpush(amt,lim,repls,replsrc),None if self.obj == None else self.obj.ddpush(amt,lim,repls,replsrc),self.silent)
 	def detect(self,ranges):
 		return self.type.detect(ranges) or self.obj!=None and self.obj.detect(ranges)
 	def softdetect(self,ranges):
@@ -1355,8 +1364,8 @@ class SubRow:
 	def __init__(self,name,obj):
 		self.name = name
 		self.obj  = obj
-	def ddpush(self,amt,lim,repls=None,replsrc=None):
-		return SubRow(self.name,self.obj.ddpush(amt,lim,repls,replsrc))
+	# def ddpush(self,amt,lim,repls=None,replsrc=None):
+	# 	return SubRow(self.name,self.obj.ddpush(amt,lim,repls,replsrc))
 	def detect(self,ranges):
 		return self.obj.detect(ranges)
 	def softdetect(self,ranges):
@@ -1817,22 +1826,22 @@ class DualSubs(Tobj):
 		pmultilinecsv(context,out,indent,self.rows,prepend+context.red("{"),context.red("}")+postpend,lamadapt=lambda x:x.name,callback=callback,delim=context.red(","))
 
 
-	def ddpush(self,amt,lim,repls=None,replsrc=None,disgrace=None):
-		disgrace = ScopeDelta() if disgrace == None else disgrace
-		left = 0
-		cu = []
-		for k in range(len(self.rows)):
-			try:
-				m = self.rows[k]
-				if not disgrace.isempty(): m = m.spush(disgrace)
-				m = m.ddpush(amt,lim,repls,replsrc)
-			except DpushError as u:
-				if self.rows[k].obj == None: raise u
-				disgrace.append((-longcount(self.rows[k].name),self.verdepth+left))
-			else:
-				cu.append(m)
-				left += longcount(self.rows[k].name)
-		return DualSubs(cu,verdepth=self.verdepth+amt,altversion=None if self.altversion==None else self.altversion.ddpush_v(amt,lim,repls,replsrc),src=None if self.src==None else (self.src[0].ddpush(amt,lim,repls,replsrc),self.src[1]),pos=self)
+	# def ddpush(self,amt,lim,repls=None,replsrc=None,disgrace=None):
+	# 	disgrace = ScopeDelta() if disgrace == None else disgrace
+	# 	left = 0
+	# 	cu = []
+	# 	for k in range(len(self.rows)):
+	# 		try:
+	# 			m = self.rows[k]
+	# 			if not disgrace.isempty(): m = m.spush(disgrace)
+	# 			m = m.ddpush(amt,lim,repls,replsrc)
+	# 		except DpushError as u:
+	# 			if self.rows[k].obj == None: raise u
+	# 			disgrace.append((-longcount(self.rows[k].name),self.verdepth+left))
+	# 		else:
+	# 			cu.append(m)
+	# 			left += longcount(self.rows[k].name)
+	# 	return DualSubs(cu,verdepth=self.verdepth+amt,altversion=None if self.altversion==None else self.altversion.ddpush_v(amt,lim,repls,replsrc),src=None if self.src==None else (self.src[0].ddpush(amt,lim,repls,replsrc),self.src[1]),pos=self)
 	def detect(self,ranges,merge=False):
 		if not merge: ranges = ranges.isolate()
 		dsc = self.verdepth
@@ -2225,10 +2234,8 @@ class DualSubs(Tobj):
 										truncargs,ntype = rowtype.extractfibration(indesc,yoks[k][1].si,blame=yoks[k][1])
 									except InvalidSplit as u:
 										raise u.soften(earlyabort)
-									try:
-										yasat = truncargs.ddpush(-lentho,lencom1) if lentho else truncargs
-									except DpushError: pass
-									else:
+									if not lentho or not truncargs.detect(ScopeDelta([(-lentho,lencom1)])):
+										yasat = truncargs.dpush(ScopeDelta([(-lentho,lencom1)])) if lentho else truncargs
 										earlyabort = False
 										yasatflat = yasat.flatten(ScopeDelta([]),yoks[k][1].si)
 										obj,ntyp = yoks[k][1].obj.verify(indesc.trimabsolute(len(thot)).addflat(yasatflat),reqtype=True)
@@ -2496,8 +2503,8 @@ class SubsObject(Tobj):
 		if len(si)!=len(self.subs): return False
 		return all(self.subs[k].obj.isemptyinst(si[k],prep=prep) for k in range(len(si)))
 
-	def ddpush(self,amt,lim,repls=None,replsrc=None):
-		return SubsObject([k.ddpush(amt,lim,repls,replsrc) for k in self.subs],pos=self,verdepth=self.verdepth+amt,altversion=None if self.altversion==None else self.altversion.ddpush_v(amt,lim,repls,replsrc))
+	# def ddpush(self,amt,lim,repls=None,replsrc=None):
+	# 	return SubsObject([k.ddpush(amt,lim,repls,replsrc) for k in self.subs],pos=self,verdepth=self.verdepth+amt,altversion=None if self.altversion==None else self.altversion.ddpush_v(amt,lim,repls,replsrc))
 	def detect(self,ranges):
 		return any(sub.detect(ranges) for sub in self.subs)
 	def softdetect(self,ranges):
@@ -2628,8 +2635,8 @@ class Lambda(Tobj):
 			"si":self.si,
 			"obj":self.obj.toJSON()
 		}
-	def ddpush(self,amt,lim,repls=None,replsrc=None):
-		return Lambda(self.si,self.obj.ddpush(amt,lim,repls,replsrc),pos=self,verdepth=self.verdepth+amt,altversion=None if self.altversion==None else self.altversion.ddpush_v(amt,lim,repls,replsrc))
+	# def ddpush(self,amt,lim,repls=None,replsrc=None):
+	# 	return Lambda(self.si,self.obj.ddpush(amt,lim,repls,replsrc),pos=self,verdepth=self.verdepth+amt,altversion=None if self.altversion==None else self.altversion.ddpush_v(amt,lim,repls,replsrc))
 	def detect(self,ranges):
 		return self.obj.detect(ranges)
 	def softdetect(self,ranges):
@@ -2718,14 +2725,14 @@ class Strategy(Tobj):
 			"cent":self.type.toJSON(),
 			"rows":self.args.toJSON()["rows"]
 		}
-	def ddpush(self,amt,lim,repls=None,replsrc=None):
-		disgrace = ScopeDelta()
-		newargs = self.args.ddpush(amt,lim,repls,replsrc,disgrace=disgrace)
+	# def ddpush(self,amt,lim,repls=None,replsrc=None):
+	# 	disgrace = ScopeDelta()
+	# 	newargs = self.args.ddpush(amt,lim,repls,replsrc,disgrace=disgrace)
 		
-		newtype = self.type
-		if not disgrace.isempty(): newtype = newtype.spush(disgrace)
-		newtype = newtype.ddpush(amt,lim,repls,replsrc)
-		return Strategy(newargs,newtype,pos=self,verdepth=self.verdepth+amt,altversion=None if self.altversion==None else self.altversion.ddpush_v(amt,lim,repls,replsrc))
+	# 	newtype = self.type
+	# 	if not disgrace.isempty(): newtype = newtype.spush(disgrace)
+	# 	newtype = newtype.ddpush(amt,lim,repls,replsrc)
+	# 	return Strategy(newargs,newtype,pos=self,verdepth=self.verdepth+amt,altversion=None if self.altversion==None else self.altversion.ddpush_v(amt,lim,repls,replsrc))
 	def detect(self,ranges):
 		ranges = ranges.isolate()
 		return self.args.detect(ranges,merge=True) or self.type.detect(ranges)
@@ -2891,18 +2898,18 @@ class RefTree(Tobj):
 			"subs":self.args.toJSON()["subs"],
 			"src":None if self.src==None else self.src.toJSON()
 		}
-	def ddpush(self,amt,lim,repls=None,replsrc=None):
-		gy = self.name
-		if gy >= lim and self.src == None:
-			gy += amt
-			if gy-(0 if repls==None else len(repls)) < lim:
-				if repls == None: raise DpushError
+	# def ddpush(self,amt,lim,repls=None,replsrc=None):
+	# 	gy = self.name
+	# 	if gy >= lim and self.src == None:
+	# 		gy += amt
+	# 		if gy-(0 if repls==None else len(repls)) < lim:
+	# 			if repls == None: raise DpushError
 
-				fom = self.ddpush(replsrc-self.verdepth,replsrc) if replsrc-self.verdepth else self#dsc->odsc    lim-amt-len(repls)?
-				for j in range(len(repls)):
-					if fom.compare(repls[j]): return RefTree(lim+j,verdepth=self.verdepth+amt)
-				raise DpushError
-		return RefTree(gy,self.args.ddpush(amt,lim,repls,replsrc),None if self.src == None else self.src.ddpush(amt,lim,repls,replsrc),pos=self,verdepth=self.verdepth+amt,altversion=None if self.altversion==None else self.altversion.ddpush_v(amt,lim,repls,replsrc),cold=self.cold)
+	# 			fom = self.ddpush(replsrc-self.verdepth,replsrc) if replsrc-self.verdepth else self#dsc->odsc    lim-amt-len(repls)?
+	# 			for j in range(len(repls)):
+	# 				if fom.compare(repls[j]): return RefTree(lim+j,verdepth=self.verdepth+amt)
+	# 			raise DpushError
+	# 	return RefTree(gy,self.args.ddpush(amt,lim,repls,replsrc),None if self.src == None else self.src.ddpush(amt,lim,repls,replsrc),pos=self,verdepth=self.verdepth+amt,altversion=None if self.altversion==None else self.altversion.ddpush_v(amt,lim,repls,replsrc),cold=self.cold)
 	def detect(self,ranges):
 		if self.src==None:
 			if not ranges.canTranslate(self.name): return True
@@ -2915,10 +2922,14 @@ class RefTree(Tobj):
 		return self.args.softdetect(ranges)
 	def dpush(self,pushes,exob=None):
 		gy = self.name
-		decargs = self.args if pushes.isempty() else self.args.dpush(pushes)
-		if exob != None: decargs = SubsObject(decargs.subs+exob.subs,verdepth=exob.verdepth)
+
+
 		altversion=None if self.altversion==None else self.altversion.dpush_v(pushes,exob=exob)
 		if self.src!=None:
+
+			decargs = self.args if pushes.isempty() else self.args.dpush(pushes)
+			if exob != None: decargs = SubsObject(decargs.subs+exob.subs,verdepth=exob.verdepth)
+
 			outp = self.src.dpush(pushes)
 			if type(outp) is RefTree:
 				outp = RefTree(src=outp,args=decargs,name=self.name,verdepth=outp.verdepth,pos=self)
@@ -2935,10 +2946,40 @@ class RefTree(Tobj):
 			while type(gy) is tuple:
 				gy = gy[1].translate(gy[2])
 		if type(gy) is int:
+
+			decargs = self.args if pushes.isempty() else self.args.dpush(pushes)
+			if exob != None: decargs = SubsObject(decargs.subs+exob.subs,verdepth=exob.verdepth)
+
 			outp = RefTree(gy,decargs,None,pos=self,verdepth=self.verdepth+pushes.lenchange(),altversion=altversion,cold=self.cold)
 			if hasattr(self,'debugname'): outp.debugname = self.debugname
 			return outp
+		elif len(gy)==3:
+			# teleport
+			# (j[2],ScopeDelta(self.pushes[:i]),ScopeDelta(self.pushes[i+1:]))
+
+			pard = self.dpush(gy[1]+ScopeDelta([(gy[0][0].verdepth-self.verdepth,gy[0][0].verdepth)]))
+			for j in range(len(j[2])):
+				if pard.compare(j[2][j]):
+					ae = RefTree(lim+j,verdepth=self.verdepth+amt)
+					if exob!=None or not gy[2].isempty():
+						ae = ae.dpush(gy[2],exob=exob)
+					return ae
+			raise DpushError
+
+			# if exob != None: pardargs = SubsObject(pardargs.subs+exob.subs,verdepth=exob.verdepth)
+
+
+	# 			fom = self.ddpush(replsrc-self.verdepth,replsrc) if replsrc-self.verdepth else self#dsc->odsc    lim-amt-len(repls)?
+	# 			for j in range(len(repls)):
+	# 				if fom.compare(repls[j]): return RefTree(lim+j,verdepth=self.verdepth+amt)
+	# 			raise DpushError
+
 		else:
+
+			decargs = self.args if pushes.isempty() else self.args.dpush(pushes)
+			if exob != None: decargs = SubsObject(decargs.subs+exob.subs,verdepth=exob.verdepth)
+
+
 			assert self.verdepth+gy[3]-gy[0].verdepth>=0
 			outp = gy[0].dpush(ScopeDelta([(self.verdepth+gy[3]-gy[0].verdepth,gy[0].verdepth)])+gy[1],exob=decargs if len(decargs.subs) else None)
 			if gy[1].canTranslate(gy[2]):
@@ -2984,8 +3025,10 @@ class RefTree(Tobj):
 						repls.append(self.args.subs[g1].obj)
 					if not valid: break
 					try:
-						gr = other if rigpush==None else other.spush(rigpush)
-						gr = gr.ddpush(odsc+len(repls)-dsc,odsc,repls=repls,replsrc=dsc)
+						# gr = other if rigpush==None else other.spush(rigpush)
+						# gr =
+						gr = other.dpush((ScopeDelta() if rigpush==None else rigpush) + ScopeDelta([(odsc-dsc,odsc,repls)]))
+						# gr = gr.ddpush(odsc+len(repls)-dsc,odsc,repls=repls,replsrc=dsc)
 					except DpushError:
 						return False
 
