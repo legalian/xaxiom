@@ -1881,7 +1881,6 @@ def lazyflatten(F):
 
 
 
-
 class DualSubs(Tobj):
 	@initTobj
 	def __init__(self,rows=None,verdepth=None,src=None,altversion=None,pos=None):
@@ -1927,7 +1926,8 @@ class DualSubs(Tobj):
 	def toJSON(self):
 		return {
 			"type":"DualSubs",
-			"rows":[k.toJSON() for k in self.rows]
+			"rows":[k.toJSON() for k in self.rows],
+			"src":None if self.src==None else self.src.toJSON()
 		}
 	@altPrepr
 	def prepr(self,context):
@@ -2450,7 +2450,6 @@ class DualSubs(Tobj):
 			for b in range(a):
 				if wclist[b][0].obj==None and wclist[a][0].detect(ScopeDelta([(-1,self.verdepth+b)])):
 					wclist[a][3].append(self.verdepth+b)
-					print(wclist[a][0].name,"References",wclist[b][0].name)
 					for c in wclist[b][3]:
 						if c not in wclist[a][3]: wclist[a][3].append(c)
 
@@ -2471,7 +2470,6 @@ class DualSubs(Tobj):
 								inc.append(wclist[b][1])
 								usedref.append(b)
 							else:
-								print("eliminating: ",wclist[b][0].name)
 								tub.insert(0,(-1,self.verdepth+b))
 						wonk = indesc.addflat(ScopeObject(wlist)).prepushPR(ScopeDelta([(1,indesc.beginlen()+n) for n in range(len(wlist)) if not inc[n]]))
 						ltype = wclist[a][0].type.dpush(ScopeDelta([(len(wlist)-a,self.verdepth+a)]))
@@ -3066,7 +3064,8 @@ class RefTree(Tobj):
 			"type":"RefTree",
 			"name":self.name,
 			"subs":self.args.toJSON()["subs"],
-			"src":None if self.src==None else self.src.toJSON()
+			"src":None if self.src==None else self.src.toJSON(),
+			"core":None if self.core==None else self.core.core.dpush(self.core.rows).toJSON()
 		}
 
 	def unwrap(self):
@@ -3679,14 +3678,14 @@ class JSONTransformer:
 		elif json["type"] == "Lambda":     return self.Lambda(json,depth)
 		else: assert False
 	def RefTree(self,json,depth):
-		return RefTree(name=json["name"],args=self.SubsObject(json,depth),src=None if json["src"]==None else self.generic(json["src"],depth),verdepth=depth)
+		return RefTree(name=json["name"],args=self.SubsObject(json,depth),src=None if json["src"]==None else self.generic(json["src"],depth),core=None if json["core"]==None else DelayedSub(self.generic(json["core"],depth)),verdepth=depth)
 	def DualSubs(self,json,depth):
 		rows = []
 		cumulative = 0
 		for row in json["rows"]:
 			rows.append(TypeRow(row["name"],self.generic(row["cent"],depth+cumulative),None if row["obj"]==None else self.generic(row["obj"],depth+cumulative),row["silent"]))
 			cumulative+=longcount(row["name"])
-		return DualSubs(rows,verdepth=depth)
+		return DualSubs(rows,src=None if "src" not in json or json["src"]==None else self.generic(json["src"],depth),verdepth=depth)
 	def Strategy(self,json,depth):
 		args = self.DualSubs(json,depth)
 		return Strategy(args,self.generic(json["cent"],depth+longcount(args)),verdepth=depth)
@@ -3773,9 +3772,11 @@ def compilefiles(files,overrides=None,l=None,basepath="",redoAll=False,verbose=F
 		except Exception as u:
 			if os.path.exists(basepath+filename+".ver"):
 				os.remove(basepath+filename+".ver")
+				if filename=="builtin.ax": raise u
 			transformer = MyTransformer()
 			active.append((False,filename,transformer.transform(l.parse(document)),md5,[(None,a) for a in transformer.dependencies]))
 			impstack.append(transformer.dependencies)
+			
 
 
 # print("__name__ is: ",__name__)
