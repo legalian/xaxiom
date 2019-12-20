@@ -11,6 +11,8 @@ import re
 
 
 
+
+
 class BuildAxiomCommand(sublime_plugin.ViewEventListener,sublime_plugin.TextCommand):
 	def run(self,kwar,action="parse"):
 		# action = kwar.get("action","parse")#view.run_command('build_axiom',{'action':'clear'})
@@ -23,7 +25,6 @@ class BuildAxiomCommand(sublime_plugin.ViewEventListener,sublime_plugin.TextComm
 
 	def on_post_save(self):
 		self.update_syntax_phantoms()
-
 
 
 
