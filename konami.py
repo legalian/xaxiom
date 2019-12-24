@@ -12,6 +12,8 @@ import re
 
 
 
+
+
 class BuildAxiomCommand(sublime_plugin.ViewEventListener,sublime_plugin.TextCommand):
 	def run(self,kwar,action="parse"):
 		# action = kwar.get("action","parse")#view.run_command('build_axiom',{'action':'clear'})
@@ -58,6 +60,7 @@ class BuildAxiomCommand(sublime_plugin.ViewEventListener,sublime_plugin.TextComm
 
 
 
+
 	def update_syntax_phantoms(self):
 		self.syntaxphantoms = []
 
@@ -73,35 +76,43 @@ class BuildAxiomCommand(sublime_plugin.ViewEventListener,sublime_plugin.TextComm
 
 			# self.insertpoints = [0] + self.insertpoints + [len(document)]
 			# document = '\xA5'.join([document[self.insertpoints[i]:self.insertpoints[i+1]] for i in range(len(self.insertpoints)-1)])
-			try:
-				# print(os.path.dirname(os.path.realpath(__file__)))
-				# basepath=os.path.dirname(os.path.realpath(__file__))+"/"
-				print("compiling...")
-				basepath,filename = os.path.split(os.path.realpath(self.view.file_name()))
-				# print(basepath)
-				FileLoader(overrides={filename:document},l=self.l,basepath=basepath+"/").load(filename)
-				# compilefiles({filename},{filename:document},l=self.l,basepath=basepath+"/")
 
 
+			print("compiling...")
+			basepath,filename = os.path.split(os.path.realpath(self.view.file_name()))
+			basepath += "/"
+			try: FileLoader(overrides={filename:document},l=self.l,basepath=basepath).load(filename)
 			except UnexpectedInput as u:
-				self.syntaxphantoms.append(sublime.Phantom(
-					sublime.Region(self.view.text_point(u.line-1,u.column-1)),
-					'<span style="color:red">█Syntax:</span>',
-					sublime.LAYOUT_INLINE
-				))
-				self.curtree = None
+				if u.file == filename:
+					self.syntaxphantoms.append(sublime.Phantom(
+						sublime.Region(self.view.text_point(u.line-1,u.column-1)),
+						'<span style="color:red">█Syntax:</span>',
+						sublime.LAYOUT_INLINE
+					))
+				else:
+					self.syntaxphantoms.append(sublime.Phantom(
+						sublime.Region(self.view.text_point(0,0)),
+						htmlatlocation(basepath,u.file,u.line,u.column,'<span style="color:red">Syntax error</span>'),
+						sublime.LAYOUT_INLINE
+					))
 			except LanguageError as u:
-				self.syntaxphantoms.append(sublime.Phantom(
-					sublime.Region(self.view.text_point(u.row-1,u.column-1)),
-					u.tohtml(),
-					sublime.LAYOUT_BELOW
-				))
-				self.curtree = None
+				if u.file == filename:
+					self.syntaxphantoms.append(sublime.Phantom(
+						sublime.Region(self.view.text_point(u.row-1,u.column-1)),
+						u.tohtml(),
+						sublime.LAYOUT_BELOW
+					))
+				else:
+					self.syntaxphantoms.append(sublime.Phantom(
+						sublime.Region(self.view.text_point(0,0)),
+						htmlatlocation(basepath,u.file,u.line,u.column,u.tohtml()),
+						sublime.LAYOUT_BELOW
+					))
+			self.curtree = None
 		self.update_phantoms()
 	def update_phantoms(self):
 		self.phantom_set.update([])
 		self.phantom_set.update(self.syntaxphantoms+self.selectorphantoms)
-
 
 
 

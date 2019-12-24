@@ -1,7 +1,8 @@
 
 import copy
 from inspect import getfullargspec
-from .lark import Transformer, v_args, Tree, Lark
+from .lark import Lark, UnexpectedInput, Transformer, v_args, InlineTransformer, Tree
+
 import io
 
 # from .lark
@@ -18,6 +19,7 @@ import re
 import random
 # from pycallgraph import PyCallGraph
 # from pycallgraph.output import GraphvizOutput
+
 
 
 
@@ -317,23 +319,32 @@ def _dbgExit_verify(self,indesc,carry,reqtype,then,outp):
 		row = indesc.flat[(-indesc.postpushes).translate(outp.name)]
 		outp.debugname = row.name
 
-
+#<><> ending with a comma even if its the last line
 
 def htmlformat(struct,context,prepend,postpend="",tabs=0,forbidrange=None):
 	a = []
 	struct.pmultiline(FormatterObject(context,forhtml=True,forbidrange=forbidrange),a,tabs,prepend,postpend)
 	return "<br>".join([j.replace("\t","&nbsp;&nbsp;&nbsp;&nbsp;").replace("<","&lt;").replace(">","&gt;").replace("::lt::","<").replace("::gt::",">") for j in a])
 
-class TrackerError(Exception):
-	pass
+
 class DpushError(Exception):
 	pass
-class PreverifyError(Exception):
-	pass
+
+def htmlatlocation(basepath,filename,line,col,inner):
+	res = "<div style='background-color:#4F99A5;border-radius:5px;margin-bottom:5px;'><div style='color:#282923;margin-left:10px;margin-right:10px'>Inside File "+filename+":</div><div style='background-color:#39595B;padding:10px;border-bottom-right-radius:5px;border-bottom-left-radius:5px;'>"
+	res += "File: "+basepath+filename+"<br>"
+	res += "Line: "+str(line)+"<br>"
+	res += "Column: "+str(col)+"<br>"
+	res += inner
+	res += "</div></div>"
+	return res
+
+
 class LanguageError(Exception):
 	def __init__(self,pos,message):
 		Exception.__init__(self, message)
 		# self.blame = 
+		self.file = None
 		self.pos = pos
 		self.message = message
 		transferlines(self,pos)
@@ -341,6 +352,9 @@ class LanguageError(Exception):
 		self.choices = []
 		self.callpattern = None
 		self.argdata = None
+	def setfile(self,file):
+		self.file = file
+		return self
 	def innermessage(self):
 		return self.message
 	def name(self):
@@ -3511,11 +3525,11 @@ class FileLoader:
 								valid = False
 								break
 						if valid:
-							if True:
-							# try:
+							# if True:
+							try:
 								ver = dbt.readScope(Untransformer({}).update(self.cumu))
-							# except: pass
-							# else:
+							except: pass
+							else:
 								tub = []
 								hs = 0
 								fve = [a[0] for a in fdeps]
@@ -3534,6 +3548,7 @@ class FileLoader:
 										if l==i: i_of = l_of
 										ms+=l_of
 									else:
+										fve.insert(i,self.deps[i])
 										tub.append((hs,self.lengths[i]))
 									hs += self.lengths[i]
 								self.cumu += ver if len(tub)==0 else [a.dpush(ScopeDelta(tub)) for a in ver]
@@ -3542,23 +3557,29 @@ class FileLoader:
 								print("loaded: ",self.basepath+filename)
 								return
 		if os.path.exists(self.basepath+filename+".ver"): os.remove(self.basepath+filename+".ver")
-		deps,rows,ob = MyTransformer().transform(self.lark.parse(document))
-		for dep in deps:
-			self.load(dep,circular+[filename])
+		try:
+			deps,rows,ob = MyTransformer().transform(self.lark.parse(document))
+		except UnexpectedInput as u:
+			u.file = filename
+			raise u
+		for dep in range(len(deps)):
+			for d in range(dep):
+				if deps[d] == deps[dep]: raise LanguageError(None,"Duplicate import").setfile(filename)
+			self.load(deps[dep],circular+[filename])
 		olen = len(self.cumu)
 		pexclude = []
 		hs=0
 		for dep in range(len(self.deps)):
 			if self.deps[dep] in deps: hs+=self.lengths[dep]
 			else: pexclude.append((self.lengths[dep],hs))
-		obj,ncumu = ob.verify(ScopeObject(self.cumu,prpush=ScopeDelta(pexclude),oprows=ContextYam(rows)),then=True)
+		try:
+			obj,ncumu = ob.verify(ScopeObject(self.cumu,prpush=ScopeDelta(pexclude),oprows=ContextYam(rows)),then=True)
+		except LanguageError as u: raise u.setfile(filename)
 		DataBlockWriter(self.basepath+filename+".ver").writeHeader(md5,[(a,self.md5s[a]) for a in self.deps],[j for j in ncumu.flat[olen:]])
 		print("verified: ",self.basepath+filename)
 		self.cumu = ncumu.flat
 		self.lengths.append(len(self.cumu)-olen)
 		self.deps.append(filename)
-
-
 
 
 
