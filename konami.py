@@ -79,7 +79,8 @@ class BuildAxiomCommand(sublime_plugin.ViewEventListener,sublime_plugin.TextComm
 				print("compiling...")
 				basepath,filename = os.path.split(os.path.realpath(self.view.file_name()))
 				# print(basepath)
-				compilefiles({filename},{filename:document},l=self.l,basepath=basepath+"/")
+				FileLoader(overrides={filename:document},l=self.l,basepath=basepath+"/").load(filename)
+				# compilefiles({filename},{filename:document},l=self.l,basepath=basepath+"/")
 
 
 			except UnexpectedInput as u:

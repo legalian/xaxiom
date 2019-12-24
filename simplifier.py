@@ -864,9 +864,8 @@ def implicitcast(indesc,expected,provided,obj,blame=None,soften=False,extract=No
 	raise TypeMismatch(blame,expected,provided,indesc).soften(soften)
 
 class ContextYam:
-	def __init__(self,operators=None,dependencies=None):
+	def __init__(self,operators=None):
 		self.operators = operators
-		self.dependencies = dependencies
 		# self.lastComputation = lastComputation
 		# self.nextComputation = Computation()
 
@@ -2902,19 +2901,19 @@ class RefTree(Tobj):
 	def verify(self,indesc,carry=None,reqtype=False,then=False):
 		# print("VERIFY ENTER: ",type(self),self.name,self.src==None)
 		assert not then
-		if type(self.name) is str and self.name.endswith(".ax'"):
-			assertstatequal(indesc,self,carry,u_type(len(indesc)))
-			search = self.name.replace("'","")
-			for i in range(len(indesc.oprows.dependencies)):
-				if indesc.oprows.dependencies[i][0]==search:
-					tue = RefTree(
-						name=-1-i,
-						core=DelayedSub(indesc.oprows.dependencies[i][1],ScopeDelta([(len(indesc),0)])),
-						verdepth=len(indesc)
-					)
-					break
-			else: assert False
-			return (tue,u_type(len(indesc))) if reqtype else tue
+		# if type(self.name) is str and self.name.endswith(".ax'"):
+		# 	assertstatequal(indesc,self,carry,u_type(len(indesc)))
+		# 	search = self.name.replace("'","")
+		# 	for i in range(len(indesc.oprows.dependencies)):
+		# 		if indesc.oprows.dependencies[i][0]==search:
+		# 			tue = RefTree(
+		# 				name=-1-i,
+		# 				core=DelayedSub(indesc.oprows.dependencies[i][1],ScopeDelta([(len(indesc),0)])),
+		# 				verdepth=len(indesc)
+		# 			)
+		# 			break
+		# 	else: assert False
+		# 	return (tue,u_type(len(indesc))) if reqtype else tue
 
 		p1 = self.args.phase1(indesc)
 		errorcontext = []
@@ -3171,10 +3170,18 @@ class OperatorSet(Tobj):
 					self.array[token].pmultiline(context,out,indent,rowprep,"",callback=None)
 				rowprep = ""
 
+
 @v_args(meta=True)
 class MyTransformer(Transformer):
 	def start(self,children,meta):
-		return (children[:-1],children[-1])
+		deps = []
+		rows = []
+		for child in children[:-1]:
+			if type(child) is tuple:
+				rows.append(child)
+			else:
+				deps.append(child)
+		return (deps,rows,children[-1])
 	def precrow(self,children,meta):
 		if type(children[-1]) is dict:
 			return (children[:-1],children[-1])
@@ -3183,9 +3190,7 @@ class MyTransformer(Transformer):
 		return {'associate':'left'}
 	def rightassoc(self,children,meta):
 		return {'associate':'right'}
-#--------------------------------------------------
-	def __init__(self):
-		self.dependencies=set()
+
 	def argument(self,children,meta):
 		if type(children[0]) is str: return SubRow([k.replace("*****",".") for k in children[0].replace("'.'","*****").split(".")],children[1])
 		return SubRow(None,children[0])
@@ -3256,9 +3261,6 @@ class MyTransformer(Transformer):
 			args += j.rows
 		return Strategy(DualSubs(args,pos=meta),children[-1],pos=meta)
 	def string(self,children,meta):
-		if str(children[0]).endswith(".ax'"):
-			self.dependencies.add(str(children[0]).replace("'",""))
-			return str(children[0])
 		return str(children[0]).replace("'","")
 	def operators(self,children,meta):
 		return OperatorSet(children,pos=meta)
@@ -3278,26 +3280,24 @@ class MyTransformer(Transformer):
 		return DualSubs(children,pos=meta)
 	def wdualsubs(self,children,meta):
 		return children[0] if len(children) else DualSubs(pos=meta)
-
 class Untransformer:
 	def __init__(self,dict,head=0):
 		self.dict = dict
 		self.head = head
+	def update(self,scope):
+		for s in scope:
+			if s.obj!=None: self.dict[self.head] = s.obj
+			self.head+=1
+		return self
 	def isolate(self):
 		return Untransformer(self.dict,self.head)
 	def emptywrite(self,amt):
 		return Untransformer(self.dict,self.head+amt)
-	def getat(self,ind,deps,odeps):
-		if ind<0:
-			for y in deps:
-				if y[0]==odeps[-1-ind]:
-					return DelayedSub(y[1],ScopeDelta([(self.head,0)]))
-			assert False
+	def getat(self,ind):
 		if ind not in self.dict: return None
 		ob = self.dict[ind]
 		return DelayedSub(ob,ScopeDelta([(self.head-ob.verdepth,ob.verdepth)]))
 	def objwrite(self,ty,ds,si):
-
 		if ds==None:
 			self.head += longcount(si)
 			return
@@ -3321,43 +3321,6 @@ class Untransformer:
 					self.objwrite(sel.rows[s].type,sel.rows[s].obj,si[s])
 
 		# assert self.head == shead+longcount(si)
-
-class JSONTransformer:
-	def __init__(self,deps,origindeps):
-		self.deps = deps
-		self.origindeps = origindeps
-	def generic(self,json,depth):
-		if   json["type"] == "RefTree":    return self.RefTree(json,depth)
-		elif json["type"] == "DualSubs":   return self.DualSubs(json,depth)
-		elif json["type"] == "Strategy":   return self.Strategy(json,depth)
-		elif json["type"] == "SubsObject": return self.SubsObject(json,depth)
-		elif json["type"] == "Lambda":     return self.Lambda(json,depth)
-		else: assert False
-	def RefTree(self,json,depth):
-		return RefTree(
-			name=json["name"],
-			args=self.SubsObject(json,depth),
-			src=None if json["src"]==None else self.generic(json["src"],depth),
-			core=depth.getat(json["name"],self.deps,self.origindeps) if json["src"]==None else None,
-			verdepth=depth.head
-		)
-	def DualSubs(self,json,depth,then=False):
-		if not then: depth = depth.isolate()
-		odh = depth.head
-		rows = []
-		for row in json["rows"]:
-			rows.append(TypeRow(row["name"],self.generic(row["cent"],depth),None if row["obj"]==None else self.generic(row["obj"],depth),row["silent"]))
-			depth.objwrite(rows[-1].type,rows[-1].obj,rows[-1].name)
-		return DualSubs(rows,origin=None if "origin" not in json or json["origin"]==None else (self.generic(json["origin"]["parent"],depth),json["origin"]["map"]),verdepth=odh)
-	def Strategy(self,json,depth):
-		odh = depth.head
-		args = self.DualSubs(json,depth,then=True)
-		return Strategy(args,self.generic(json["cent"],depth),verdepth=odh)
-	def SubsObject(self,json,depth):
-		return SubsObject([SubRow(None,self.generic(k,depth)) for k in json["subs"]],verdepth=depth.head)
-	def Lambda(self,json,depth):
-		return Lambda(json["si"],self.generic(json["obj"],depth.emptywrite(json["si"])),verdepth=depth.head)
-
 class DataBlockWriter:
 	def __init__(self,filename):
 		self.writer = io.BufferedWriter(io.FileIO(filename, 'w'))
@@ -3387,12 +3350,10 @@ class DataBlockWriter:
 		for a,b in deps:
 			self.writeStr(a)
 			self.writeStr(b)
-		ob.writefile(self)
-
+		for o in ob:
+			o.writefile(self)
 class DataBlockTransformer:
-	def __init__(self,block,head,deps):
-		self.deps = deps
-		self.origindeps = None
+	def __init__(self,block,head):
 		self.block = block
 		self.head = head
 	def readChar(self):
@@ -3429,7 +3390,7 @@ class DataBlockTransformer:
 			name = self.readNum()
 			return RefTree(
 				name=name,
-				core=depth.getat(name,self.deps,self.origindeps),
+				core=depth.getat(name),
 				verdepth=depth.head
 			)
 		elif code == "B":#reftree,src!=None
@@ -3444,7 +3405,7 @@ class DataBlockTransformer:
 			return RefTree(
 				name=name,
 				args=self.SubsObject(depth),
-				core=depth.getat(name,self.deps,self.origindeps),
+				core=depth.getat(name),
 				verdepth=depth.head
 			)
 		elif code == "I":#reftree,src!=None
@@ -3461,23 +3422,24 @@ class DataBlockTransformer:
 		elif code == "F": return self.SubsObject(depth)
 		elif code == "G": return self.Lambda(depth)
 		else: assert False
+	def TypeRow(self,depth):
+		code = self.readChar()
+		if   code=="a": return TypeRow(None,self.generic(depth),None,{"silent":False,"contractible":False})
+		elif code=="b": return TypeRow(None,self.generic(depth),None,{"silent":True,"contractible":False})
+		elif code=="c": return TypeRow(None,self.generic(depth),self.generic(depth))
+		elif code=="d": return TypeRow(self.readStrInc(),self.generic(depth),None,{"silent":False,"contractible":False})
+		elif code=="e": return TypeRow(self.readStrInc(),self.generic(depth),None,{"silent":True,"contractible":False})
+		elif code=="f": return TypeRow(self.readStrInc(),self.generic(depth),self.generic(depth))
+		print(code)
+		print("---"*4)
+		assert False
 	def DualSubs(self,depth,then=False,origin=None):
 		if not then: depth = depth.isolate()
 		odh = depth.head
 		lim = self.readNum()
 		rows = []
 		for row in range(lim):
-			code = self.readChar()
-			if   code=="a": rows.append(TypeRow(None,self.generic(depth),None,{"silent":False,"contractible":False}))
-			elif code=="b": rows.append(TypeRow(None,self.generic(depth),None,{"silent":True,"contractible":False}))
-			elif code=="c": rows.append(TypeRow(None,self.generic(depth),self.generic(depth)))
-			elif code=="d": rows.append(TypeRow(self.readStrInc(),self.generic(depth),None,{"silent":False,"contractible":False}))
-			elif code=="e": rows.append(TypeRow(self.readStrInc(),self.generic(depth),None,{"silent":True,"contractible":False}))
-			elif code=="f": rows.append(TypeRow(self.readStrInc(),self.generic(depth),self.generic(depth)))
-			else: 
-				print(code)
-				print("---"*4)
-				assert False
+			rows.append(self.TypeRow(depth))
 			depth.objwrite(rows[-1].type,rows[-1].obj,rows[-1].name)
 		return DualSubs(rows,origin=origin,verdepth=odh)
 	def Strategy(self,depth):
@@ -3492,107 +3454,113 @@ class DataBlockTransformer:
 		si = self.readStrInc()
 		outp = Lambda(si,self.generic(depth.emptywrite(longcount(si))),verdepth=depth.head)
 		return outp
-
 	def readHeader(self):
 		md5 = self.readStr()
 		lim = self.readNum()
 		ok = []
 		for c in range(lim):
 			ok.append((self.readStr(),self.readStr()))
-		self.origindeps = [y[1] for y in ok]
-		return (md5,ok,self.generic(Untransformer({})))
+		return (md5,ok)
+	def readScope(self,depth):
+		rows = []
+		while self.head!=len(self.block):
+			rows.append(self.TypeRow(depth))
+			depth.objwrite(rows[-1].type,rows[-1].obj,rows[-1].name)
+		return rows
 
 
+class FileLoader:
+	def __init__(self,overrides=None,l=None,basepath="",redoAll=False,verbose=False):
+		self.lark = l
+		if l == None:
+			with open("core.lark", "r") as f:
+				self.lark = Lark(f.read(),parser='lalr',propagate_positions=True)
+		self.basepath = basepath
+		self.redoAll = redoAll
+		self.verbose = verbose
+		self.overrides = overrides if overrides!=None else {}
 
+		self.md5s = {}
 
+		self.deps    = []
+		self.lengths = []
+		self.cumu    = []
 
-def compilefiles(files,overrides=None,l=None,basepath="",redoAll=False,verbose=False):
-	if l==None:
-		with open("core.lark", "r") as f:
-			l = Lark(f.read(),parser='lalr', propagate_positions=True)
-	if overrides == None: overrides = {}
-	for filename in overrides.keys():
-		if os.path.exists(basepath+filename+".ver"):
-			os.remove(basepath+filename+".ver")
-	# if redoAll:
-	# 	for filename in files:
-	# 		if os.path.exists(basepath+filename+".ver"):
-	# 			os.remove(basepath+filename+".ver")
-
-	verifiles = []
-	impstack = [files]
-	active = []
-	isnew = {}
-	md5s = {}
-	while len(impstack):
-		if len(impstack[-1])==0:
-			impstack.pop()
-			if len(active):
-				yis = active.pop()
-				if yis[0]:
-					for exmd5,a in yis[4]:
-						if not isnew[a] or md5s[a]!=exmd5:
-							transformer = MyTransformer()
-							ahjs = transformer.transform(l.parse(yis[2]))
-							# with PyCallGraph(output=GraphvizOutput()):
-							ver = ahjs[1].verify(ScopeObject([],oprows=ContextYam(ahjs[0],verifiles)),u_type(0))
-
-							isnew[yis[1]] = True
-							break
-					else:
-						ver = yis[5]
-						isnew[yis[1]] = False
-				else:
-					# with PyCallGraph(output=GraphvizOutput()):
-
-					print("\n\nverifying",yis[1],"...")
-					ver = yis[2][1].verify(ScopeObject([],oprows=ContextYam(yis[2][0],verifiles)),u_type(0))
-
-					isnew[yis[1]] = True
-					if verbose: print("\n\nverified",yis[1],":",ver)
-
-				if isnew[yis[1]]:
-					DataBlockWriter(basepath+yis[1]+".ver").writeHeader(yis[3],[(md5s[a[1]],a[1]) for a in yis[4]],ver)
-					# with open(basepath+yis[1]+".ver","w") as f:
-						
-
-					# 	<><><>
-
-					# 	json.dump((yis[3],[(md5s[a[1]],a[1]) for a in yis[4]],ver.toJSON()),f)
-
-				md5s[yis[1]] = yis[3]
-				verifiles.append((yis[1],ver))
-			continue
-		filename = impstack[-1].pop()
-		if filename in [a[1] for a in active]: raise LanguageError(None,"Cyclic import: "+filename)
-		if filename in [e[0] for e in verifiles]: continue
-		if filename in overrides.keys():
-			document = overrides[filename]
+	def load(self,filename,circular=None):
+		circular = [] if circular == None else circular
+		if filename in circular: raise LanguageError(None,"Cyclic import: "+filename)
+		if filename in self.deps: return
+		if filename in self.overrides.keys(): document = self.overrides[filename]
 		else:
-			try:
-				with open(basepath+filename,"r",encoding='utf-8') as f: document = f.read()
-			except:
-				raise LanguageError(None,"Could not import file: "+filename)
+			if not os.path.exists(self.basepath+filename): raise LanguageError(None,"Could not import file: "+filename)
+			with open(self.basepath+filename,"r",encoding='utf-8') as f: document = f.read()
 		md5 = hashlib.md5(document.encode()).hexdigest()
-		try:
-			assert not redoAll
-			with open(basepath+filename+".ver","r") as f:
-				ver = DataBlockTransformer(f.read(),0,verifiles).readHeader()
-				print("loaded ",basepath+filename+".ver")
-				assert ver[0]==md5
-				active.append((True,filename,document,md5,ver[1],ver[2]))
-				impstack.append({a for a in ver[1]})
-		except Exception as u:
-			if os.path.exists(basepath+filename+".ver"):
-				os.remove(basepath+filename+".ver")
-				# if filename=="builtin.ax": raise u
-			transformer = MyTransformer()
-			active.append((False,filename,transformer.transform(l.parse(document)),md5,[(None,a) for a in transformer.dependencies]))
-			impstack.append(transformer.dependencies)
-			
+		self.md5s[filename] = md5
+		if not self.redoAll and os.path.exists(self.basepath+filename+".ver"):
+			with open(self.basepath+filename+".ver","r") as f:
+				dbt = DataBlockTransformer(f.read(),0)
+				try:
+					fmd5,fdeps = dbt.readHeader()
+				except: pass
+				else:
+					if fmd5==md5:
+						valid = True
+						for dep,dmd5 in fdeps:
+							self.load(dep,circular+[filename])
+							if self.md5s[dep]!=dmd5:
+								valid = False
+								break
+						if valid:
+							if True:
+							# try:
+								ver = dbt.readScope(Untransformer({}).update(self.cumu))
+							# except: pass
+							# else:
+								tub = []
+								hs = 0
+								fve = [a[0] for a in fdeps]
+								for i in range(len(self.deps)):
+									ms = hs
+									for l in range(i,len(fve)):
+										if fve[l]==self.deps[i]:
+											if l==i: break
+											tub.append((hs,i_of,ms,self.lengths[i]))
+											swp=tub[l]
+											tub[l]=tub[i]
+											tub[i]=swp
+											break
+										for a in range(len(self.deps)):
+											if self.deps[a]==fve[l]: l_of = self.lengths[a]
+										if l==i: i_of = l_of
+										ms+=l_of
+									else:
+										tub.append((hs,self.lengths[i]))
+									hs += self.lengths[i]
+								self.cumu += ver if len(tub)==0 else [a.dpush(ScopeDelta(tub)) for a in ver]
+								self.lengths.append(len(ver))
+								self.deps.append(filename)
+								print("loaded: ",self.basepath+filename)
+								return
+		if os.path.exists(self.basepath+filename+".ver"): os.remove(self.basepath+filename+".ver")
+		deps,rows,ob = MyTransformer().transform(self.lark.parse(document))
+		for dep in deps:
+			self.load(dep,circular+[filename])
+		olen = len(self.cumu)
+		pexclude = []
+		hs=0
+		for dep in range(len(self.deps)):
+			if self.deps[dep] in deps: hs+=self.lengths[dep]
+			else: pexclude.append((self.lengths[dep],hs))
+		obj,ncumu = ob.verify(ScopeObject(self.cumu,prpush=ScopeDelta(pexclude),oprows=ContextYam(rows)),then=True)
+		DataBlockWriter(self.basepath+filename+".ver").writeHeader(md5,[(a,self.md5s[a]) for a in self.deps],[j for j in ncumu.flat[olen:]])
+		print("verified: ",self.basepath+filename)
+		self.cumu = ncumu.flat
+		self.lengths.append(len(self.cumu)-olen)
+		self.deps.append(filename)
 
 
-# print("__name__ is: ",__name__)
+
+
 
 
 # try:
@@ -3613,9 +3581,9 @@ def _dbgTest():
 	# 	# compilefiles({"grouptheory.ax","builtin.ax"},redoAll=True)
 		# print("compiling")
 		# compilefiles({"grouptheory.ax"},verbose=True,basepath="/Users/parkerlawrence/dev/agi/")
-		compilefiles({"grouptheory.ax","builtin.ax"},verbose=True,basepath="/Users/parkerlawrence/dev/agi/")
+		FileLoader(verbose=True,basepath="/Users/parkerlawrence/dev/agi/",redoAll=False).load("grouptheory.ax")
 	except LanguageError as u:
-		# u.tohtml()
+		u.tohtml()
 		raise u
 	# except LanguageError as u:
 	# 	u.tohtml()

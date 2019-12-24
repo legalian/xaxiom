@@ -35,12 +35,16 @@ mixin : datapack ("["dualsubs"]")? "="lamb -> inferreddeclaration
       | datapack strategy                      -> declaration
 
 precrowflags : "left-assoc"->leftassoc |"right-assoc"->rightassoc
-precrow : opsymbol* precrowflags? ":"
-start : precrow* /'\w+\.ax'/* strategy
+precrow : opsymbol* precrowflags? ","
+importrow : /'\w+\.ax'/ "," -> string
+start : importrow* precrow*  dualsubs
 
 %ignore /#[^\n]*/
 %ignore "\t"
 %ignore " "
 %ignore "\n"
+
+
+
 
 
