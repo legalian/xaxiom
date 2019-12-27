@@ -2,8 +2,8 @@
 .DS_Store
 package-metadata.json
 
-# temporary.ver
-# temp.dat
+temporary.ver
+temp.dat
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
