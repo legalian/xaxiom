@@ -23,7 +23,7 @@ object     : (object".")? label ("("subsobject?")")*  -> reftree
 
 argument : (assignlabel"=")? lamb
 
-infermarker : "?:" -> silentmarker | "!:" -> contractmarker | "!?:" -> interrobangmarker | "?!:" -> interrobangmarker | ":"
+infermarker : "?:" -> silentmarker | ":"
 datapack    : (createlabel infermarker)|(introducer infermarker)|(infermarker":")
 declaration : datapack ("["dualsubs"]")? "="strategy -> inferreddeclaration
             | datapack strategy"="strategy

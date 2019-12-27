@@ -366,7 +366,7 @@ if len(sys.argv)!=2:
 #all parameters that break an input verification (or output ahjs, i guess) could get their origin tracebacks printed.
 
 filename = sys.argv[1]
-with open(filename, encoding='utf-8') as f: code = f.read().replace("from .lark import","from lark import")
+with open(filename, encoding='utf-8') as f: code = f.read()
 
 
 madscience_debugger = Madscience_debugger(False)

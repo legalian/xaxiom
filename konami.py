@@ -2,16 +2,10 @@ import sublime, sublime_plugin
 from .lark import Lark, UnexpectedInput, Transformer, v_args, InlineTransformer, Tree
 import os
 import sys
-import colorsys
 from .simplifier import *
 import functools
 import copy
 import re
-
-
-
-
-
 
 
 class BuildAxiomCommand(sublime_plugin.ViewEventListener,sublime_plugin.TextCommand):
@@ -60,9 +54,10 @@ class BuildAxiomCommand(sublime_plugin.ViewEventListener,sublime_plugin.TextComm
 
 
 
-
 	def update_syntax_phantoms(self):
 		self.syntaxphantoms = []
+
+
 
 		# Don't do any calculations on 1MB or larger files
 		if self.view.size() < 2**20:
@@ -76,7 +71,6 @@ class BuildAxiomCommand(sublime_plugin.ViewEventListener,sublime_plugin.TextComm
 
 			# self.insertpoints = [0] + self.insertpoints + [len(document)]
 			# document = '\xA5'.join([document[self.insertpoints[i]:self.insertpoints[i+1]] for i in range(len(self.insertpoints)-1)])
-
 
 			print("compiling...")
 			basepath,filename = os.path.split(os.path.realpath(self.view.file_name()))
