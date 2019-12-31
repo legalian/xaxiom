@@ -13,11 +13,14 @@ introducer : "|"multilabel(","multilabel)*"|"
 ?strategy  : ("["dualsubs"]")* operators
 ?operators : opsymbol* object (opsymbol+ object)*
 subsobject : argument(","argument)*
-dualsubs   : declaration (","declaration)*
+dualsubs   : declaration (","declaration)* ","?
 mixedsubs  : ( mixin(","mixin)* ("," argument(","argument)*)? ) | (argument(","argument)*)
 
+directive : introducer ("=" introducer)?
+renamer : (directive ",")*
+
 object     : (object".")? label ("("subsobject?")")*  -> reftree
-           | object"<"((introducer ("=" introducer)? ",")? mixedsubs)?">"  -> template
+           | object"<"(renamer mixedsubs)?">"  -> template
            | "("subsobject?")"                        -> wsubsobject
            | "{"dualsubs?"}"                          -> wdualsubs
 

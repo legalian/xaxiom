@@ -8,6 +8,7 @@ import copy
 import re
 
 
+
 class BuildAxiomCommand(sublime_plugin.ViewEventListener,sublime_plugin.TextCommand):
 	def run(self,kwar,action="parse"):
 		# action = kwar.get("action","parse")#view.run_command('build_axiom',{'action':'clear'})
@@ -20,8 +21,6 @@ class BuildAxiomCommand(sublime_plugin.ViewEventListener,sublime_plugin.TextComm
 
 	def on_post_save(self):
 		self.update_syntax_phantoms()
-
-
 
 
 	def __init__(self, view):
@@ -51,12 +50,8 @@ class BuildAxiomCommand(sublime_plugin.ViewEventListener,sublime_plugin.TextComm
 		syntax = settings.get('syntax')
 		return syntax == 'Packages/myplugin/axiom.sublime-syntax'
 
-
-
-
 	def update_syntax_phantoms(self):
 		self.syntaxphantoms = []
-
 
 
 		# Don't do any calculations on 1MB or larger files
