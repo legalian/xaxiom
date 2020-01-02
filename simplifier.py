@@ -479,7 +479,7 @@ class TypeMismatch(LanguageError):
 		self.context=context
 		# print("CONSTRUCTED WITH:",context)
 	def innermessage(self):
-		return htmlformat(self.expected,self.context,"Expected: ",forbidrange=self.hiddenrange())+"<br>"+htmlformat(self.got,self.context,"Got: ",forbidrange=self.hiddenrange())
+		return htmlformat(self.expected,self.context,"Expected: ",forbidrange=self.hiddenrange())+"<br>"+htmlformat(self.got,self.context,"Provided: ",forbidrange=self.hiddenrange())
 	def name(self):
 		return "Type mismatch"
 class InvalidSplit(LanguageError):
@@ -3812,6 +3812,9 @@ def _dbgTest():
 
 
 #<><><><><><>mypurdue...
+
+#if mangle_ue starts taking up a lot of time, remember that you can store ful/semavail on a property so yo don't have ot unwrap<><><>
+#you could also create a separate unwrap function for trimming and dpushing at the same time to avoid all those extra properties you dont need.<><><>
 
 
 #allow origin to be set to whatever object summoned it ---//> <><> that way you don't store dualsubs twice they tend to be bulky
