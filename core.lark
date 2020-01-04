@@ -14,14 +14,15 @@ introducer : "|"multilabel(","multilabel)*"|"
 ?operators : opsymbol* object (opsymbol+ object)*
 subsobject : argument(","argument)*
 dualsubs   : declaration (","declaration)* ","?
-mixedsubs  : ( mixin(","mixin)* ("," argument(","argument)*)? ) | (argument(","argument)*)
+mixedsubs  : ( ( mixin(","mixin)* ("," argument(","argument)*)? ) | (argument(","argument)*) ) ","?
 
 directive : introducer ("=" introducer)?
 renamer : (directive ",")*
 
 object     : (object".")? label ("("subsobject?")")*  -> reftree
            | object"<"(renamer mixedsubs)?">"  -> template
-           | "("subsobject?")"                        -> wsubsobject
+           | "("subsobject? ",)"                    -> wsafesubsobject
+           | "("subsobject? ")"                        -> wsubsobject
            | "{"dualsubs?"}"                          -> wdualsubs
 
 argument : (assignlabel"=")? lamb

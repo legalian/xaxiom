@@ -501,7 +501,7 @@ class CouldNotDeduceType(LanguageError):
 		return "Type assumption error"
 class VariableAssignmentError(LanguageError):
 	def __init__(self,pos,name):
-		LanguageError.__init__(self,pos,"Too many positional arguments" if name==None else "Unexpected keyword argument: " + name)
+		LanguageError.__init__(self,pos,"Too many positional arguments" if name==None else "Unexpected keyword argument: " + str(name))
 	def name(self):
 		return "Unexpected argument"
 class DelayedSub:
@@ -851,6 +851,7 @@ def implicitcast(indesc,expected,provided,obj,blame=None,soften=False,extract=No
 
 				provob = obj
 				if pA>0:
+					if type(provided) is RefTree: provided=provided.mangle_UE()
 					pp,obk = provided.origin
 					if type(pp) is RefTree: pp = pp.mangle_UE()
 					for p in range(1,pA):
@@ -858,9 +859,15 @@ def implicitcast(indesc,expected,provided,obj,blame=None,soften=False,extract=No
 						if type(pp) is RefTree: pp = pp.mangle_UE()
 						obk = compose(obi,obk)
 						# pp=opp
-					provob = buildfrom(obk,provided.flatten(ScopeDelta([]),[None]*len(provided.rows),obj=provob),provob.verdepth)
+
+					print("GOING IN ",obk)
+					provob = buildfrom([obk[i] for i in range(len(obk)) if pp.rows[i].obj==None],provided.flatten(ScopeDelta([]),[None]*len(provided.rows),obj=provob),provob.verdepth)
+					print("GOING OUT")
 
 				if eA==0: return provob
+				if type(expected) is RefTree: expected=expected.mangle_UE()
+			# if type(headP) is RefTree: headP = headP.mangle_UE()
+			# if type(headE) is RefTree: headE = headE.mangle_UE()
 				# print("beginning expected-side evaluation")
 
 				pp,obk = expected.origin
@@ -915,6 +922,7 @@ def implicitcast(indesc,expected,provided,obj,blame=None,soften=False,extract=No
 				if extract!=None:
 					while st<len(extract): del extract[st]
 				raise TypeMismatch(blame,expected,provided,indesc).soften(soften)
+			print(pA,eA)
 			headP = headP.origin[0] if type(headP) is DualSubs and type(headE) is DualSubs and headP.origin!=None else None
 			pA += 1
 		headE = headE.origin[0] if type(headE) is DualSubs and type(headE) is DualSubs and headE.origin!=None else None
@@ -1660,8 +1668,10 @@ class DualSubs(Tobj):
 		# 	self.touches = {k for k in self.touches if k<verdepth}
 		# 	self.softtouches = {k for k in self.softtouches if k<verdepth}
 
-	def extractbetween(self,older):
-		for j in self.rows: assert j.obj != None
+	def extractbetween(self,older,blame=None):
+		for j in self.rows:
+			if j.obj==None:
+				raise LanguageError(blame,"Incomplete specification of function call.")
 		cuu = []
 		left = 0
 		for g in range(len(self.rows)):
@@ -2467,6 +2477,7 @@ class SubsObject(Tobj):
 		return SubsObject([k.dpush(pushes) for k in self.subs],pos=self,verdepth=self.verdepth+pushes.lenchange())
 
 	def compare(self,other,odsc=None,thot=None,extract=None,lefpush=None,rigpush=None):
+		if type(other) is ScopeComplicator: return self.compare(other.core,odsc,thot,extract,lefpush,other.correction() if rigpush==None else rigpush+self.correction())
 		if type(other) is RefTree: other = other.unwrap()
 		if type(other) is not SubsObject: return False
 		if len(self.subs) != len(other.subs): return False
@@ -2498,11 +2509,12 @@ class SubsObject(Tobj):
 
 		try:
 			st = carry.peelcompactify(indesc,garbo,earlyabort=False)[0]
+			ga = st.extractbetween(carry,blame=self)
 		except LanguageError as u:
 			u.callingcontext([("(Constructing element of union)",carry,len(indesc),indesc,None)],0)
 			raise u
+		return SubsObject(ga,verdepth=len(indesc),pos=self)
 
-		return SubsObject(st.extractbetween(carry),verdepth=len(indesc),pos=self)
 class Template(Tobj):
 	@initTobj
 	def __init__(self,src,NSC=None,rows=None,subs=None,pos=None):
@@ -2615,6 +2627,7 @@ class Lambda(Tobj):
 		return self.obj.isemptyinst(si,prep=prep)
 
 	def compare(self,other,odsc=None,thot=None,extract=None,lefpush=None,rigpush=None):
+		if type(other) is ScopeComplicator: return self.compare(other.core,odsc,thot,extract,lefpush,other.correction() if rigpush==None else rigpush+self.correction())
 		if type(other) is RefTree: other = other.unwrap()
 		if (type(other) is not Lambda or len(self.si)!=len(other.si)) and type(self.obj) is RefTree and self.obj.core!=None:
 			return self.obj.unwrap().addlambdasphase2(self.si).compare(other,odsc,thot,extract,lefpush,rigpush)
@@ -2708,6 +2721,7 @@ class Strategy(Tobj):
 		return dis
 
 	def compare(self,other,odsc=None,thot=None,extract=None,lefpush=None,rigpush=None):
+		if type(other) is ScopeComplicator: return self.compare(other.core,odsc,thot,extract,lefpush,other.correction() if rigpush==None else rigpush+self.correction())
 		if type(other) is RefTree:
 			att = other.mangle_FE()
 			if att!=None: return self.compare(att,odsc,thot,extract,lefpush,rigpush)
@@ -3027,9 +3041,11 @@ class RefTree(Tobj):
 		return self.args.isemptyinst([] if prep==None else prep)
 
 	def compare(self,other,odsc=None,thot=None,extract=None,lefpush=None,rigpush=None):
+		if type(other) is ScopeComplicator: return self.compare(other.core,odsc,thot,extract,lefpush,other.correction() if rigpush==None else rigpush+self.correction())
 		if self.src != None:
 			if type(other) is not RefTree: return False
 			if other.src==None: other = other.unwrap()
+			if type(other) is not RefTree: return False
 			if other.src==None or self.name!=other.name: return False
 			return self.src.compare(other.src,odsc,thot,extract,lefpush,rigpush) and self.args.compare(other.args,odsc,thot,extract,lefpush,rigpush)
 		pTest = self.isSubOb()
@@ -3360,6 +3376,18 @@ class OperatorSet(Tobj):
 					self.array[token].pmultiline(context,out,indent,rowprep,"",callback=None)
 				rowprep = ""
 
+class ScopeComplicator(Tobj):
+	@initTobj
+	def __init__(self,core,args,verdepth=None):
+		self.core = core
+		self.args = args
+		self.verdepth = verdepth
+	def correction(self):
+		return ScopeDelta([(-longcount(self.args),self.verdepth)])
+	def unwrap(self):
+		return self.core.dpush(self.correction())
+	def compare(self,other,odsc=None,thot=None,extract=None,lefpush=None,rigpush=None):
+		return self.core.compare(other,odsc,thot,extract,self.correction() if lefpush==None else lefpush+self.correction(),rigpush)
 
 @v_args(meta=True)
 class MyTransformer(Transformer):
@@ -3457,6 +3485,7 @@ class MyTransformer(Transformer):
 		return OperatorSet(children,pos=meta)
 	def subsobject(self,children,meta):
 
+
 		return SubsObject(children,pos=meta)
 	def wsubsobject(self,children,meta):
 		if len(children):
@@ -3464,6 +3493,12 @@ class MyTransformer(Transformer):
 				return children[0].subs[0].obj
 			else:
 				return children[0]
+		else:
+			return SubsObject(pos=meta)
+
+	def wsafesubsobject(self,children,meta):
+		if len(children):
+			return children[0]
 		else:
 			return SubsObject(pos=meta)
 
@@ -3816,9 +3851,12 @@ def _dbgTest():
 #if mangle_ue starts taking up a lot of time, remember that you can store ful/semavail on a property so yo don't have ot unwrap<><><>
 #you could also create a separate unwrap function for trimming and dpushing at the same time to avoid all those extra properties you dont need.<><><>
 
+#about out of reftree early... (isSubOb)<>
+
 
 #allow origin to be set to whatever object summoned it ---//> <><> that way you don't store dualsubs twice they tend to be bulky
 
+#branching compare inside of reftree should erase from st/extract if a branch fails....<><><><>
 
 #subsobject will need to redetect(tuple of src)                            on dpush...<>
 
@@ -3832,6 +3870,15 @@ def _dbgTest():
 #you need to fine-tune the operator precidence and associativity.
 
 #<><>make your code fast
+
+
+
+
+
+#be very careful about trimming things. best case scenario, only [] dualsubs can get trimmed away. <><><><><><><><>
+			#use switch pushes instead of negative pushes when you can.<><><><><>
+			#have a structure for introducing dummy variables into the scope.<><><><><><>
+
 
 
 
