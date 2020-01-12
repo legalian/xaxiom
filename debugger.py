@@ -147,6 +147,11 @@ class Madscience_debugger(ast.NodeTransformer):
 		self.hot = frozone
 		self.generic_visit(node)
 
+
+		if len(self.exitpatterns.get(node.name,[])) > len(node.args.args):
+			print("Exit pattern for function ",node.name," has too many parameters.")
+			assert False
+
 		shobb = []
 		for z in range(len(node.args.args) if hasExit else len(self.exitpatterns.get(node.name,[]))):
 			shobb.append(Assign(targets=[Name(id=node.args.args[z].arg+'_dbg_str_var_'+str(frozone), ctx=Store())],value=Name(id=node.args.args[z].arg,ctx=Load())))

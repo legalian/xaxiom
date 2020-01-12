@@ -9,7 +9,6 @@ import re
 
 
 
-
 class BuildAxiomCommand(sublime_plugin.ViewEventListener,sublime_plugin.TextCommand):
 	def run(self,kwar,action="parse"):
 		# action = kwar.get("action","parse")#view.run_command('build_axiom',{'action':'clear'})
@@ -56,7 +55,7 @@ class BuildAxiomCommand(sublime_plugin.ViewEventListener,sublime_plugin.TextComm
 
 
 		# Don't do any calculations on 1MB or larger files
-		if self.view.size() < 2**20 and False:
+		if self.view.size() < 2**20:
 			document = self.view.substr(sublime.Region(0,self.view.size()))
 			# self.tooltipranges = []
 			# self.insertpoints = []
