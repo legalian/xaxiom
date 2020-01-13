@@ -1504,7 +1504,7 @@ class Tobj:
 
 				# outp = semi_complicate_dpush(outp.dpush(sof),res,ScopeDelta([(ndepth-fafter,ndepth)]),True)
 		if len(si)==elim: return outp
-		return Lambda(si[:len(si)-elim],outp,verdepth=starter,pos=self if pos==None else pos)
+		return correctLambda(si[:len(si)-elim],outp,ScopeDelta(),verdepth=starter,pos=self if pos==None else pos)
 
 
 
@@ -1602,7 +1602,12 @@ class Tobj:
 
 	def rip(self):
 		cu = []
-		for row in self.rows: cu = cu+row.obj.widereference(row.name)
+		for row in range(len(self.rows)):
+			if type(self.rows[row].name) is list:
+				ho = self.rows[row].obj.widereference(self.rows[row].name)
+				cu = cu+[ho[0]]+[ho[d].dpush(ScopeDelta([(d,self.verdepth+row)])) for d in range(1,len(ho))]
+			else:
+				cu.append(self.rows[row].obj)
 		return cu
 
 
@@ -1705,6 +1710,8 @@ def initTobj(F):
 	if indbg[0]: return wrapper
 	return F
 def coflattenunravel(si,ob,left):
+	def _dbgTest():
+		assert ob.verdepth!=None
 	if type(si) is list:
 		res = []
 		for n in range(len(si)):
@@ -2049,8 +2056,7 @@ class DualSubs(Tobj):
 				if obj!=None:
 					despar = ScopeDelta()
 					gnoa.trimallnonessential(None,despar)
-					if not despar.isempty(): obj = obj.dpush(despar)
-					obj = Lambda(gnoa.semavail(),obj,verdepth=len(indesc),pos=obj)
+					obj = correctLambda(gnoa.semavail(),obj,despar,verdepth=len(indesc),pos=obj)
 			else:
 				nty = self.rows[n].type.verify(indesc,u_type(len(indesc)))
 				obj = self.rows[n].obj.verify(indesc,nty) if self.rows[n].obj != None else None
@@ -2632,7 +2638,7 @@ class SubsObject(Tobj):
 		return any(sub.detect(ranges) for sub in self.subs)
 
 	def dpush(self,pushes,exob=None):
-		return SubsObject([k.dpush(pushes) for k in self.subs],pos=self,verdepth=self.verdepth+pushes.lenchange())
+		return SubsObject([SubRow(None,k.obj.dpush(pushes,exob=exob)) for k in self.subs],pos=self,verdepth=self.verdepth+pushes.lenchange())
 
 	def compare(self,other,odsc=None,thot=None,extract=None,lefpush=None,rigpush=None):
 		if type(other) is ScopeComplicator: return self.compare(other.core,odsc,thot,extract,lefpush,other.correction() if rigpush==None else rigpush+other.correction())
@@ -2718,6 +2724,27 @@ class Template(Tobj):
 		def calls(context_,out,prepend):
 			pmultilinecsv(context,out,indent,self.rows+self.subs,prepend+"<",">"+postpend,callback=callback)
 		self.src.pmultiline(context,out,indent,prepend,"",calls)
+
+
+def correctLambda(si,obj,inp,verdepth=None,pos=None):
+	def smush(tok):
+		if type(tok) is list:
+			res = ""
+			for t in tok: res = res + smush(t)
+			return res
+		return tok
+	delta = inp
+	for s in range(len(si)):
+		if type(si[s]) is list:
+			vv = longcount(si[s])
+			delta = delta + ScopeDelta([
+				(1,verdepth+s),
+				(coflattenunravel(si[s],RefTree(verdepth+s,verdepth=verdepth+s+1),verdepth+s+1),),
+				(-vv,verdepth+s+1)
+			])
+	return Lambda([smush(s) for s in si],obj if delta.isempty() else obj.dpush(delta),verdepth=verdepth,pos=pos)
+
+
 class Lambda(Tobj):
 	def assertcomp(self,other):
 		assert type(other) is Lambda
@@ -2732,6 +2759,9 @@ class Lambda(Tobj):
 		self.obj = obj
 		self.verdepth = verdepth
 		transferlines(self,pos)
+		def _dbgTest():
+			if verdepth!=None:
+				assert all(type(s) is not list for s in si)
 		# if verdepth!=None:
 		# 	self.verdepth = verdepth
 		# 	self.complexity = 1+self.obj.complexity
@@ -2908,7 +2938,7 @@ class Strategy(Tobj):
 		tat = self.type.emptyinst(limit+sc,mog,SubsObject(prep+art.subs,verdepth=limit+sc))
 
 
-		return Lambda([k.name for k in trimargs.rows],tat,verdepth=limit)
+		return correctLambda([k.name for k in trimargs.rows],tat,ScopeDelta(),verdepth=limit)
 
 	def trimallnonessential(self,si=None):
 
@@ -3433,7 +3463,7 @@ class RefTree(Tobj):
 										SubRow(None,nurows[0]),
 										SubRow(None,substuff[refs[0]][0].dpush(toalc)),
 										SubRow(None,substuff[refs[0]][1].dpush(toalc)),
-										SubRow(None,Lambda([thad[0],"_"],nurows[-1].dpush(ScopeDelta([(1,nurows[-1].verdepth)])),verdepth=alc)),
+										SubRow(None,correctLambda([thad[0],"_"],nurows[-1],ScopeDelta([(1,nurows[-1].verdepth)]),verdepth=alc)),
 										SubRow(None,outs[refs[0]].type.emptyinst(alc,inhuman[refs[0]])),
 										SubRow(None,substuff[a][0].dpush(toalc)),
 									],verdepth=alc),verdepth=alc)
@@ -3457,7 +3487,7 @@ class RefTree(Tobj):
 											SubRow(None,substuff[refs[i]][1].dpush(toalc))
 											for i in range(a)
 										],verdepth=alc)),
-										SubRow(None,Lambda([thad,"_"],nurows[-1].dpush(ScopeDelta([(1,nurows[-1].verdepth)])),verdepth=alc)),
+										SubRow(None,correctLambda([thad,"_"],nurows[-1],ScopeDelta([(1,nurows[-1].verdepth)]),verdepth=alc)),
 										SubRow(None,SubsObject([
 											SubRow(None,outs[refs[i]].type.emptyinst(alc,inhuman[refs[i]]))
 											for i in range(a)
@@ -3876,14 +3906,6 @@ class DataBlockTransformer:
 		contract = self.readNum() if code in 'efij' else None
 		return TypeRow(name,ty,obj,{'silent':silent,'contractible':contract})
 
-
-		# file.writeChar(["a","b","c","d","e","f","g","h","i","j"][(0 if self.obj!=None else 1 if self.silent==None else 1+int(self.silent['silent'])*2+int(self.silent['contractible']!=None))*2+int(self.name==None)])
-		# if self.name!=None: file.writeStrInc(self.name)
-		# self.type.writefile(file)
-		# if self.obj!=None: self.obj.writefile(file)
-		# if selself.silent!=None and self.silent['contractible']!=None: file.writeNum(self.silent['contractible'])
-
-
 	def ScopeComplicator(self,depth):
 		depth = depth.isolate()
 		oh = depth.head
@@ -4067,7 +4089,7 @@ def _dbgTest():
 	# 	# compilefiles({"grouptheory.ax","builtin.ax"},redoAll=True)
 		# print("compiling")
 		# compilefiles({"grouptheory.ax"},verbose=True,basepath="/Users/parkerlawrence/dev/agi/")
-		FileLoader(verbose=True,basepath="/Users/parkerlawrence/dev/agi/",redoAll=False).load("grouptheory.ax")
+		FileLoader(verbose=True,basepath="/Users/parkerlawrence/dev/agi/",redoAll=True).load("grouptheory.ax")
 	except LanguageError as u:
 		u.tohtml()
 		raise u
@@ -4101,7 +4123,7 @@ def _dbgTest():
 #<><>make your code fast
 
 
-#rip doesnt work...<><><><><><><><><><><><><><>
+#rip doesnt work...<><><><><><><><><><><><><>
 	#also add a secrets validator...<>
 
 
