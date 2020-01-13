@@ -48,7 +48,7 @@ class BuildAxiomCommand(sublime_plugin.ViewEventListener,sublime_plugin.TextComm
 	@classmethod
 	def is_applicable(cls, settings):
 		syntax = settings.get('syntax')
-		return syntax == 'Packages/myplugin/axiom.sublime-syntax'
+		return syntax.endswith('axiom.sublime-syntax')
 
 	def update_syntax_phantoms(self):
 		self.syntaxphantoms = []
