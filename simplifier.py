@@ -4100,7 +4100,9 @@ class FileLoader:
 		if os.path.exists(self.buildpath+filename+".ver"): os.remove(self.buildpath+filename+".ver")
 		try:
 			deps,rows,ob = MyTransformer().transform(self.lark.parse(document))
-		except UnexpectedInput as u: raise u.setfile(filename)
+		except UnexpectedInput as u:
+			u.file = filename
+			raise u
 		for dep in range(len(deps)):
 			for d in range(dep):
 				if deps[d] == deps[dep]: raise LanguageError(None,"Duplicate import").setfile(filename)
