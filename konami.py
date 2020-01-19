@@ -2,11 +2,10 @@ import sublime, sublime_plugin
 from .lark import Lark, UnexpectedInput, Transformer, v_args, InlineTransformer, Tree
 import os
 import sys
-from .simplifier import *
+from .simplifier import FileLoader,htmlatlocation
 import functools
 import copy
 import re
-
 
 
 class BuildAxiomCommand(sublime_plugin.ViewEventListener,sublime_plugin.TextCommand):
@@ -84,7 +83,8 @@ class BuildAxiomCommand(sublime_plugin.ViewEventListener,sublime_plugin.TextComm
 						htmlatlocation(basepath,u.file,u.line,u.column,'<span style="color:red">Syntax error</span>'),
 						sublime.LAYOUT_INLINE
 					))
-			except LanguageError as u:
+			except Exception as u:
+				if not hasattr(u,'xaxException'): raise u
 				if u.file == filename:
 					self.syntaxphantoms.append(sublime.Phantom(
 						sublime.Region(self.view.text_point(u.row-1,u.column-1)),
@@ -94,7 +94,7 @@ class BuildAxiomCommand(sublime_plugin.ViewEventListener,sublime_plugin.TextComm
 				else:
 					self.syntaxphantoms.append(sublime.Phantom(
 						sublime.Region(self.view.text_point(0,0)),
-						htmlatlocation(basepath,u.file,u.line,u.column,u.tohtml()),
+						htmlatlocation(basepath,u.file,u.row,u.column,u.tohtml()),
 						sublime.LAYOUT_BELOW
 					))
 			self.curtree = None
@@ -102,6 +102,9 @@ class BuildAxiomCommand(sublime_plugin.ViewEventListener,sublime_plugin.TextComm
 	def update_phantoms(self):
 		self.phantom_set.update([])
 		self.phantom_set.update(self.syntaxphantoms+self.selectorphantoms)
+
+
+
 
 
 

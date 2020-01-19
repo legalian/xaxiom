@@ -14,16 +14,16 @@ introducer : "|"multilabel(","multilabel)*"|"
 ?operators : opsymbol* object (opsymbol+ object)*
 subsobject : argument(","argument)*
 dualsubs   : declaration (","declaration)* ","?
-mixedsubs  : ( ( mixin(","mixin)* ("," argument(","argument)*)? ) | (argument(","argument)*) ) ","?
+// mixedsubs  : ( ( mixin(","mixin)* ("," argument(","argument)*)? ) | (argument(","argument)*) ) ","?
 
 directive : introducer ("=" introducer)?
-renamer : (directive ",")*
+// renamer : directive ("," directive)*
 
-object     : (object".")? label ("("subsobject?")")*  -> reftree
-           | object"<"(renamer mixedsubs)?">"  -> template
-           | "("subsobject? ",)"                    -> wsafesubsobject
+object     : (object".")? label ("("subsobject?")")*   -> reftree
+           | object"<"((directive|mixin|argument) ("," (directive|mixin|argument))* ","?)? ">"  -> template
+           | "("subsobject? ",)"                       -> wsafesubsobject
            | "("subsobject? ")"                        -> wsubsobject
-           | "{"dualsubs?"}"                          -> wdualsubs
+           | "{"dualsubs?"}"                           -> wdualsubs
 
 argument : (assignlabel"=")? lamb
 
