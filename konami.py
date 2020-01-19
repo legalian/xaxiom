@@ -38,6 +38,8 @@ class BuildAxiomCommand(sublime_plugin.ViewEventListener,sublime_plugin.TextComm
 		self.selectorphantoms = []
 
 
+
+
 		f = open(os.path.dirname(os.path.realpath(__file__))+"/core.lark", "r")
 		self.l = Lark(f.read(),parser='lalr', propagate_positions=True)#
 		f.close()
@@ -68,7 +70,8 @@ class BuildAxiomCommand(sublime_plugin.ViewEventListener,sublime_plugin.TextComm
 			print("compiling...")
 			basepath,filename = os.path.split(os.path.realpath(self.view.file_name()))
 			basepath += "/"
-			try: FileLoader(overrides={filename:document},l=self.l,basepath=basepath).load(filename)
+			buildpath = basepath+"build/" if os.path.isdir(basepath+"build") else basepath
+			try: FileLoader(overrides={filename:document},l=self.l,basepath=basepath,buildpath=buildpath).load(filename)
 			except UnexpectedInput as u:
 				if u.file == filename:
 					self.syntaxphantoms.append(sublime.Phantom(

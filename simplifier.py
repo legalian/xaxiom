@@ -3983,12 +3983,13 @@ class DataBlockTransformer:
 			depth.objwrite(rows[-1].type,rows[-1].obj,rows[-1].name)
 		return rows
 class FileLoader:
-	def __init__(self,overrides=None,l=None,basepath="",redoAll=False,verbose=False):
+	def __init__(self,overrides=None,l=None,basepath="",redoAll=False,verbose=False,buildpath=None):
 		self.lark = l
 		if l == None:
 			with open("core.lark", "r") as f:
 				self.lark = Lark(f.read(),parser='lalr',propagate_positions=True)
 		self.basepath = basepath
+		self.buildpath = buildpath if buildpath!=None else basepath
 		self.redoAll = redoAll
 		self.verbose = verbose
 		self.overrides = overrides if overrides!=None else {}
@@ -4068,8 +4069,8 @@ class FileLoader:
 			with open(self.basepath+filename,"r",encoding='utf-8') as f: document = f.read()
 		md5 = hashlib.md5(document.encode()).hexdigest()
 		self.md5s[filename] = md5
-		if not self.redoAll and os.path.exists(self.basepath+filename+".ver"):
-			with open(self.basepath+filename+".ver","r") as f:
+		if not self.redoAll and os.path.exists(self.buildpath+filename+".ver"):
+			with open(self.buildpath+filename+".ver","r") as f:
 				dbt = DataBlockTransformer(f.read(),0)
 				try:
 					fmd5,fdeps = dbt.readHeader()
@@ -4096,7 +4097,7 @@ class FileLoader:
 								self.subdeps[filename] = [p[0] for p in fdeps]
 								print("loaded: ",self.basepath+filename)
 								return
-		if os.path.exists(self.basepath+filename+".ver"): os.remove(self.basepath+filename+".ver")
+		if os.path.exists(self.buildpath+filename+".ver"): os.remove(self.buildpath+filename+".ver")
 		try:
 			deps,rows,ob = MyTransformer().transform(self.lark.parse(document))
 		except UnexpectedInput as u: raise u.setfile(filename)
@@ -4120,7 +4121,7 @@ class FileLoader:
 
 		tosave = self.arrangeTo(self.deps,deps,ncumu.flat[olen:])
 
-		DataBlockWriter(self.basepath+filename+".ver").writeHeader(md5,[(a,self.md5s[a]) for a in deps],tosave)
+		DataBlockWriter(self.buildpath+filename+".ver").writeHeader(md5,[(a,self.md5s[a]) for a in deps],tosave)
 		print("verified: ",self.basepath+filename)
 		self.cumu = ncumu.flat
 		self.deps.append(filename)
