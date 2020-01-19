@@ -1336,6 +1336,26 @@ class ScopeObject:
 		# assert not len(hu)
 		return repr(output)+repr(self.postpushes)+" -- "+repr(self.prepushes)
 
+
+def widereference(obj,ty,si):
+	if type(si) is not list: return [obj]
+
+	ty = ty.decode()
+	ty = ty.type.decode() if type(ty) is Strategy else ty
+	ty = ty.mangle_UE() if type(ty) is RefTree else ty
+
+	s = 0
+	cu = []
+	for k in range(len(si)):
+		if ty.rows[k].obj==None:
+			cu = cu+widereference((obj.reference(s) if obj!=None else None),ty.rows[k].type,si[k])
+			s+=1
+		else:
+			cu = cu+[complicate(t,cu) for t in widereference(ty.rows[k].obj,ty.rows[k].type,si[k])]
+	return cu
+
+
+
 def juris(name):
 	if type(name) is list: return [juris(x) for x in name]
 	return (name,None)
@@ -1394,7 +1414,7 @@ class TypeRow:
 
 	def ripsingle(self):
 		if type(self.name) is list:
-			ho = self.obj.widereference(self.type,self.name)
+			ho = widereference(self.obj,self.type,self.name)
 			return [ho[0]]+[ho[d].dpush(ScopeDelta([(d,self.obj.verdepth)])) for d in range(1,len(ho))]
 		else:
 			return [self.obj]
@@ -1696,22 +1716,8 @@ class Tobj:
 		return cu
 
 
-	def widereference(self,ty,si):
-		if type(si) is not list: return [self]
 
-		ty = ty.decode()
-		ty = ty.type if type(ty) is Strategy else ty
-		ty = ty.mangle_UE() if type(ty) is RefTree else ty
 
-		s = 0
-		cu = []
-		for k in range(len(si)):
-			if ty.rows[k].obj==None:
-				cu = cu+self.reference(s).widereference(ty.rows[k].type,si[k])
-				s+=1
-			else:
-				cu = cu+[complicate(t,cu) for t in ty.rows[k].obj.widereference(ty.rows[k].type,si[k])]
-		return cu
 	def deepreference(self,su):
 		k = self
 		for s in su: k = k.reference(s)
@@ -1783,26 +1789,9 @@ def initTobj(F):
 
 	def wrapper(self,*args,**kwargs):
 		"""dbg_ignore"""
-		# if 'src' not in kwargs: pos = None
-		# self.altversion = [] if altversion==None else altversion
-		# self.verdepth = None
-		# self.complexity = 0
-		# self.PJID = None
 		F(self,*args,**kwargs)
 		if "verdepth" in kwargs:
-			# for alt in self.altversion:
-			# 	self.touches.update(alt.touches)
-
-			# def _dbgTest():
-			# for alt in self.altversion: assert alt.verdepth == self.verdepth
 			self.setSafety(self.verdepth)
-			# for k in self.touches:
-			# 	assert k==0 or k<self.verdepth
-			# for alt in self.altversion:
-			# 	if alt.softtouches==self.softtouches:
-			# 		assert False
-
-
 	if indbg[0]: return wrapper
 	return F
 def coflattenunravel(si,ob,left):
@@ -1871,22 +1860,6 @@ class DualSubs(Tobj):
 		def _dbgTest():
 			for k in self.rows:
 				assert type(k) is TypeRow
-		# if verdepth!=None:
-		# 	self.verdepth = verdepth
-		# 	self.touches = set()
-		# 	self.softtouches = set()
-		# 	self.complexity = 1
-		# 	for sub in self.rows:
-		# 		assert type(sub) is TypeRow#safemode
-		# 		self.touches.update(sub.type.touches)
-		# 		self.softtouches.update(sub.type.softtouches)
-		# 		self.complexity+=sub.type.complexity
-		# 		if sub.obj!=None:
-		# 			self.touches.update(sub.obj.touches)
-		# 			self.softtouches.update(sub.obj.softtouches)
-		# 			self.complexity+=sub.obj.complexity
-		# 	self.touches = {k for k in self.touches if k<verdepth}
-		# 	self.softtouches = {k for k in self.softtouches if k<verdepth}
 
 
 
@@ -2127,7 +2100,7 @@ class DualSubs(Tobj):
 			if nobj==None:
 				cu = cu+[None]*vv
 			else:
-				cu = cu+nobj.widereference(self.rows[n].type,self.rows[n].name)			
+				cu = cu+widereference(nobj,self.rows[n].type,self.rows[n].name)			
 			delta = delta + ScopeDelta([(-longcount(self.rows[n].name),self.verdepth)])
 			left+=vv
 		return buildfrom(mapping,cu,self.verdepth)
@@ -2689,17 +2662,6 @@ class SubsObject(Tobj):
 		self.subs = subs if subs != None else []
 		self.verdepth = verdepth
 		transferlines(self,pos)
-		# if verdepth!=None:
-		# 	self.touches = set()
-		# 	self.softtouches = set()
-		# 	self.verdepth = verdepth
-		# 	self.complexity = 1
-		# 	for sub in self.subs:
-		# 		assert type(sub) is SubRow#safemode
-		# 		self.touches.update(sub.obj.touches)
-		# 		self.softtouches.update(sub.obj.softtouches)
-		# 		self.complexity += sub.obj.complexity
-
 
 	def writefile(self,file,shutup=False):
 		if not shutup: file.writeChar("F")
@@ -2934,17 +2896,6 @@ class Strategy(Tobj):
 		self.type = type
 		self.verdepth = verdepth
 		transferlines(self,pos)
-		# if verdepth!=None:
-		# 	self.touches = set()
-		# 	self.softtouches = set()
-		# 	self.touches.update(self.args.touches)
-		# 	self.softtouches.update(self.args.softtouches)
-		# 	self.complexity = 1+self.args.complexity+self.type.complexity
-		# 	if self.type!=None:
-		# 		self.touches.update(self.type.touches)
-		# 		self.softtouches.update(self.type.softtouches)
-		# 	self.touches = {k for k in self.touches if k<verdepth}
-		# 	self.softtouches = {k for k in self.softtouches if k<verdepth}
 	def isemptytype(self):
 		return self.type.isemptytype()
 
@@ -3162,26 +3113,6 @@ class RefTree(Tobj):
 					assert False
 
 
-			# if self.core!=None:
-			# 	if type(self.core.core) is RefTree and self.core.core.name==:
-			# 		assert 
-		# assert not isinstance()
-		# assert type(self.name) is int or type(self.name) is str
-		# if verdepth!=None:
-		# 	self.touches = set()
-		# 	self.softtouches = set()
-		# 	self.verdepth = verdepth
-		# 	self.complexity = 1+(self.src.complexity if self.src!=None else 0) + self.args.complexity
-		# 	self.touches.update(self.args.touches)
-		# 	self.softtouches.update(self.args.softtouches)
-		# 	if self.src!=None: self.touches.update(self.src.touches)
-		# 	if self.src!=None: self.softtouches.update(self.src.softtouches)
-		# 	if type(self.name) is int and self.src==None:
-		# 		assert self.name<verdepth or self.name==0
-		# 		else: self.softtouches.add(self.name)
-
-		# 	assert self.src==None or type(self.src) is RefTree or type(self.src.core) is RefTree
-		# assert type(self.args) is SubsObject
 
 	def semavail(self,mog=False):
 		return self.unwrap().semavail(mog)
@@ -3873,7 +3804,8 @@ class Untransformer:
 		self.head = head
 	def update(self,scope):
 		for s in scope:
-			if s.obj!=None: self.dict[self.head] = s.obj
+			if s.obj!=None:
+				self.dict[self.head] = s.obj
 			self.head+=1
 		return self
 	def isolate(self):
@@ -3885,28 +3817,12 @@ class Untransformer:
 		ob = self.dict[ind]
 		return DelayedSub(ob,ScopeDelta([(self.head-ob.verdepth,ob.verdepth)]))
 	def objwrite(self,ty,ds,si):
-		if ds==None:
-			self.head += longcount(si)
-			return
-		shead = self.head
-		if type(si) is not list:
-			self.dict[self.head] = ds
-			self.head+=1
-		else:
-			sel = ty.decode()
-			if type(sel) is RefTree:  sel = sel.mangle_UE().decode()
-			if type(sel) is Strategy: sel = sel.type.decode()
-			if type(sel) is RefTree:  sel = sel.mangle_UE().decode()
-			if type(sel) is not DualSubs: assert False
-			assert len(sel.rows)==len(si)
-			k=0
-			for s in range(len(si)):
-				if sel.rows[s].obj==None:
-					self.objwrite(sel.rows[s].type,ds.reference(k),si[s])
-					k+=1
-				else:
-					self.objwrite(sel.rows[s].type,sel.rows[s].obj,si[s])
-		assert self.head == shead+longcount(si)
+		hoe = widereference(ds,ty,si)
+		for t in range(len(hoe)):
+			if hoe[t]!=None:
+				self.dict[self.head+t] = hoe[t]
+		self.head += len(hoe)
+
 
 
 class DataBlockWriter:
@@ -4066,8 +3982,6 @@ class DataBlockTransformer:
 			rows.append(self.TypeRow(depth))
 			depth.objwrite(rows[-1].type,rows[-1].obj,rows[-1].name)
 		return rows
-
-
 class FileLoader:
 	def __init__(self,overrides=None,l=None,basepath="",redoAll=False,verbose=False):
 		self.lark = l
@@ -4082,9 +3996,67 @@ class FileLoader:
 		self.md5s = {}
 
 		self.deps    = []
-		self.lengths = []
 		self.cumu    = []
-		self.subdeps = []
+		self.lengths = {}
+		self.subdeps = {}
+
+
+	def onlyinclude(self,deps):
+		pexclude = []
+		hs=0
+		for dep in self.deps:
+			if dep not in deps: pexclude.append((self.lengths[dep],hs))
+			hs+=self.lengths[dep]
+		return ScopeDelta(pexclude)
+
+	def filloutdeps(self,deps):
+		hoa = []
+		for dep in deps:
+			for nd in self.subdeps[dep]:
+				if nd not in hoa: hoa.append(nd)
+			hoa.append(dep)
+		return hoa
+
+	def arrangeTo(self,fve,targdeps,ver):
+
+		tub = []
+		hs = 0
+		for i in range(len(targdeps)):
+			ms = hs
+			for l in range(i,len(fve)):
+				if fve[l]==targdeps[i]:
+					if l==i: break
+					tub.append((hs,i_of,ms,self.lengths[targdeps[i]]))
+					swp=fve[l]
+					fve[l]=fve[i]
+					fve[i]=swp
+					break
+				l_of = self.lengths[fve[l]]
+				if l==i: i_of = l_of
+				ms+=l_of
+			else:
+				fve.insert(i,targdeps[i])
+				tub.append((hs,self.lengths[targdeps[i]]))
+			hs += self.lengths[targdeps[i]]
+		if len(fve)>len(targdeps):
+			tub.append((-sum(self.lengths[b] for b in fve[len(targdeps):]),hs))
+		return ver if len(tub)==0 else [a.dpush(ScopeDelta(tub)) for a in ver]
+		
+
+	def getdepsas(self,deps):
+		out = []
+		sof = []
+		for d in range(len(deps)):
+			hs = 0
+			for w in range(len(self.deps)):
+				if self.deps[w]==deps[d]:
+					out = out + self.arrangeTo(self.deps[:w],deps[:d],self.cumu[hs:hs+self.lengths[self.deps[w]]])
+					break
+				hs += self.lengths[self.deps[w]]
+			else: assert False
+		return out
+
+
 
 	def load(self,filename,circular=None):
 		circular = [] if circular == None else circular
@@ -4113,35 +4085,15 @@ class FileLoader:
 						if valid:
 							if True:
 								print("beginning load: ",self.basepath+filename)
+								fve = [a[0] for a in fdeps]
 							# try:
-								ver = dbt.readScope(Untransformer({}).update(self.cumu))
+								ver = self.arrangeTo(fve,self.deps,dbt.readScope(Untransformer({}).update(self.getdepsas(fve))))
 							# except: pass
 							# else:
-								tub = []
-								hs = 0
-								fve = [a[0] for a in fdeps]
-								for i in range(len(self.deps)):
-									ms = hs
-									for l in range(i,len(fve)):
-										if fve[l]==self.deps[i]:
-											if l==i: break
-											tub.append((hs,i_of,ms,self.lengths[i]))
-											swp=fve[l]
-											fve[l]=fve[i]
-											fve[i]=swp
-											break
-										for a in range(len(self.deps)):
-											if self.deps[a]==fve[l]: l_of = self.lengths[a]
-										if l==i: i_of = l_of
-										ms+=l_of
-									else:
-										fve.insert(i,self.deps[i])
-										tub.append((hs,self.lengths[i]))
-									hs += self.lengths[i]
-								self.cumu += ver if len(tub)==0 else [a.dpush(ScopeDelta(tub)) for a in ver]
-								self.lengths.append(len(ver))
+								self.cumu += ver
 								self.deps.append(filename)
-								self.subdeps.append([p[0] for p in fdeps])
+								self.lengths[filename] = len(ver)
+								self.subdeps[filename] = [p[0] for p in fdeps]
 								print("loaded: ",self.basepath+filename)
 								return
 		if os.path.exists(self.basepath+filename+".ver"): os.remove(self.basepath+filename+".ver")
@@ -4155,45 +4107,40 @@ class FileLoader:
 
 		print("beginning verify: ",self.basepath+filename)
 		olen = len(self.cumu)
-		pexclude = []
-		hs=0
-		for dep in range(len(self.deps)):
-			if self.deps[dep] not in deps: pexclude.append((self.lengths[dep],hs))
-			hs+=self.lengths[dep]
+
+
+
 		try:
-			obj,ncumu = ob.verify(ScopeObject(self.cumu,prpush=ScopeDelta(pexclude),oprows=ContextYam(rows)),then=True)
+			obj,ncumu = ob.verify(ScopeObject(self.cumu,prpush=self.onlyinclude(deps),oprows=ContextYam(rows)),then=True)
 		except LanguageError as u: raise u.setfile(filename)
 
-		texclude = []
-		hs=sum(self.lengths)
-		for dep in reversed(range(len(self.deps))):
-			hs -= self.lengths[dep]
-			if self.deps[dep] in deps:
-				for nd in self.subdeps[dep]:
-					if nd not in deps: deps.append(nd)
-			else:
-				texclude.append((-self.lengths[dep],hs))
+		deps = self.filloutdeps(deps)
 
-		DataBlockWriter(self.basepath+filename+".ver").writeHeader(md5,[(a,self.md5s[a]) for a in deps],[j.dpush(ScopeDelta(texclude)) for j in ncumu.flat[olen:]])
+		print("arranging ",filename," from ",self.deps,"to ",deps)
+
+		tosave = self.arrangeTo(self.deps,deps,ncumu.flat[olen:])
+
+		DataBlockWriter(self.basepath+filename+".ver").writeHeader(md5,[(a,self.md5s[a]) for a in deps],tosave)
 		print("verified: ",self.basepath+filename)
 		self.cumu = ncumu.flat
-		self.lengths.append(len(self.cumu)-olen)
 		self.deps.append(filename)
-		self.subdeps.append(deps)
+		self.lengths[filename] = len(self.cumu)-olen
+		self.subdeps[filename] = deps
 
 		# def _dbgTest():
-		DataBlockWriter("temporary.ver").writeHeader(md5,[],self.cumu)
-		with open("temporary.ver","r") as f:
-			dbt = DataBlockTransformer(f.read(),0)
-		dbt.readHeader()
-		ver = dbt.readScope(Untransformer({}))
-		DualSubs(self.cumu).assertcomp(DualSubs(ver))
-		one = DualSubs(self.cumu).prepr(FormatterObject(None,fullrepresent=True))
-		two = DualSubs(ver).prepr(FormatterObject(None,fullrepresent=True))
-		if one != two:
-			print("\n\n"*5,one)
-			print("\n\n"*2,two)
-			assert False
+
+		# DataBlockWriter("temporary.ver").writeHeader(md5,[],self.cumu)
+		# with open("temporary.ver","r") as f:
+		# 	dbt = DataBlockTransformer(f.read(),0)
+		# dbt.readHeader()
+		# ver = dbt.readScope(Untransformer({}))
+		# DualSubs(self.cumu).assertcomp(DualSubs(ver))
+		# one = DualSubs(self.cumu).prepr(FormatterObject(None,fullrepresent=True))
+		# two = DualSubs(ver).prepr(FormatterObject(None,fullrepresent=True))
+		# if one != two:
+		# 	print("\n\n"*5,one)
+		# 	print("\n\n"*2,two)
+		# 	assert False
 
 
 		# print("cross verified ",len(self.cumu))
@@ -4216,7 +4163,7 @@ def _dbgTest():
 	# 	# compilefiles({"grouptheory.ax","builtin.ax"},redoAll=True)
 		# print("compiling")
 		# compilefiles({"grouptheory.ax"},verbose=True,basepath="/Users/parkerlawrence/dev/agi/")
-		FileLoader(verbose=True,basepath="/Users/parkerlawrence/dev/agi/",redoAll=False).load("array.ax")
+		FileLoader(verbose=True,basepath="/Users/parkerlawrence/dev/agi/",redoAll=True).load("array.ax")
 	except LanguageError as u:
 		u.tohtml()
 		raise u

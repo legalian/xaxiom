@@ -52,7 +52,6 @@ class BuildAxiomCommand(sublime_plugin.ViewEventListener,sublime_plugin.TextComm
 	def update_syntax_phantoms(self):
 		self.syntaxphantoms = []
 
-
 		# Don't do any calculations on 1MB or larger files
 		if self.view.size() < 2**20:
 			document = self.view.substr(sublime.Region(0,self.view.size()))
