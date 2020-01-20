@@ -296,6 +296,8 @@ def _dbgEnter_compare(self,other,odsc,thot,extract,lefpush,rigpush):
 		other.getSafety()+rsum == self.getSafety()+lsum#dsc values don't match
 def _dbgExit_compare(self,other,odsc,thot,extract,lefpush,rigpush,ahjs):
 
+	# print("exiting... ",ahjs,self,other)
+	# assert ahjs
 	if extract != None:
 		assert odsc != None
 def _dbgEnter_flatten(self,delta,mog,assistmog,prep,obj,fillout,then):
@@ -349,7 +351,7 @@ def _dbgExit_verify(self,indesc,carry,reqtype,then,outp):
 
 def htmlformat(struct,context,prepend,postpend="",tabs=0,forbidrange=None,additional = None):
 	a = []
-	fo = FormatterObject(context,forhtml=True,forbidrange=forbidrange)
+	fo = FormatterObject(None,forhtml=True,forbidrange=forbidrange,printcomplicators=True)
 	if additional!=None:
 		fo = fo.addbits(fo.newcolors(additional))
 	struct.pmultiline(fo,a,tabs,prepend,postpend)
@@ -514,12 +516,26 @@ class TypeMismatch(LanguageError):
 			else:
 				res += "<br>"+htmlformat(self.adfb[1],self.context,"Provided side: ",forbidrange=self.hiddenrange(),additional=self.adfb[3])
 		return res
-
 	def name(self):
 		return "Type mismatch"
 	def ihfb(self,ihfb):
 		self.adfb=ihfb
 		return self
+
+class ObjectMismatch(LanguageError):
+	def __init__(self,pos,expected,got,context):
+		LanguageError.__init__(self,pos,"Object mismatch.")
+		self.expected=expected
+		self.got=got
+		self.context=context
+	def innermessage(self):
+		res = "Templating could not resolve the expected object so that it is equivalent to the provided one.<br>"
+		res += htmlformat(self.expected,self.context,"Expected: ",forbidrange=self.hiddenrange())
+		res += "<br>"
+		res += htmlformat(self.got,self.context,"Provided: ",forbidrange=self.hiddenrange())
+		return res
+	def name(self):
+		return "Object mismatch"
 
 class InvalidSplit(LanguageError):
 	def __init__(self):
@@ -828,7 +844,7 @@ class FormatterObject:
 		if self.forhtml:
 			if word[1]==None: return str(word[0])
 			return "::lt::span style='color:"+word[1]+"'::gt::"+str(word[0])+"::lt::/span::gt::"
-		else: return word[0]
+		else: return str(word[0])
 
 	# def striphuman(lim,mosh):
 	# 	if type(mosh) is not list: return (lim,lim+1)
@@ -929,6 +945,7 @@ def implicitcast(indesc,expected,provided,obj,blame=None,soften=False,extract=No
 		pA = 0
 		headP = provided
 		while headP!=None:
+			# katype = type(headE)
 			if headE.compare(headP,odsc,thot,extract):
 				if extract!=None:
 					for kt in range(st,len(extract)): extract[kt] = (extract[kt][0],extract[kt][1],extract[kt][2],owner)
@@ -1042,6 +1059,14 @@ def implicitcast(indesc,expected,provided,obj,blame=None,soften=False,extract=No
 								#would need to call longflattunravel at a different starting point...
 						# moat = moat + ScopeDelta([(longflattenunravel(expected.rows[h].name,expected.rows[h].type,inquestion,provob.verdepth)[0],),(-vv,provob.verdepth)])
 				if valid: return SubsObject(finob,verdepth=provob.verdepth)
+			# else:
+			# 	one = headE.compare(headP,odsc,thot,extract)
+			# 	two = headE.unwrap().compare(headP.unwrap(),odsc,thot,extract)
+			# 	print("FAILURE ",headE,headP,headE.unwrap(),headP.unwrap())
+			# 	print(katype)
+			# 	print(katype is RefTree)
+			# 	print(one)
+			# 	print(two)
 			if extract!=None:
 				while st<len(extract): del extract[st]
 
@@ -1422,9 +1447,6 @@ class TypeRow:
 	def dpush(self,pushes):
 		"""dbg_ignore"""
 		return TypeRow(self.name,self.type.dpush(pushes),None if self.obj == None else self.obj.dpush(pushes),self.silent)
-	# def spush(self,pushes):
-	# 	"""dbg_ignore"""
-	# 	return TypeRow(self.name,self.type.dpush(pushes),None if self.obj == None else self.obj.dpush(pushes),self.silent)
 
 
 
@@ -1478,9 +1500,6 @@ class SubRow:
 	def dpush(self,pushes):
 		"""dbg_ignore"""
 		return SubRow(self.name,self.obj.dpush(pushes))
-	# def spush(self,pushes):
-	# 	"""dbg_ignore"""
-	# 	return SubRow(self.name,self.obj.dpush(pushes))
 
 
 	def compare(self,other,odsc=None,thot=None,extract=None,lefpush=None,rigpush=None):
@@ -1763,13 +1782,15 @@ class Tobj:
 								if type(u) is list: return [m]+u
 								else: k = u
 							return k
-					return und(self.si,k)
+					unu = und(self.si,k-self.verdepth)
+					assert type(unu) is list
+					return unu
 			return [k[0]+len(self.si)]+k[1:]
 		if type(self) is RefTree and self.core!=None:
 			k = self.core.isSubOb
 			if type(k) is list:
 				if k[0]<len(self.args.subs):
-					return self.args.subs.deepreference(k)
+					return self.args.deepreference(k).isSubOb()
 				else:
 					return [k[0]-len(self.args.subs)]+k[1:]
 			return k
@@ -2539,12 +2560,21 @@ class DualSubs(Tobj):
 							# thot (in) ---> (name of token,unique identifier of replacement)
 							# extract (out) <--- (unique identifier,token,True)
 
+							# compare types with extract............
+							# Im currently not doing that because then I cant garuntee the left hand side isnt more filled out...?????
+							# ''
+							# variables on right side??????
+
+
 							extract = []
 							lobj = wclist[a][0].obj.dpush(ScopeDelta([(len(wlist)-a,self.verdepth+a)]))
 							# def _dbgTest():
 							# 	assert not lobj.detect(ScopeDelta([(len(wlist)-a,self.verdepth+a)]))
+							robj = dn[0].obj.verify(wonk,ltype)
 
-							lobj.compare(dn[0].obj.verify(wonk,ltype),len(indesc)+len(wlist),[(len(indesc)+i,i) for i in range(len(wlist))],extract)
+							if not lobj.compare(robj,len(indesc)+len(wlist),[(len(indesc)+i,i) for i in range(len(wlist))],extract):
+								raise ObjectMismatch(dn[0].obj,lobj,robj,wonk)#self,pos,expected,got,context
+								# raise LanguageError(dn[0].obj,"Templating could not resolve this parameter to make it equivalent to the one already contained in the object.")
 							gather = []
 							origsources = sources
 							while len(extract):
@@ -3246,16 +3276,17 @@ class RefTree(Tobj):
 			if other.src==None or self.name!=other.name: return False
 			return self.src.compare(other.src,odsc,thot,extract,lefpush,rigpush) and self.args.compare(other.args,odsc,thot,extract,lefpush,rigpush)
 		pTest = self.isSubOb()
-		if thot != None and type(pTest) is int:
+		if thot != None and type(pTest) is int and (lefpush==None or lefpush.canTranslate(pTest)):
+			pTest = pTest if lefpush==None else lefpush.translate(pTest)
 			for k in thot:
 				if k[0] == pTest:
-					subself = self.unwrap()
+					subself = self.unwrap() if lefpush==None else self.dpush(lefpush).unwrap()
 					for j in extract:
 						if j[0] == k[1] and j[2] == False:
 							return True
 					repls = []
 					valid = True
-					dsc = subself.verdepth+(0 if lefpush==None else lefpush.lenchange())
+					dsc = subself.verdepth
 					for g1 in range(len(subself.args.subs)):
 						if type(subself.args.subs[g1].obj) is not RefTree or subself.args.subs[g1].obj.name<odsc:
 							valid = False
@@ -3274,7 +3305,7 @@ class RefTree(Tobj):
 					except DpushError:
 						print("there was a dpusherror preventing: ",self)
 						print("\t",other)
-						return False
+						continue
 					def _dbgTest():
 						gr.setSafety(odsc+len(repls))
 					mod = gr.addlambdasphase2(["_"]*len(repls))
@@ -3295,7 +3326,8 @@ class RefTree(Tobj):
 			# while type(other) is ScopeComplicator:
 			# 	rigpush = other.correction() if rigpush==None else rigpush+other.correction()
 			# 	other = other.core
-		if self.core!=None and (type(other) is not RefTree or other.core==None): return self.unwrap().compare(other,odsc,thot,extract,lefpush,rigpush)
+		if self.core!=None and (type(other) is not RefTree or other.core==None):
+			return self.unwrap().compare(other,odsc,thot,extract,lefpush,rigpush)
 		if type(other) is Strategy: 
 			att = self.mangle_FE()
 			if att==None:
@@ -3309,7 +3341,7 @@ class RefTree(Tobj):
 			if att==None: return False
 			return att.compare(other,odsc,thot,extract,lefpush,rigpush)
 		if type(other) is not RefTree or other.src!=None:
-			
+			# assert False
 			return False
 		if self.core==None and other.core==None:
 			return (self.name if lefpush==None else lefpush.translate(self.name))==(other.name if rigpush==None else rigpush.translate(other.name)) and self.args.compare(other.args,odsc,thot,extract,lefpush,rigpush)
@@ -3323,7 +3355,10 @@ class RefTree(Tobj):
 					aname = aH.name if lefpush==None else lefpush.translate(aH.name)
 					for g,bname in b:
 						if aname==bname:
+							if extract!=None: st = len(extract)
 							if aH.args.compare(g.args,odsc,thot,extract,lefpush,rigpush): return True#<><><> special case here... (arg order invariant or unused.)
+							elif extract!=None:
+								while st<len(extract): del extract[st]
 					a.append((aH,aname))
 					aH = aH.unwrapOne().decode()
 				else:
@@ -3333,13 +3368,17 @@ class RefTree(Tobj):
 					bname = bH.name if rigpush==None else rigpush.translate(bH.name)
 					for g,aname in a:
 						if aname==bname:
+							if extract!=None: st = len(extract)
 							if g.args.compare(bH.args,odsc,thot,extract,lefpush,rigpush): return True#<><><> special case here... (arg order invariant or unused.)
+							elif extract!=None:
+								while st<len(extract): del extract[st]
 					b.append((bH,bname))
 					bH = bH.unwrapOne().decode()
 				else:
 					bH = bH.unwrapOne().decode()
 			if (type(aH) is not RefTree or aH.core==None) and (type(bH) is not RefTree or bH.core==None):
 				return aH.compare(bH,odsc,thot,extract,lefpush,rigpush)
+
 
 
 
@@ -4085,7 +4124,7 @@ class FileLoader:
 								break
 						if valid:
 							if True:
-								print("beginning load: ",self.basepath+filename)
+								print("beginning load: ",self.buildpath+filename)
 								fve = [a[0] for a in fdeps]
 							# try:
 								ver = self.arrangeTo(fve,self.deps,dbt.readScope(Untransformer({}).update(self.getdepsas(fve))))
@@ -4095,7 +4134,7 @@ class FileLoader:
 								self.deps.append(filename)
 								self.lengths[filename] = len(ver)
 								self.subdeps[filename] = [p[0] for p in fdeps]
-								print("loaded: ",self.basepath+filename)
+								print("loaded: ",self.buildpath+filename)
 								return
 		if os.path.exists(self.buildpath+filename+".ver"): os.remove(self.buildpath+filename+".ver")
 		try:
