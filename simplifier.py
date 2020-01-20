@@ -96,6 +96,24 @@ if True:
 				raise TypeMismatch(pos,one,two,indesc)
 
 
+	def prefix(si,am):
+		if type(si) is list: return [prefix(s,am) for s in si]
+		return am+si
+	def postfix(si,am):
+		if type(si) is list: return [prefix(s,am) for s in si]
+		return si+am
+	def fixnames(si,ty):
+		if si==None: return None
+		if type(si) is list:
+			dsn = ty.asDualSubsNonspecific()
+			if len(dsn) != len(si): raise InvalidSplit()
+			return [fixnames(si[s],dsn.rows[s].type) for s in range(len(si))]
+		else:
+			if si=='*****': return ty.fulavail()
+			if si.endswith('*****'):	 return prefix(ty.fulavail(),si[:-5])
+			if si.startswith('*****'): return postfix(ty.fulavail(),si[5:])
+			return si
+
 
 	def untrim(car,mosh):
 		if type(mosh) is not list: return mosh
@@ -351,7 +369,7 @@ def _dbgExit_verify(self,indesc,carry,reqtype,then,outp):
 
 def htmlformat(struct,context,prepend,postpend="",tabs=0,forbidrange=None,additional = None):
 	a = []
-	fo = FormatterObject(None,forhtml=True,forbidrange=forbidrange,printcomplicators=True)
+	fo = FormatterObject(context,forhtml=True,forbidrange=forbidrange)
 	if additional!=None:
 		fo = fo.addbits(fo.newcolors(additional))
 	struct.pmultiline(fo,a,tabs,prepend,postpend)
@@ -1523,7 +1541,10 @@ class Tobj:
 	def isemptytype(self):
 		return False
 	def fulavail(self):
-		raise InvalidSplit()
+		ma = self.asDualSubsNonspecific()
+		if ma == None:
+			raise InvalidSplit()
+		return [row.name for row in ma.rows]
 	def setVerified(self):
 		assert self.verdepth!=None
 		pass
@@ -1629,6 +1650,14 @@ class Tobj:
 	def asDualSubs(self):
 		self = self.decode()
 		if type(self) is RefTree: self = self.mangle_UE()
+		if type(self) is not DualSubs: return None
+		return self
+	def asDualSubsNonspecific(self):
+		self = self.decode()
+		while True:
+			if type(self) is Strategy: self = self.type.decode()
+			elif type(self) is RefTree: self = self.mangle_UE()
+			else: break
 		if type(self) is not DualSubs: return None
 		return self
 
@@ -2003,8 +2032,6 @@ class DualSubs(Tobj):
 		return len([k for k in self.rows if k.obj == None])
 	def __getitem__(self, key):
 		return [k for k in self.rows if k.obj == None][key].type
-	def fulavail(self):
-		return [j.name for j in self.rows]
 	def semavail(self,mog=False):
 		if mog == False: mog = self.fulavail()
 		return [self.rows[k].type.semavail(mog[k]) if type(mog[k]) is list else mog[k] for k in range(len(self.rows)) if self.rows[k].obj == None]
@@ -2171,13 +2198,7 @@ class DualSubs(Tobj):
 
 
 			try:
-				if self.rows[n].name == "*****":
-					uwa = nty.decode()
-					if type(uwa) is RefTree:
-						uwa = uwa.mangle_UE()
-						if uwa==None: raise InvalidSplit()
-						self.rows[n].name = uwa.fulavail()
-					else: self.rows[n].name = uwa.fulavail()
+				self.rows[n].name = fixnames(self.rows[n].name,nty)
 
 				vertype = TypeRow(self.rows[n].name,nty,obj if obj!=None else SubsObject(verdepth=len(indesc)) if nty.isemptytype() else None,self.rows[n].silent)
 				outs.append(vertype)
@@ -2394,16 +2415,26 @@ class DualSubs(Tobj):
 		poppo = [(NSC[0][a],NSC[1][a]) for a in range(len(NSC[0]))]
 		inc = []
 		def triplecopy(ma):
-			if type(ma) is list: return [triplecopy(k) for k in ma]
-			for swap in range(len(poppo)):
-				if poppo[swap][0]==ma:
-					res = poppo[swap][1]
-					for j in range(longcount(poppo[swap][1])):
-						inc.append(True)
-					del poppo[swap]
-					return res
-			inc.append(False)
-			return ma
+			res = []
+			for k in ma:
+				if type(k[0]) is list:
+					who = k[1].asDualSubsNonspecific()
+					if len(who.rows)!=len(k[0]): raise InvalidSplit()
+					res.append(triplecopy([(k[0][s],who.rows[s].type) for s in range(len(k[0]))]))
+				else:
+					for swap in range(len(poppo)):
+						if poppo[swap][0]==k[0]:
+							kres = fixnames(poppo[swap][1],k[1])
+							for j in range(longcount(kres)):
+								inc.append(True)
+							del poppo[swap]
+							res.append(kres)
+							break
+					else:
+						inc.append(False)
+						res.append(k[0])
+			return res
+
 
 		def secretoken(secret,wlist,stdep,endep,tail=None):
 			acu = []
@@ -2421,7 +2452,7 @@ class DualSubs(Tobj):
 			return sj
 	
 
-		NANms = triplecopy([a.name for a in self.rows])
+		NANms = triplecopy([(a.name,a.type) for a in self.rows])
 		for pop in range(len(poppo)): raise LanguageError(blame,"cannot complete renaming statement: "+poppo[pop][0]+" was not found.")
 
 		wlist = self.flatten(ScopeDelta([]),NANms).flat
@@ -2982,8 +3013,6 @@ class Strategy(Tobj):
 		return self.type.compare(other,odsc,thot,extract,lefpush,rigpush)
 	def addfibration(self,args,pos=None,alts=None):
 		return Strategy(args+self.args,self.type,pos=self,verdepth=self.verdepth-longcount(args))
-	def fulavail(self):
-		return self.type.fulavail()
 	def semavail(self,mog=False):
 		return self.type.semavail(mog)
 	def emptyinst(self,limit,mog,prep=None):
@@ -3023,8 +3052,6 @@ class Strategy(Tobj):
 
 		arp = self.args.dpush(delta)
 
-
-		
 		if prep == None:
 			njprep = arp
 		else:
@@ -3708,6 +3735,10 @@ class ScopeComplicator(Tobj):
 		pmultilinecsv(context,out,indent,self.secrets,prepend+context.red("[[["),context.red("]]]"),lamadapt=lambda x:None,callback=calls,delim=context.red(","))
 
 
+def hasfixes(si):
+	if type(si) is list:
+		return any(hasfixes(s) for s in si)
+	return '*****' in si
 
 @v_args(meta=True)
 class MyTransformer(Transformer):
@@ -3739,15 +3770,11 @@ class MyTransformer(Transformer):
 			obj = None
 			if len(children)>2:
 				obj = children[2]
-				# if type(children[1]) is Strategy:
-				# 	obj = Lambda(children[1].args.semavail(),obj,pos=meta)
 			if type(children[1]) is Strategy: children[0][1]['contractible'] = children[1].getbecsafety()
 			return TypeRow(children[0][0],children[1],obj,children[0][1])
 		obj = None
 		if len(children)>1:
 			obj = children[1]
-			# if type(children[0]) is Strategy:
-			# 	obj = Lambda(children[0].args.semavail(),obj,pos=meta)
 		return TypeRow(None,children[0],obj,{'silent':False,'contractible':None if type(children[0]) is not Strategy else children[0].getbecsafety()})
 	def inferreddeclaration(self,children,meta):
 		ty = None if len(children)<3 else Strategy(args=children[1],type=None,pos=meta)
@@ -3759,6 +3786,7 @@ class MyTransformer(Transformer):
 		return {'silent':False,'contractible':None}
 	def multilabel(self,children,meta):
 		return children[0]
+
 	def introducer(self,children,meta):
 		return children
 	def reftree(self,children,meta):
@@ -3778,8 +3806,13 @@ class MyTransformer(Transformer):
 		coal = []
 		for c in children[:-1]:
 			coal+=c
+		if hasfixes(coal):
+			raise LanguageError(meta,"Lambdas do not support automatic unpacking.")
 		return Lambda(coal,children[-1],pos=meta)
 	def directive(self,children,meta):
+		for i in children[0]:
+			if type(i) is not str or '*****' in i:
+				raise LanguageError(meta,"Invalid renaming directive. Directive on left side must not be recursive.")
 		if len(children) == 1:
 			return (children[0],children[0])
 		return (children[0],children[1])
@@ -3811,6 +3844,7 @@ class MyTransformer(Transformer):
 		if len(children)>2: ouou.becsafety = len([i for i in children[0].rows if i.obj==None])
 		return ouou
 	def string(self,children,meta):
+		if str(children[0]).endswith('+') or str(children[0]).startswith('+'): return str(children[0]).replace('+','*****')
 		return str(children[0]).replace("'","")
 	def operators(self,children,meta):
 		return OperatorSet(children,pos=meta)
@@ -4215,6 +4249,7 @@ def _dbgTest():
 	# print("debug")
 
 
+
 #if mangle_ue starts taking up a lot of time, remember that you can store ful/semavail on a property so yo don't have ot unwrap<><><>
 #you could also create a separate unwrap function for trimming and dpushing at the same time to avoid all those extra properties you dont need.<><><>
 
@@ -4234,10 +4269,13 @@ def _dbgTest():
 
 #on pure decode, remember if you encountered any of your core props and if you didnt, monkey patch it back in.<><><><><><><><><<><<><><><>
 
+#<><> rewrite widereference to use asdualsubsNonspecific (and any other possible places- look for mangle_UE )
 
+
+# <><><> capture invalidsplits.
 # ScopeDelta([(-     <><><><><><>
 
-#<><> instead of presenting '*****' to the user, be better
+
 
 #<><><> force flag that you copy instead of any(3) and that way except DpushError actually works.
 
@@ -4245,4 +4283,21 @@ def _dbgTest():
 
 
 #<><><><><> save/loading doesn't work... dualsubs erased doesn't get saved and it's a problem.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
