@@ -233,6 +233,13 @@ if True:
 			invert_op()
 # def _dbgEnter_detect(self,ranges):
 # 	ranges.conforms(self.getSafety() if type(self) is not TypeRow and type(self) is not SubRow else self.getSafetyrow())
+# def _dbgExit_detect(self,ranges,light,outp):
+# 	# print(outp)
+# 	if light == "do it you won't":
+# 		assert not outp
+
+
+
 def _dbgEnter_dpush(self,pushes,exob):
 	self.setVerified()
 	if type(self) is TypeRow or type(self) is SubRow:
@@ -577,6 +584,10 @@ class VariableAssignmentError(LanguageError):
 		LanguageError.__init__(self,pos,"Too many positional arguments" if name==None else "Unexpected keyword argument: " + str(name))
 	def name(self):
 		return "Unexpected argument"
+
+
+RRR = 0
+
 class DelayedSub:
 	def __init__(self,core,rows=None):
 		self.core = core
@@ -587,22 +598,31 @@ class DelayedSub:
 		self.isSubOb = self.core.isSubOb()
 		def _dbgTest():
 			self.rows.objconforms(self.core,self.core.verdepth)
-			# assert not self.core.detect(self.rows)
+			global RRR
+			RRR+=1
+			if RRR==1:
+				if self.core.detect(self.rows):
+					print("-=-=-=--=-==-=-=-=-=")
+					print(self.core)
+					print(self.rows)
+					assert False
+			RRR-=1
 
 		dok = self.rows
 		while type(self.isSubOb) is int and not dok.isempty():
-			try:
-				self.isSubOb = dok.translate(self.isSubOb)
-			except DpushError:
-				self.isSubOb = None
-				break
+			# try:
+			self.isSubOb = dok.translate(self.isSubOb)
+			# except  DpushError:
+			# 	self.isSubOb = None
+			# 	break
 			if type(self.isSubOb) is tuple:
 				dok = self.isSubOb[1]
 				self.isSubOb = self.isSubOb[0].isSubOb()
 			else: break
 
-	def dpush_ds(self,rows):
-		return DelayedSub(self.core,self.rows+rows)
+	def dpush_ds(self,rows,myname):
+		if rows.islowerbound(myname): return DelayedSub(self.core,self.rows+rows)
+		return DelayedSub(self.core.dpush(self.rows+rows),ScopeDelta())
 
 # the cure- six different ways
 
@@ -783,7 +803,10 @@ class ScopeDelta:
 			elif not ignoresubs:
 				for key,symbol in j[0]:
 					if fug==key:
-						return (symbol,ScopeDelta(self.pushes[i+1:]),fug,changefar)
+						return (symbol,ScopeDelta(self.pushes[i+1:]),fug,changefar,ScopeDelta(self.pushes[:i+1]))
+
+						#teleport
+
 		return fug
 	def subset(self,fug):
 		track = []
@@ -1048,7 +1071,7 @@ def implicitcast(indesc,expected,provided,obj,blame=None,soften=False,extract=No
 
 						if dualexpected.rows[h].obj==None:
 							against = complicate(dualexpected.rows[h].type.dpush(moat),cusecrets)
-							if not against.compare(inquestiontype,odsc,thot,extract):#<><><> make sure you aren't comparing things where they're set on both sides- that would be unesscesary.
+							if not against.compare(inquestiontype,odsc,thot,extract):
 								valid = False
 								if ihfb==None: ihfb = (dualexpected.rows[h].type.dpush(moat),guflat.flat[fou].type,[dualexpected.rows[a].name for a in range(h)],[a.name for a in guflat.flat[:fou]])
 								break
@@ -1062,11 +1085,6 @@ def implicitcast(indesc,expected,provided,obj,blame=None,soften=False,extract=No
 
 
 						else:
-							# against = complicate(dualexpected.rows[h].obj.dpush(moat),cusecrets)
-							# if not against.compare(inquestion,odsc,thot,extract):#<><><> make sure you aren't comparing things where they're set on both sides- that would be unesscesary.
-							# 	valid = False
-							# 	if ihfb==None: ihfb = (dualexpected.rows[h].obj.dpush(moat),guflat.flat[fou].obj,[dualexpected.rows[a].name for a in range(h)],[a.name for a in guflat.flat[:fou]])
-							# 	break
 							cusecrets = cusecrets + dualexpected.rows[h].ripsingle()
 
 						# TypeRow(expected.rows[h].name,expected.rows[h].type,inquestion).getSafetyrow()
@@ -1115,7 +1133,6 @@ def implicitcast(indesc,expected,provided,obj,blame=None,soften=False,extract=No
 # 	provided inherits from ---> (other side)
 
 # 	print failed comparison...
-
 
 
 
@@ -1380,12 +1397,13 @@ class ScopeObject:
 		return repr(output)+repr(self.postpushes)+" -- "+repr(self.prepushes)
 
 
-def widereference(obj,ty,si):
+
+def amorphwidereference(obj,ty,si):
+	def _dbgTest():
+		if obj!=None: assert obj.verdepth==ty.verdepth
 	if type(si) is not list: return [obj]
 
-	ty = ty.decode()
-	ty = ty.type.decode() if type(ty) is Strategy else ty
-	ty = ty.mangle_UE() if type(ty) is RefTree else ty
+	ty = ty.asDualSubsNonspecific()
 
 	s = 0
 	cu = []
@@ -1394,7 +1412,28 @@ def widereference(obj,ty,si):
 			cu = cu+widereference((obj.reference(s) if obj!=None else None),ty.rows[k].type,si[k])
 			s+=1
 		else:
-			cu = cu+[complicate(t,cu) for t in widereference(ty.rows[k].obj,ty.rows[k].type,si[k])]
+			delt = ScopeDelta([([(ty.verdepth+h,cu[h]) for h in range(len(cu)) if cu[h]!=None],)])
+			cu = cu+[t.dpush(delt) for t in widereference(ty.rows[k].obj,ty.rows[k].type,si[k])]
+	return cu
+
+
+
+def widereference(obj,ty,si):
+	def _dbgTest():
+		if obj!=None: assert obj.verdepth==ty.verdepth
+	if type(si) is not list: return [obj]
+
+	ty = ty.asDualSubsNonspecific()
+
+	s = 0
+	cu = []
+	for k in range(len(si)):
+		if ty.rows[k].obj==None:
+			cu = cu+widereference((obj.reference(s) if obj!=None else None),ty.rows[k].type,si[k])
+			s+=1
+		else:
+			delt = ScopeDelta([([(ty.verdepth+h,cu[h]) for h in range(len(cu))],)])
+			cu = cu+[complicate(t.dpush(delt),cu) for t in widereference(ty.rows[k].obj,ty.rows[k].type,si[k])]
 	return cu
 
 
@@ -1633,7 +1672,7 @@ class Tobj:
 				nsubs = SubsObject([k.dpush(stretch) for k in outp.args.subs[:len(outp.args.subs)-elim]],verdepth=ndepth)
 				core = None
 				if outp.core != None:
-					core = outp.core.dpush_ds(stretch)
+					core = outp.core.dpush_ds(stretch,outp.name)
 				outp = RefTree(outp.name,nsubs,None if outp.src==None else outp.src.dpush(stretch),verdepth=ndepth,pos=outp,core=core)
 		if type(self) is ScopeComplicator:
 			if elim==0:
@@ -1766,18 +1805,40 @@ class Tobj:
 
 
 
+	def altreference(self,su,crosspush):
+		if su==None: return self
+		k = self
+		for s in range(len(su)-1):
+			# try:
+			# 	nub = su[s][1].dpush(crosspush)
+			# 	if su[s+1]!=None:
+			# 		nub = SubsObject(nub.subs+su[s+1].subs,verdepth=nub.subs.verdepth)
+			# except DpushError:
+			# 	k = k.reference(ScopeDelta(),su[s][1])
+			# else:
+
+			# if s == len(su)-2:
+			# 	k = k.reference(s[0],s[1])
+
+			# 	su[s+1]
+			# else:
+
+				k = k.reference(s[0],s[1])
+		return k
 	def deepreference(self,su):
 		k = self
 		for s in su: k = k.reference(s)
 		return k
-	def reference(self,s):
-		if type(self) is SubsObject: return self.subs[s].obj
+	def reference(self,s,args=None):
+		if type(self) is SubsObject:
+			if args!=None: return self.subs[s].obj.dpush(ScopeDelta(),exob=args)
+			return self.subs[s].obj
 		elif type(self) is ScopeComplicator:
-			return ScopeComplicator(self.core.reference(s),self.secrets,verdepth=self.verdepth)
-		elif type(self) is Lambda: return Lambda(self.si,self.obj.reference(s),verdepth=self.verdepth,pos=self)
+			return ScopeComplicator(self.core.reference(s,args=args),self.secrets,verdepth=self.verdepth)
+		elif type(self) is Lambda: return Lambda(self.si,self.obj.reference(s,args=args),verdepth=self.verdepth,pos=self)
 		elif type(self) is RefTree and self.core!=None and type(self.isSubOb()) is bool and self.isSubOb():
-			return self.unwrap().reference(s)
-		return RefTree(src=self,name=s,verdepth=self.verdepth,pos=self)
+			return self.unwrap().reference(s,args=args)
+		return RefTree(src=self,name=s,args=args,verdepth=self.verdepth,pos=self)
 
 
 
@@ -1974,7 +2035,7 @@ class DualSubs(Tobj):
 		for k in range(len(self.rows)):
 			try:
 				m = self.rows[k].dpush(disgrace+pushes)
-			except DpushError as u:
+			except  DpushError as u:
 				if self.rows[k].obj == None: raise u
 				disgrace.append((-longcount(self.rows[k].name),self.verdepth+left))
 				er.append(k)
@@ -1982,6 +2043,13 @@ class DualSubs(Tobj):
 				cu.append(m)
 				left += longcount(self.rows[k].name)
 
+		# for k in range(len(self.rows)):
+		# 	if self.rows[k].obj != None and self.rows[k].detect(pushes):
+		# 		disgrace.append((-longcount(self.rows[k].name),self.verdepth+left))
+		# 		er.append(k)
+		# 	else:
+		# 		cu.append(self.rows[k].dpush(disgrace+pushes))
+		# 		left += longcount(self.rows[k].name)
 
 		return DualSubs(cu,verdepth=self.verdepth+pushes.lenchange(),origin=None if self.origin ==None else (self.origin[0].dpush(pushes),self.origin[1]),pos=self,erased=er+self.erased)
 
@@ -2188,7 +2256,7 @@ class DualSubs(Tobj):
 
 				nty = Strategy(gnoa,nty,verdepth=len(indesc))
 
-				if obj!=None:#<><><><><><><><><><><> this is pretty bad...
+				if obj!=None:#<><><> this is pretty bad...
 					despar = ScopeDelta()
 					gnoa.trimallnonessential(None,despar)
 					obj = correctLambda(gnoa.semavail(),obj,despar,verdepth=len(indesc),pos=obj)
@@ -2343,7 +2411,7 @@ class DualSubs(Tobj):
 				# 	assert len(secretcu) == lentho
 				try:
 					for k in range(len(yoks)):
-						if yoks[k][0] == trail+[n]:#<>still keep inferred type?
+						if yoks[k][0] == trail+[n]:
 							if yoks[k][2] != False:
 								if yoks[k][2] != True:
 									st = len(yoks)
@@ -2462,11 +2530,22 @@ class DualSubs(Tobj):
 
 		wclist = [((wlist+jmore)[d],(inc+[True for j in jmore])[d],self.verdepth+d,[]) for d in range(len(inc)+len(jmore))]
 		for a in range(len(wclist)):
+			# wclist[a][0].setSafetyrow(self.verdepth+a)
 			for b in reversed(range(a)):
 				if self.verdepth+b not in wclist[a][3] and wclist[b][0].obj==None and wclist[a][0].detect(ScopeDelta([(-1,self.verdepth+b)]),light=True):
 					wclist[a][3].append(self.verdepth+b)
 					for c in wclist[b][3]:
 						if c not in wclist[a][3]: wclist[a][3].append(c)
+
+
+					# if 'ASSOCIATIVE' in wclist[b][0].name and 'ASSOCIATIVE' not in wclist[a][0].name:
+					# 	print(wclist[a][0].name," natively and initially found to reference: ",wclist[b][0].name)#,self.verdepth+a,"=",wclist[a][0].getSafetyrow(),self.verdepth+b,"=",wclist[b][0].getSafetyrow()
+					# 	print(wclist[a][0].prepr(FormatterObject(indesc.addflat(ScopeObject([u[0] for u in wclist[:a]])),littleeasier=False,fullrepresent=True)))
+					# 	print(wclist[a][0].prepr(FormatterObject(None,littleeasier=False,fullrepresent=True)))
+					# 	print(ScopeDelta([(-1,self.verdepth+b)]))
+					# 	assert False
+
+
 
 		def shape1(wclist,a):
 			tub = []
@@ -2474,6 +2553,11 @@ class DualSubs(Tobj):
 			sources = []
 			for b in range(len(wclist)):
 				if b!=a and wclist[a][2] not in wclist[b][3]:
+
+					assert not wclist[b][0].detect(ScopeDelta(tub))
+					print(wclist[b][0].prepr(FormatterObject(None,fullrepresent=True)))
+					print(tub)
+
 					wlist.append((wclist[b][0].dpush(ScopeDelta(tub)),wclist[b][1],wclist[b][2],wclist[b][3]))
 					sources.append(b)
 				else:
@@ -2619,10 +2703,17 @@ class DualSubs(Tobj):
 								r = extract[i]
 								del extract[i]
 								sources2,gnlist = shape1(wlist,r[0])
+								# gfx = ScopeDelta([( -1,len(indesc)+i) for i in reversed(range(len(origsources))) if i not in sources2])
+								# if r[1].detect(gfx):
+								# 	raise LanguageError(blame,"Equivalence statement cannot be made true without creating a cyclic reference.")
+								# else:
+								# 	takenout = r[1].dpush(gfx)
 								try:
 									takenout = r[1].dpush(ScopeDelta([( -1,len(indesc)+i) for i in reversed(range(len(origsources))) if i not in sources2]))
 								except DpushError:
 									raise LanguageError(blame,"Equivalence statement cannot be made true without creating a cyclic reference.")
+
+									
 								addrefs(wclist,[origsources[i] for i in sources2],sources[r[0]],takenout)
 								converter = ScopeDelta([([(len(indesc)+len(gnlist),takenout)],)])
 								omtype = wlist[r[0]][0].type.dpush(ScopeDelta([(len(gnlist)-r[0],self.verdepth+r[0])]))
@@ -2896,8 +2987,6 @@ class Lambda(Tobj):
 		dis = self.obj.dpush(pushes).addlambdasphase2(self.si,pos=self)
 		return dis
 
-
-
 	def isemptyinst(self,si,prep=None):
 		lc = striphuman(self.verdepth,self.si)[0]
 		prep = lc if prep==None else prep+lc
@@ -3127,6 +3216,8 @@ class Strategy(Tobj):
 		pmultilinecsv(context,out,indent,self.args.rows,prepend+context.red("["),context.red("]"),lamadapt=lambda x:x.name,callback=calls,delim=context.red(","))
 def u_type(verdepth):
 	return RefTree(verdepth=verdepth)
+
+
 class RefTree(Tobj):
 	def assertcomp(self,other):
 		assert type(other) is RefTree
@@ -3161,15 +3252,15 @@ class RefTree(Tobj):
 			if self.core!=None:
 				assert self.core.isSubOb != self.name
 			if self.src!=None:
-				assert type(self.src) is not SubsObject
+				if self.verdepth!=None:
+					assert type(self.src) is RefTree
+
 				if not ( (type(self.src.isSubOb()) is not bool) or not self.src.isSubOb()   ):
 					print(self)
 					print(self.src.isSubOb())
 					assert False
 				if self.src.isSubOb() and type(self.src.isSubOb()) is bool:
 					assert False
-
-
 
 	def semavail(self,mog=False):
 		return self.unwrap().semavail(mog)
@@ -3214,10 +3305,13 @@ class RefTree(Tobj):
 	def detect(self,ranges,light=False):
 		if self.core!=None:
 			if light and not ranges.canTranslate(self.name,self.verdepth): return True
-			if self.args.detect(ranges,light=light): return True
+			if self.args.detect(ranges,light=light): return self.unwrapOne().detect(ranges)
 			if hasattr(ranges,'precal') and self.name in ranges.precal: return False
 			if ranges.islowerbound(self.name): return False
-			if self.core.core.detect(self.core.rows + ranges,light=light): return True#<><><> account for special case
+			if self.core.core.detect(self.core.rows + ranges,light=light): return self.unwrapOne().detect(ranges,light=light)
+				#this line seems really inneficient, but the algorithm bails out early if it gets a positive,
+				#so it's better to make negatives happen faster and take a little bit more time on false positives because true positives can only happen once.
+
 			if not hasattr(ranges,'precal'): ranges.precal = []
 			ranges.precal.append(self.name)
 			return False
@@ -3225,18 +3319,117 @@ class RefTree(Tobj):
 			if not ranges.canTranslate(self.name,self.verdepth): return True
 		elif self.src.detect(ranges,light=light): return True
 		return self.args.detect(ranges,light=light)
-	def dpush(self,pushes,exob=None):
+	def dpush(self,pushes,exob=None,refstack=None):
 		gy = self.name
 
 		pushdepth = self.verdepth+pushes.lenchange()
-		if exob!=None and exob.verdepth<pushdepth: exob = exob.dpush(ScopeDelta([(pushdepth-exob.verdepth,exob.verdepth)]))
-		# ogy = self.name
 
-		# assert 
+		def getdecargs():
+			decargs = self.args if pushes.isempty() else self.args.dpush(pushes)
+			if exob != None and exob.verdepth<pushdepth: exob = exob.dpush(ScopeDelta([(pushdepth-exob.verdepth,exob.verdepth)]))
+			if exob != None: decargs = SubsObject(decargs.subs+exob.subs,verdepth=pushdepth)
+			return decargs if len(decargs.subs) else None
 
 		if self.src!=None:
-			decargs = self.args if pushes.isempty() else self.args.dpush(pushes)
-			if exob != None: decargs = SubsObject(decargs.subs+exob.subs,verdepth=pushdepth)
+
+			<><><><><><><><><><><><><><> 
+
+			would need to modify behavior if refstack was passed in. 
+					on return, wrap in series of references if refstack exists.
+
+			create refstack or add to refstack on descent.
+
+
+			on substitution... while isSubOb is True, knock it off with the refstack. any paramters in the refstack just get added to exob.
+			then reference.
+
+
+			data pattern:
+				[( s,(args) ),( s,(args) ),( s,(args) ),( s,(args) )]
+
+
+
+
+			if the new pushes are garunteed to not collide with the old one then feel free to 
+
+
+
+			<><>>>>>>>>
+					same problem exists for arguments that are unused. and exob access.
+
+					partially used arguments...
+
+					dpushing 
+					dpushing arguments could fail.
+
+
+
+
+
+					subbing for womething that is illegal and then referencing a legal subset...
+					argument is illegal but only a legal subset is used...
+
+
+
+
+					[   a.0(b,illegal)   ] -> [
+						a -> (|x,y|x,c)
+						-illegal
+					]
+
+					try to dpush arguments. If this fails, push empty exob and then pushes.
+
+
+					----add to refstack
+					----descend
+
+					----(the last one is already pushed. )
+
+
+
+					very simple substitution...
+
+					a(b,illegal) -> [
+						a -> |x,y|x
+						-illegal
+					]
+
+
+
+					is dpusherror?
+						cannot add to refstack.
+
+						dpush child, reference it, then 
+
+
+
+					if dpushing arguments doesnt work,
+						push child with refstack
+
+
+
+
+
+
+					modify refstack- 
+
+
+						-argument list that failed
+						-rows that it failed on
+
+
+					- push on rows, 
+
+
+
+
+			# decargs = self.args if pushes.isempty() else self.args.dpush(pushes)
+			# if exob != None: decargs = SubsObject(decargs.subs+exob.subs,verdepth=pushdepth)
+
+
+			self.src.dpush()
+
+			# ...exob...
 
 			outp = self.src.dpush(pushes)
 			agar = outp.isSubOb()
@@ -3246,17 +3439,28 @@ class RefTree(Tobj):
 				outp = outp.reference(self.name)
 				if len(decargs.subs): return outp.dpush(ScopeDelta(),exob=decargs)
 			return outp
+
+
+
 		if self.name!=0:
 			if self.core!=None and not pushes.canTranslate(self.name,ignoresubs=True):
-				decargs = self.args if pushes.isempty() else self.args.dpush(pushes)
-				if exob != None: decargs = SubsObject(decargs.subs+exob.subs,verdepth=pushdepth)
-				return self.core.core.dpush(self.core.rows+pushes,decargs if len(decargs.subs) else None)
+				try:
+					decargs = getdecargs()
+				except DpushError as u:
+					if self.core==None: raise u
+					return self.unwrapOne().dpush(pushes,exob=exob,refstack=refstack)
+				return self.core.core.dpush(self.core.rows+pushes,decargs).altreference(refstack)
 			gy = pushes.translate(self.name,ignoresubs=self.core!=None)
 		if type(gy) is int:
-			decargs = self.args if pushes.isempty() else self.args.dpush(pushes)
-			if exob != None: decargs = SubsObject(decargs.subs+exob.subs,verdepth=pushdepth)
-			return RefTree(gy,decargs,None,pos=self,verdepth=pushdepth,core=None if self.core==None else self.core.dpush_ds(pushes))
+			try:
+				decargs = getdecargs()
+			except DpushError as u:
+				if self.core==None: raise u
+				return self.unwrapOne().dpush(pushes,exob=exob,refstack=refstack)
+
+			return RefTree(gy,decargs,None,pos=self,verdepth=pushdepth,core=None if self.core==None else self.core.dpush_ds(pushes,self.name)).altreference(refstack)
 		elif len(gy)==3:
+
 			pard = self.dpush(gy[1]+ScopeDelta([(gy[0][0].verdepth-(self.verdepth+gy[1].lenchange()),gy[0][0].verdepth)]))
 			for j in range(len(gy[0])):
 				if pard.compare(gy[0][j]):
@@ -3264,30 +3468,65 @@ class RefTree(Tobj):
 					ae = RefTree(vdep-len(gy[0])+j,verdepth=vdep)
 					if exob!=None or not gy[2].isempty():
 						ae = ae.dpush(gy[2],exob=exob)
-					return ae
+					return ae.altreference(refstack)
 			raise DpushError
-
 		else:
+			
 
-			decargs = self.args if pushes.isempty() else self.args.dpush(pushes)
-			if exob != None: decargs = SubsObject(decargs.subs+exob.subs,verdepth=pushdepth)
+				move decargs.........
+				jjj
+				jj
+				j
+
+				# anthony ryan rachel
+
+
+
+
+			sems = ScopeDelta([(self.verdepth+gy[3]-gy[0].verdepth,gy[0].verdepth)])+gy[1]
+
 
 			assert self.verdepth+gy[3]-gy[0].verdepth>=0
-			# outp = gy[0].dpush(ScopeDelta([(self.verdepth+gy[3]-gy[0].verdepth,gy[0].verdepth)])+gy[1],exob=decargs if len(decargs.subs) else None)
 
-			if not gy[1].canTranslate(gy[2],ignoresubs=True):
-				outp = gy[0].dpush(ScopeDelta([(self.verdepth+gy[3]-gy[0].verdepth,gy[0].verdepth)])+gy[1],exob=decargs if len(decargs.subs) else None)
-				return outp
+
+			try:
+				decargs = getdecargs()
+			except DpushError as u:
+				if self.core==None: raise u
+
+				<><><><>
+
+
+				
+
+				outp = gy[0].dpush(ScopeDelta(),exob=self.args.dpush(gy[4])).altreference(refstack).dpush(sems)
+				return outp.altreference(refstack)
+
+
+
+				# return self.unwrapOne().dpush(pushes,exob=exob,refstack=refstack)
 			else:
-				assert self.core == None
-				cr = gy[1].translate(gy[2])
-				return RefTree(
-					cr,
-					decargs,
-					pos=self,
-					verdepth=pushdepth,
-					core = DelayedSub(gy[0],ScopeDelta([(self.verdepth+gy[3]-gy[0].verdepth,gy[0].verdepth)])+gy[1])
-				)
+
+
+				if not gy[1].canTranslate(gy[2],ignoresubs=True):
+
+
+					outp = gy[0].dpush(sems,exob=decargs)
+					return outp.altreference(refstack)
+				else:
+
+					assert self.core == None
+					cr = gy[1].translate(gy[2])
+					return RefTree(
+						cr,
+						decargs,
+						pos=self,
+						verdepth=pushdepth,
+						core = DelayedSub(gy[0],sems)
+					).altreference(refstack)
+
+
+
 
 	def isemptyinst(self,si,prep=None):
 		if type(si) is list: return False
@@ -3327,12 +3566,22 @@ class RefTree(Tobj):
 					if not valid: break
 					def _dbgTest():
 						other.setSafety(dsc-(0 if rigpush==None else rigpush.lenchange()))
+
+					# if len(repls):
 					try:
 						gr = other.dpush((ScopeDelta() if rigpush==None else rigpush) + (ScopeDelta([(odsc-dsc,odsc,repls)]) if len(repls) else ScopeDelta([(odsc-dsc,odsc)])))
-					except DpushError:
+					except  DpushError:
 						print("there was a dpusherror preventing: ",self)
 						print("\t",other)
 						continue
+					# else:
+					# 	if other.detect((ScopeDelta() if rigpush==None else rigpush) + ScopeDelta([(odsc-dsc,odsc)])):
+					# 		print("there was a dpusherror preventing: ",self)
+					# 		print("\t",other)
+					# 		continue
+					# 	else:
+					# 		gr = other.dpush((ScopeDelta() if rigpush==None else rigpush) + ScopeDelta([(odsc-dsc,odsc)]))
+
 					def _dbgTest():
 						gr.setSafety(odsc+len(repls))
 					mod = gr.addlambdasphase2(["_"]*len(repls))
@@ -3383,7 +3632,7 @@ class RefTree(Tobj):
 					for g,bname in b:
 						if aname==bname:
 							if extract!=None: st = len(extract)
-							if aH.args.compare(g.args,odsc,thot,extract,lefpush,rigpush): return True#<><><> special case here... (arg order invariant or unused.)
+							if aH.args.compare(g.args,odsc,thot,extract,lefpush,rigpush): return True
 							elif extract!=None:
 								while st<len(extract): del extract[st]
 					a.append((aH,aname))
@@ -3396,7 +3645,7 @@ class RefTree(Tobj):
 					for g,aname in a:
 						if aname==bname:
 							if extract!=None: st = len(extract)
-							if g.args.compare(bH.args,odsc,thot,extract,lefpush,rigpush): return True#<><><> special case here... (arg order invariant or unused.)
+							if g.args.compare(bH.args,odsc,thot,extract,lefpush,rigpush): return True
 							elif extract!=None:
 								while st<len(extract): del extract[st]
 					b.append((bH,bname))
@@ -3654,23 +3903,28 @@ def complicate(core,secrets,pos=None):
 			return ScopeComplicator(core.core,secrets+core.secrets,verdepth=core.verdepth-len(secrets),pos=pos)
 		return ScopeComplicator(core,secrets,verdepth=core.verdepth-len(secrets),pos=pos)
 	return core
-# def carefulcomplicate(core,secrets,pos=None):
-# 	if not any(s==None for s in secrets): return complicate(core,secrets,pos=pos)
-# 	verdepth=core.verdepth-len(secrets)
-# 	return complicate(core.dpush(ScopeDelta([ (-1,verdepth+s) for s in reversed(range(secrets)) if secrets[s]==None ])),[s for s in secrets if s!=None],pos=pos)
+
+def carefulcomplicate(core,secrets,pos=None):
+	if not any(s==None for s in secrets): return complicate(core,secrets,pos=pos)
+	verdepth=core.verdepth-len(secrets)
+	return complicate(core.dpush(ScopeDelta([ (-1,verdepth+s) for s in reversed(range(len(secrets))) if secrets[s]==None ])),[s for s in secrets if s!=None],pos=pos)
 
 def semi_complicate_dpush(depth,secrets,pushes):
 	res = []
 	sof = ScopeDelta()
 	s = depth
 	for secret in secrets:
+		# if secret.detect(pushes):
+		# 	sof.append((-1,s))
+		# else:
+		# 	res.append(secret.dpush(pushes+sof))
+		# 	s+=1
+		# if secret.detect(pushes):
 		try:
 			res.append(secret.dpush(pushes+sof))
 			s+=1
 		except DpushError:
 			sof.append((-1,s))
-
-			# dont hate me for this but i think dpusherror lazy evaluation only works with 3s...<><><><><>
 
 	return res,sof
 
@@ -3890,7 +4144,8 @@ class Untransformer:
 		ob = self.dict[ind]
 		return DelayedSub(ob,ScopeDelta([(self.head-ob.verdepth,ob.verdepth)]))
 	def objwrite(self,ty,ds,si):
-		hoe = widereference(ds,ty,si)
+		if si==None: hoe = [ds]
+		else: hoe = amorphwidereference(ds,ty,si)
 		for t in range(len(hoe)):
 			if hoe[t]!=None:
 				self.dict[self.head+t] = hoe[t]
@@ -4239,7 +4494,7 @@ def _dbgTest():
 	# 	# compilefiles({"grouptheory.ax","builtin.ax"},redoAll=True)
 		# print("compiling")
 		# compilefiles({"grouptheory.ax"},verbose=True,basepath="/Users/parkerlawrence/dev/agi/")
-		FileLoader(verbose=True,basepath="/Users/parkerlawrence/dev/agi/",redoAll=True).load("array.ax")
+		FileLoader(verbose=True,basepath="/Users/parkerlawrence/dev/agi/",buildpath="/Users/parkerlawrence/dev/agi/build/",redoAll=False).load("lattice.ax")
 	except LanguageError as u:
 		u.tohtml()
 		raise u
@@ -4275,9 +4530,6 @@ def _dbgTest():
 # <><><> capture invalidsplits.
 # ScopeDelta([(-     <><><><><><>
 
-
-
-#<><><> force flag that you copy instead of any(3) and that way except DpushError actually works.
 
 #<><><> so many useless scopecomplicators...
 
