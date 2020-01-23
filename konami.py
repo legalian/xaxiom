@@ -7,6 +7,15 @@ import functools
 import copy
 import re
 
+four things to implement
+
+three speedups
+	detect should not unwrap
+		keep track of which cores reference which of their parameters
+	dpush should have a memo
+	combine trim with dpushes used to generate it. (separate trim unwrap.)
+
+
 
 
 class BuildAxiomCommand(sublime_plugin.ViewEventListener,sublime_plugin.TextCommand):
