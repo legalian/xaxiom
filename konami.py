@@ -15,12 +15,10 @@ import re
 # 		keep track of which cores reference which of their parameters
 #			pass down mask of what detects to skip.
 #		pass along dictionary of what subset youre really referencing
-# 	dpush should have a memo
 # 	combine trim with dpushes used to generate it. (separate trim unwrap.)
 
-# args should be None if len is zero.
-
 #  doneline -=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+
 
 
 

@@ -646,8 +646,6 @@ class DelayedSub:
 			assert iso == self.isSubOb
 
 	def dpush_ds(self,rows,myname):
-
-
 		if all(len(j)!=3 for j in rows.pushes) and rows.islowerbound(myname):
 			iso = self.isSubOb
 			dok = rows
@@ -671,6 +669,8 @@ class DelayedSub:
 		# print(self.core.)
 		debugg = self.core.dpush(self.rows+rows)
 		return DelayedSub(debugg,debugg.isSubOb(),ScopeDelta())
+	def verdepth(self):
+		return self.core.verdepth+self.rows.lenchange
 
 # the cure- six different ways
 
@@ -697,9 +697,22 @@ class ScopeDelta:
 					for key,symbol in j[0]:
 						assert symbol.verdepth<=key
 
-
+	def memoizeGet(self,pushes,key,core,pushdepth):
+		precal_ds = None
+		if hasattr(self,'delaymemo'):
+			precal_ds = self.delaymemo.get(key)
+			if precal_ds!=None:
+				precal_vd = precal_ds.verdepth()
+				if precal_vd!=pushdepth:
+					precal_ds = DelayedSub(precal_ds.core,precal_ds.isSubOb,precal_ds.rows+ScopeDelta([(pushdepth-precal_vd,min(precal_vd,pushdepth))]))
+		else: self.delaymemo = {}
+		if precal_ds == None:
+			precal_ds = core.dpush_ds(pushes,key)
+			self.delaymemo[key] = precal_ds
+		return precal_ds
 
 	def __add__(self,other):
+		if len(other.pushes)==0: return self
 		return ScopeDelta(self.pushes+other.pushes)
 	def __sub__(self,other):
 		return self+(-other)
@@ -1373,10 +1386,10 @@ class ScopeObject:
 			# ntype = ntype.dpush( ScopeDelta([(-longcount(cuarg),len(self))]))
 
 
-			drargs = SubsObject(cuarg.extractbetween(bedoin),verdepth=len(self))
+			drargs = SubsObject(cuarg.extractbetween(bedoin),verdepth=len(self)) if len(bedoin) else None
 			# assert len(drargs.subs) == len(bedoin)
 			if not self.postpushes.canTranslate(row) or limiter!=None:
-				obj = self.flat[row].obj.dpush(ScopeDelta([(len(self)-cr,min(cr,len(self)))]),exob=drargs if len(drargs.subs) else None)
+				obj = self.flat[row].obj.dpush(ScopeDelta([(len(self)-cr,min(cr,len(self)))]),exob=drargs)
 				transferlines(obj,pos)
 			elif self.flat[row].obj == None:
 				obj = RefTree(cr,drargs,verdepth=len(self),pos=pos)
@@ -1386,7 +1399,8 @@ class ScopeObject:
 					drargs,
 					verdepth=len(self),
 					pos=pos,
-					core=DelayedSub(self.flat[row].obj,self.flat[row].obj.isSubOb()).dpush_ds(ScopeDelta([(len(self)-cr,min(cr,len(self)))]),cr)
+					# core=DelayedSub(self.flat[row].obj,self.flat[row].obj.isSubOb()).dpush_ds(ScopeDelta([(len(self)-cr,min(cr,len(self)))]),cr)
+					core=DelayedSub(self.flat[row].obj,self.flat[row].obj.isSubOb(),ScopeDelta([(len(self)-cr,min(cr,len(self)))]))
 				)
 			return (obj,ntype)
 
@@ -2008,6 +2022,8 @@ class Tobj:
 # finish isSubOb and the translator for delaywedsubs
 
 	def isSubOb(self):
+		def _dbgEnter():
+			assert self.verdepth!=None
 		if type(self) is ScopeComplicator:
 			k = self.core.isSubOb()
 			if type(k) is Inspection:
@@ -2043,8 +2059,8 @@ class Tobj:
 			return [k[0]+len(self.si)]+k[1:]
 		if type(self) is RefTree and self.core!=None:
 			k = self.core.isSubOb
-			if type(k) is list:
-				if self.args!=None and k[0]<len(self.args.subs):
+			if self.args!=None and type(k) is list:
+				if k[0]<len(self.args.subs):
 					return self.args.deepreference(k).isSubOb()
 				else:
 					return [k[0]-len(self.args.subs)]+k[1:]
@@ -2061,6 +2077,9 @@ class Tobj:
 					return Inspection(k,[self.name])
 				if type(k) is Inspection:
 					return Inspection(k.root,k.inspect+[self.name])
+				print("==="*8)
+				print(k)
+				print(type(k))
 				assert False
 		return False
 
@@ -2191,25 +2210,25 @@ class DualSubs(Tobj):
 			return self.trimallnonessential().pmultiline(context,out,indent,prepend,postpend,callback)
 		pmultilinecsv(context,out,indent,self.rows,prepend+context.red("{"),context.red("}")+postpend,lamadapt=lambda x:x.name,callback=callback,delim=context.red(","))
 
-	def detect(self,ranges,light=False):
+	def detect(self,ranges,light=False,worrynot=False):
 		if light:
 			if any(row.detect(ranges,light=True) for row in self.rows): return True
 		else:
 			if any(row.obj==None and row.detect(ranges) for row in self.rows): return True
-		if hasattr(ranges,'precal'): ranges.precal = [a for a in ranges.precal if a<self.verdepth]
+		if not worrynot and hasattr(ranges,'precal'): ranges.precal = [a for a in ranges.precal if a<self.verdepth]
 		return False
 
-	def dpush(self,pushes,exob=None,frozen=False,disgrace=None):
+	def dpush(self,pushes,exob=None,frozen=False,disgrace=None,worrynot=False):
 		disgrace = ScopeDelta() if disgrace == None else disgrace
 		left = 0
 		cu = []
 		er = []
 		for k in range(len(self.rows)):
 			try:
-				m = self.rows[k].dpush(disgrace+pushes)
+				m = self.rows[k].dpush(pushes+disgrace)
 			except  DpushError as u:
 				if self.rows[k].obj == None: raise u
-				disgrace.append((-longcount(self.rows[k].name),self.verdepth+left))
+				disgrace.append((-longcount(self.rows[k].name),self.verdepth+pushes.lenchange+left))
 				er.append(k)
 			else:
 				cu.append(m)
@@ -2222,7 +2241,7 @@ class DualSubs(Tobj):
 		# 	else:
 		# 		cu.append(self.rows[k].dpush(disgrace+pushes))
 		# 		left += longcount(self.rows[k].name)
-
+		if not worrynot and hasattr(pushes,'delaymemo'): pushes.delaymemo = {k:v for (k,v) in pushes.delaymemo.items() if k<self.verdepth}
 		return DualSubs(cu,verdepth=self.verdepth+pushes.lenchange,origin=None if self.origin ==None else (self.origin[0].dpush(pushes),self.origin[1]),pos=self,erased=er+self.erased)
 
 	def compare(self,other,odsc=None,thot=None,extract=None,lefpush=None,rigpush=None,keepr=False,advanced=None):
@@ -3246,15 +3265,16 @@ class Strategy(Tobj):
 
 
 	def detect(self,ranges,light=False):
-		if self.args.detect(ranges,light=light) or self.type.detect(ranges,light=light): return True
+		if self.args.detect(ranges,light=light,worrynot=True) or self.type.detect(ranges,light=light): return True
 		if hasattr(ranges,'precal'): ranges.precal = [a for a in ranges.precal if a<self.verdepth]
 		return False
 		
 
 	def dpush(self,pushes,exob=None,frozen=False):
 		disgrace = ScopeDelta()
-		newargs = self.args.dpush(pushes,disgrace=disgrace)
-		newtype = self.type.dpush(disgrace+pushes)
+		newargs = self.args.dpush(pushes,disgrace=disgrace,worrynot=True)
+		newtype = self.type.dpush(pushes+disgrace)
+		if hasattr(pushes,'delaymemo'): pushes.delaymemo = {k:v for (k,v) in pushes.delaymemo.items() if k<self.verdepth}
 		dis = newtype.addfibration(newargs,pos=self)
 		return dis
 
@@ -3419,7 +3439,9 @@ class RefTree(Tobj):
 			assert False
 		if self.src!=None: self.src.assertcomp(other.src)
 		# if self.core!=None: self.unwrapOne().assertcomp(other.unwrapOne())
-		self.args.assertcomp(other.args)
+		assert (self.args==None)==(other.args==None)
+		if self.args!=None:
+			self.args.assertcomp(other.args)
 
 	@initTobj
 	def __init__(self,name=None,args=None,src=None,verdepth=None,pos=None,core=None):
@@ -3429,30 +3451,27 @@ class RefTree(Tobj):
 		self.core = core
 		self.verdepth = verdepth
 
+		# if self.args!=None: assert len(self.args.subs)
 		transferlines(self,pos)
 		def _dbgTest():
 			if self.args!=None: assert len(self.args.subs)>0
 			assert type(self.name) is int or type(self.name) is str
 			if self.src==None and self.verdepth!=None and self.name!=0:
 				assert self.name<self.verdepth
-			assert type(self.args) is SubsObject
+			assert self.args==None or type(self.args) is SubsObject
 			if self.core!=None:
 				assert self.core.isSubOb != self.name
 			if self.src!=None:
 				if self.verdepth!=None:
 					assert type(self.src) is RefTree
 
-				if not ( (type(self.src.isSubOb()) is not bool) or not self.src.isSubOb()   ):
-					print(self)
-					print(self.src.isSubOb())
-					assert False
-				if type(self.src.isSubOb()) is tuple:
-					assert False
+					if type(self.src.isSubOb()) is tuple:
+						assert False
 
 	def semavail(self,mog=False):
 		return self.unwrap().semavail(mog)
 	def writefile(self,file):
-		if len(self.args.subs):
+		if self.args!=None:
 			if self.src==None:
 				file.writeChar("H")
 				file.writeNum(self.name)
@@ -3480,7 +3499,7 @@ class RefTree(Tobj):
 		return ja
 
 	def unwrapOne(self):
-		if len(self.args.subs)==0:
+		if self.args==None:
 			if self.core.rows.isempty():
 				return self.core.core
 			am = self.core.core.dpush(self.core.rows).decode()
@@ -3492,7 +3511,7 @@ class RefTree(Tobj):
 	def detect(self,ranges,light=False):
 		if self.core!=None:
 			if light and not ranges.canTranslate(self.name,self.verdepth): return True
-			if self.args.detect(ranges,light=light): return True#return self.unwrapOne().detect(ranges)#<><><><><><>a component of arg might be unusued....
+			if self.args!=None and self.args.detect(ranges,light=light): return True#return self.unwrapOne().detect(ranges)#<><><><><><>a component of arg might be unusued....
 			if hasattr(ranges,'precal') and self.name in ranges.precal: return False
 			if ranges.islowerbound(self.name): return False
 			if self.core.core.detect(self.core.rows + ranges,light=light): return self.unwrapOne().detect(ranges,light=light)#<><><><><> a specific component of a sub could be unused.
@@ -3505,14 +3524,14 @@ class RefTree(Tobj):
 		if self.src==None:
 			if not ranges.canTranslate(self.name,self.verdepth): return True
 		elif self.src.detect(ranges,light=light): return True
-		return self.args.detect(ranges,light=light)
+		return self.args!=None and self.args.detect(ranges,light=light)
 	def dpush(self,pushes,exob=None,frozen=False):
 		gy = self.name
 
 		pushdepth = self.verdepth+pushes.lenchange
 
 		def getdecargs(exob):
-			decargs = self.args if pushes.isempty() else self.args.dpush(pushes,frozen=True)
+			decargs = SubsObject([],verdepth=self.verdepth) if self.args==None else ( self.args if pushes.isempty() else self.args.dpush(pushes,frozen=True) )
 			if exob != None and exob.verdepth<pushdepth: exob = exob.dpush(ScopeDelta([(pushdepth-exob.verdepth,exob.verdepth)]))
 			if exob != None: decargs = SubsObject(decargs.subs+exob.subs,verdepth=pushdepth)
 			return decargs if len(decargs.subs) else None
@@ -3542,7 +3561,7 @@ class RefTree(Tobj):
 			if decargs!=None and decargs.isfrozen():
 				if self.core==None: raise DpushError()
 				return self.core.core.dpush(self.core.rows+pushes,exob=decargs,frozen=frozen)
-			return RefTree(gy,decargs,None,pos=self,verdepth=pushdepth,core=None if self.core==None else self.core.dpush_ds(pushes,self.name))
+			return RefTree(gy,decargs,None,pos=self,verdepth=pushdepth,core=None if self.core==None else pushes.memoizeGet(pushes,self.name,self.core,pushdepth))
 		elif len(gy)==3:
 			pard = self.dpush(gy[1]+ScopeDelta([(gy[0][0].verdepth-(self.verdepth+gy[1].lenchange),gy[0][0].verdepth)]))
 			for j in range(len(gy[0])):
@@ -3568,14 +3587,15 @@ class RefTree(Tobj):
 					decargs,
 					pos=self,
 					verdepth=pushdepth,
-					core = DelayedSub(gy[0],gy[0].isSubOb()).dpush_ds(sems,cr)
+					core = pushes.memoizeGet(sems,self.name,DelayedSub(gy[0],gy[0].isSubOb()),pushdepth)
 				)
+
 
 
 	def isemptyinst(self,si,prep=None):
 		if type(si) is list: return False
 		if self.name!=si: return False
-		return self.args.isemptyinst([] if prep==None else prep)
+		return (prep==None)==(self.args==None) and (self.args==None or self.args.isemptyinst(prep))
 
 	def compare(self,other,odsc=None,thot=None,extract=None,lefpush=None,rigpush=None):
 		if type(other) is ScopeComplicator: return self.compare(other.core,odsc,thot,extract,lefpush,other.correction() if rigpush==None else rigpush+other.correction())
@@ -3584,7 +3604,7 @@ class RefTree(Tobj):
 			if other.src==None: other = other.unwrap()
 			if type(other) is not RefTree: return False
 			if other.src==None or self.name!=other.name: return False
-			return self.src.compare(other.src,odsc,thot,extract,lefpush,rigpush) and self.args.compare(other.args,odsc,thot,extract,lefpush,rigpush)
+			return self.src.compare(other.src,odsc,thot,extract,lefpush,rigpush) and (self.args==None) == (other.args==None) and (self.args==None or self.args.compare(other.args,odsc,thot,extract,lefpush,rigpush))
 		pTest = self.isSubOb()
 		if thot != None and type(pTest) is int and (lefpush==None or lefpush.canTranslate(pTest)):
 			pTest = pTest if lefpush==None else lefpush.translate(pTest)
@@ -3597,16 +3617,17 @@ class RefTree(Tobj):
 					repls = []
 					valid = True
 					dsc = subself.verdepth
-					for g1 in range(len(subself.args.subs)):
-						if type(subself.args.subs[g1].obj) is not RefTree or subself.args.subs[g1].obj.name<odsc:
-							valid = False
-							break
-						for g2 in range(g1):
-							if subself.args.subs[g1].obj.compare(subself.args.subs[g2].obj):
+					if subself.args!=None:
+						for g1 in range(len(subself.args.subs)):
+							if type(subself.args.subs[g1].obj) is not RefTree or subself.args.subs[g1].obj.name<odsc:
 								valid = False
 								break
-						if not valid: break
-						repls.append(subself.args.subs[g1].obj)
+							for g2 in range(g1):
+								if subself.args.subs[g1].obj.compare(subself.args.subs[g2].obj):
+									valid = False
+									break
+							if not valid: break
+							repls.append(subself.args.subs[g1].obj)
 					if not valid: break
 					def _dbgTest():
 						other.setSafety(dsc-(0 if rigpush==None else rigpush.lenchange))
@@ -3664,7 +3685,7 @@ class RefTree(Tobj):
 			# assert False
 			return False
 		if self.core==None and other.core==None:
-			return (self.name if lefpush==None else lefpush.translate(self.name))==(other.name if rigpush==None else rigpush.translate(other.name)) and self.args.compare(other.args,odsc,thot,extract,lefpush,rigpush)
+			return (self.name if lefpush==None else lefpush.translate(self.name))==(other.name if rigpush==None else rigpush.translate(other.name)) and (self.args==None)==(other.args==None) and (self.args==None or self.args.compare(other.args,odsc,thot,extract,lefpush,rigpush))
 		aH=self
 		bH=other
 		a = []
@@ -3676,7 +3697,7 @@ class RefTree(Tobj):
 					for g,bname in b:
 						if aname==bname:
 							if extract!=None: st = len(extract)
-							if aH.args.compare(g.args,odsc,thot,extract,lefpush,rigpush): return True
+							if (aH.args==None)==(g.args==None) and (aH.args==None or aH.args.compare(g.args,odsc,thot,extract,lefpush,rigpush)): return True
 							elif extract!=None:
 								while st<len(extract): del extract[st]
 					a.append((aH,aname))
@@ -3689,7 +3710,7 @@ class RefTree(Tobj):
 					for g,aname in a:
 						if aname==bname:
 							if extract!=None: st = len(extract)
-							if g.args.compare(bH.args,odsc,thot,extract,lefpush,rigpush): return True
+							if (g.args==None)==(bH.args==None) and (g.args==None or g.args.compare(bH.args,odsc,thot,extract,lefpush,rigpush)): return True
 							elif extract!=None:
 								while st<len(extract): del extract[st]
 					b.append((bH,bname))
@@ -3706,7 +3727,7 @@ class RefTree(Tobj):
 		return False
 	def verify(self,indesc,carry=None,reqtype=False,then=False):
 		assert not then
-		p1 = self.args.phase1(indesc)
+		p1 = [] if self.args==None else self.args.phase1(indesc)
 		errorcontext = []
 		if self.src == None:
 			tra = indesc.symextract(self.name,p1,carry=carry,reqtype=reqtype,pos=self,errorcontext=errorcontext)
@@ -3732,7 +3753,8 @@ class RefTree(Tobj):
 
 					retrievalname = indesc.flat[(-indesc.postpushes).translate(possib.name)].name
 
-					tra = indesc.symextract(retrievalname+"."+self.name,possib.args.phase1_gentle()+p1,reqtype=reqtype,carry=carry,pos=self,cosafety=len(possib.args.subs),errorcontext=errorcontext)
+					possibar = [] if possib.args==None else possib.args.phase1_gentle()
+					tra = indesc.symextract(retrievalname+"."+self.name,possibar+p1,reqtype=reqtype,carry=carry,pos=self,cosafety=len(possibar),errorcontext=errorcontext)
 					if tra != None: return tra
 				if possib.core==None: break
 				possib = possib.unwrapOne()
@@ -3747,7 +3769,7 @@ class RefTree(Tobj):
 		res = str(context.getname(self.name)) if self.src==None else str(self.name)
 		if self.src != None:
 			res = self.src.prepr(context)+"."+res
-		if len(self.args.subs)>0: res = res+"("+",".join([k.prepr(context) for k in self.args.subs])+")"
+		if self.args!=None: res = res+"("+",".join([k.prepr(context) for k in self.args.subs])+")"
 		return res
 	def pmultiline(self,context,out,indent,prepend,postpend,callback=None):
 		if self.core!=None and (context.fullrepresent or not context.forbiddenrange.canTranslate(self.name)):
@@ -3755,7 +3777,7 @@ class RefTree(Tobj):
 		# if self.core!=None: return self.unwrap().pmultiline(context,out,indent,prepend,postpend,callback=callback)
 		def calls(context_,out,prepend):
 			res = str(context.getname(self.name)) if self.src==None else str(self.name)
-			if len(self.args.subs)==0:
+			if self.args == None:
 				if callback == None:
 					out.append("\t"*indent+prepend+res+postpend)
 				else:
@@ -4006,7 +4028,9 @@ class ScopeComplicator(Tobj):
 		return self.core.compare(other,odsc,thot,extract,self.correction() if lefpush==None else lefpush+self.correction(),rigpush)
 	def dpush(self,pushes,exob=None,frozen=False):
 		res,sof = semi_complicate_dpush(self.verdepth+pushes.lenchange,self.secrets,pushes)
-		return complicate(self.core.dpush(pushes+sof,exob=exob,frozen=frozen),res,pos=self)
+		mom = complicate(self.core.dpush(pushes+sof,exob=exob,frozen=frozen),res,pos=self)
+		if hasattr(pushes,'delaymemo'): pushes.delaymemo = {k:v for (k,v) in pushes.delaymemo.items() if k<self.verdepth}
+		return mom
 
 
 	def detect(self,ranges,light=False):
@@ -4101,7 +4125,7 @@ class MyTransformer(Transformer):
 		args = []
 		for j in children[lim:]:
 			args += j.subs
-		return RefTree(name,SubsObject(args,pos=meta),src,pos=meta)
+		return RefTree(name,SubsObject(args,pos=meta) if len(args) else None,src,pos=meta)
 	def lamb(self,children,meta):
 		coal = []
 		for c in children[:-1]:
@@ -4592,7 +4616,7 @@ def _dbgTest():
 
 
 
-
+#<><>mangles rely on 1 reftrees always having three parameters- what about fibers???
 
 
 
