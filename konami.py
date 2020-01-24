@@ -7,13 +7,21 @@ import functools
 import copy
 import re
 
-four things to implement
+# four things to implement
 
-three speedups
-	detect should not unwrap
-		keep track of which cores reference which of their parameters
-	dpush should have a memo
-	combine trim with dpushes used to generate it. (separate trim unwrap.)
+
+# three speedups
+# 	detect should not unwrap
+# 		keep track of which cores reference which of their parameters
+#			pass down mask of what detects to skip.
+#		pass along dictionary of what subset youre really referencing
+# 	dpush should have a memo
+# 	combine trim with dpushes used to generate it. (separate trim unwrap.)
+
+# args should be None if len is zero.
+
+#  doneline -=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+
 
 
 

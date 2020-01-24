@@ -99,11 +99,11 @@ if True:
 
 	def prefix(si,am):
 		if type(si) is list: return [prefix(s,am) for s in si]
-		if variable_check.match(si): return si
+		if not variable_check.match(si): return si
 		return am+si
 	def postfix(si,am):
 		if type(si) is list: return [prefix(s,am) for s in si]
-		if variable_check.match(si): return si
+		if not variable_check.match(si): return si
 		return si+am
 	def fixnames(si,ty):
 		if si==None: return None
@@ -161,7 +161,7 @@ if True:
 				assert ahjs.secrets[n].verdepth == amt+n
 		if type(ahjs) is RefTree:
 			if ahjs.src!=None: ahjs.src.setSafety(amt)
-			ahjs.args.setSafety(amt)
+			if ahjs.args!=None: ahjs.args.setSafety(amt)
 		if type(ahjs) is SubsObject:
 			for j in ahjs.subs:
 				if j !=None: j.setSafetyrow(amt)
@@ -189,12 +189,17 @@ if True:
 		if type(ahjs) is ScopeComplicator:
 			return ahjs.core.verdepth+len(ahjs.secrets)
 		if type(ahjs) is RefTree:
-			safe = ahjs.args.getSafety()
-			if safe!=None: downdeepverify(ahjs,safe)
+			if ahjs.args!=None:
+				safe = ahjs.args.getSafety()
+				if safe!=None: downdeepverify(ahjs,safe)
+				if ahjs.src!=None:
+					safe = ahjs.src.getSafety()
+					if safe!=None: downdeepverify(ahjs,safe)
+				return safe
 			if ahjs.src!=None:
 				safe = ahjs.src.getSafety()
 				if safe!=None: downdeepverify(ahjs,safe)
-			return safe
+				return safe
 		if type(ahjs) is SubsObject:
 			just = None
 			for j in ahjs.subs:
@@ -594,13 +599,10 @@ class VariableAssignmentError(LanguageError):
 RRR = 0
 
 class DelayedSub:
-	def __init__(self,core,rows=None):
+	def __init__(self,core,isSubOb,rows=None):
 		self.core = core
+		self.isSubOb = isSubOb
 		self.rows = ScopeDelta() if rows==None else rows
-		if any(len(j)==3 for j in self.rows.pushes):#9%
-			self.core = self.core.dpush(self.rows)
-			self.rows = ScopeDelta()
-		self.isSubOb = self.core.isSubOb()
 		def _dbgTest():
 			self.rows.objconforms(self.core,self.core.verdepth)
 			global RRR
@@ -613,21 +615,62 @@ class DelayedSub:
 					assert False
 			RRR-=1
 
-		dok = self.rows
-		while type(self.isSubOb) is int and not dok.isempty():
-			# try:
-			self.isSubOb = dok.translate(self.isSubOb)
-			# except  DpushError:
-			# 	self.isSubOb = None
-			# 	break
-			if type(self.isSubOb) is tuple:
-				dok = self.isSubOb[1]
-				self.isSubOb = self.isSubOb[0].isSubOb()
-			else: break
+
+			iso = self.core.isSubOb()
+			dok = self.rows
+			while (type(iso) is int or type(iso) is Inspection) and not dok.isempty():
+				if type(iso) is int:
+					iso = dok.translate(iso)
+					if type(iso) is tuple:
+						dok = iso[1]
+						iso = iso[0].isSubOb()
+					else: break
+				else:
+					ko = iso.inspect
+					iso = dok.translate(iso.root)
+					if type(iso) is tuple:
+						dok = iso[1]
+						iso = inspectref(iso[0].isSubOb(),ko)
+					else:
+						iso = Inspection(iso,ko)
+						break
+
+
+			# print("-=-=-=-=-=-=-=")
+			# print(self.core.isSubOb())
+			# print(self.rows)
+			# print(self.isSubOb)
+			# print(isSubOb)
+			# print(iso)
+
+			assert iso == self.isSubOb
 
 	def dpush_ds(self,rows,myname):
-		if all(len(j)!=3 for j in rows.pushes) and rows.islowerbound(myname): return DelayedSub(self.core,self.rows+rows)
-		return DelayedSub(self.core.dpush(self.rows+rows),ScopeDelta())
+
+
+		if all(len(j)!=3 for j in rows.pushes) and rows.islowerbound(myname):
+			iso = self.isSubOb
+			dok = rows
+			while (type(iso) is int or type(iso) is Inspection) and not dok.isempty():
+				if type(iso) is int:
+					iso = dok.translate(iso)
+					if type(iso) is tuple:
+						dok = iso[1]
+						iso = iso[0].isSubOb()
+					else: break
+				else:
+					ko = iso.inspect
+					iso = dok.translate(iso.root)
+					if type(iso) is tuple:
+						dok = iso[1]
+						iso = inspectref(iso[0].isSubOb(),ko)
+					else:
+						iso = Inspection(iso,ko)
+						break
+			return DelayedSub(self.core,iso,self.rows+rows)
+		# print(self.core.)
+		debugg = self.core.dpush(self.rows+rows)
+		return DelayedSub(debugg,debugg.isSubOb(),ScopeDelta())
 
 # the cure- six different ways
 
@@ -1343,7 +1386,7 @@ class ScopeObject:
 					drargs,
 					verdepth=len(self),
 					pos=pos,
-					core=DelayedSub(self.flat[row].obj).dpush_ds(ScopeDelta([(len(self)-cr,min(cr,len(self)))]))
+					core=DelayedSub(self.flat[row].obj,self.flat[row].obj.isSubOb()).dpush_ds(ScopeDelta([(len(self)-cr,min(cr,len(self)))]),cr)
 				)
 			return (obj,ntype)
 
@@ -1405,43 +1448,134 @@ class ScopeObject:
 
 
 
-def amorphwidereference(obj,ty,si):
-	def _dbgTest():
-		if obj!=None: assert obj.verdepth==ty.verdepth
+
+
+# these functions don't work...
+
+
+def shortwidereferencerecurse(obj,si):
 	if type(si) is not list: return [obj]
-
-	ty = ty.asDualSubsNonspecific()
-
-	s = 0
 	cu = []
-	for k in range(len(si)):
-		if ty.rows[k].obj==None:
-			cu = cu+widereference((obj.reference(s) if obj!=None else None),ty.rows[k].type,si[k])
-			s+=1
-		else:
-			delt = ScopeDelta([([(ty.verdepth+h,cu[h]) for h in range(len(cu)) if cu[h]!=None],)])
-			cu = cu+[t.dpush(delt) for t in widereference(ty.rows[k].obj,ty.rows[k].type,si[k])]
+	for s in range(len(si)): cu = cu+shortwidereferencerecurse(obj.reference(s),si[s])
 	return cu
 
-
+def amorphwidereference(obj,ty,si):
+	if type(si) is not list: return [obj]
+	ty = ty.asDualSubsNonspecific()
+	if conservativeeq(ty.semavail(si),si):
+		if obj==None: return [None]*longcount(si)
+		return shortwidereferencerecurse(obj,si)
+	jast = ty.flatten(ScopeDelta(),si,obj=obj).flat
+	return [j.obj for j in jast]
 
 def widereference(obj,ty,si):
 	def _dbgTest():
-		if obj!=None: assert obj.verdepth==ty.verdepth
+		assert obj.verdepth==ty.verdepth
 	if type(si) is not list: return [obj]
-
 	ty = ty.asDualSubsNonspecific()
+	if conservativeeq(ty.semavail(si),si):
+		return shortwidereferencerecurse(obj,si)
+	jast = ty.flatten(ScopeDelta(),si,obj=obj).flat
+	return [complicate(jast[k].obj,[jast[l].obj for l in range(k)]) for k in range(len(jast))]
+	# ty = ty.asDualSubsNonspecific()
 
-	s = 0
-	cu = []
-	for k in range(len(si)):
-		if ty.rows[k].obj==None:
-			cu = cu+widereference((obj.reference(s) if obj!=None else None),ty.rows[k].type,si[k])
-			s+=1
-		else:
-			delt = ScopeDelta([([(ty.verdepth+h,cu[h]) for h in range(len(cu))],)])
-			cu = cu+[complicate(t.dpush(delt),cu) for t in widereference(ty.rows[k].obj,ty.rows[k].type,si[k])]
-	return cu
+	# s = 0
+	# cu = []
+	# for k in range(len(si)):
+	# 	if type(si[k]) is not list:
+	# 		cu.append(obj.reference(s))
+	# 	else:
+
+
+	# 	if ty.rows[k].obj==None:
+	# 		# delt = ScopeDelta([([(ty.verdepth+h,cu[h]) for h in range(len(cu))],)])
+	# 		cu = cu+widereference(obj.reference(s),complicate(ty.rows[k].type.dpush(delt),cu),si[k])
+	# 		s+=1
+	# 	else:
+	# 		# delt = ScopeDelta([([(ty.verdepth+h,cu[h]) for h in range(len(cu))],)])
+	# 		cu = cu+[complicate(t.dpush(delt),cu) for t in widereference(ty.rows[k].obj,ty.rows[k].type,si[k])]
+	# return cu
+
+
+
+
+	# def flatten(self,delta,mog,assistmog=None,prep=None,obj=None,fillout=None,then=False):
+
+
+
+
+
+
+
+
+
+
+
+
+
+		# s = 0
+		# cu = ScopeObject()
+		# left = self.verdepth + delta.lenchange
+		# for n in range(len(self.rows)):
+		# 	nobj = None
+		# 	if self.rows[n].obj != None:
+		# 		nobj = self.rows[n].obj.dpush(delta)
+		# 	else:
+		# 		if obj != None:
+		# 			nobj = obj.reference(s)
+		# 		s+=1
+		# 	nflat = self.rows[n].type.flatten(delta,mog[n],assistmog[n],prep,obj=nobj,fillout=fillout)
+		# 	cu.flat += nflat.flat
+		# 	vv = longcount(self.rows[n].name)
+		# 	if conservativeeq(self.rows[n].name,mog[n]) and prep == None:
+		# 		if self.rows[n].obj == None and nobj!=None:
+		# 			jaaj = longflattenunravel(self.rows[n].name,self.rows[n].type,nobj,left)
+		# 			delta = delta + ScopeDelta([(jaaj[0],)])
+		# 		elif fillout!=left:
+		# 			delta = delta + ScopeDelta([(fillout,0,left,vv)])
+		# 		left += vv
+		# 	else:
+		# 		delta = delta + ScopeDelta([(len(nflat.flat),fillout)])
+		# 		left += len(nflat.flat)
+		# 		if self.rows[n].obj == None:
+		# 			if nobj == None:
+		# 				dbgdbg = left
+		# 				passprep = prep.emptyinst(dbgdbg,striphuman(dbgdbg-longcount(prep),prep.fulavail())[0]) if prep != None else None
+		# 				nobj = self.rows[n].type.emptyinst(dbgdbg,assistmog[n],prep=passprep)
+		# 			jaaj = longflattenunravel(self.rows[n].name,self.rows[n].type,nobj,left)
+		# 			delta = delta + ScopeDelta([(jaaj[0],)])
+		# 		delta = delta + ScopeDelta([(-vv,left)])
+		# 	fillout = fillout + len(nflat.flat)
+		# return (cu,delta) if then else cu
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -1578,6 +1712,32 @@ class SubRow:
 	def __repr__(self):
 
 		return self.prepr(FormatterObject(None))
+
+
+class Inspection:
+	def __init__(self,root,inspect):
+		self.root = root
+		self.inspect = inspect
+	def __eq__(self,other):
+		return type(other)==Inspection and (self.root,self.inspect)==(other.root,other.inspect)
+	def __repr__(self):
+		return repr(self.root)+repr(self.inspect)
+
+def inspectref(mak,ins):
+	while type(mak) is tuple and len(ins):
+		mak = mak[ins[0]]
+		ins = ins[1:]
+	if type(mak) is Inspection:
+		return Inspection(mak.root,mak.inspect+ins)
+	if type(mak) is list:
+		return mak+ins
+	if len(ins):
+		return Inspection(mak,ins)
+	return mak
+
+
+
+
 class Tobj:
 
 	def isfrozen(self):
@@ -1659,7 +1819,7 @@ class Tobj:
 		ndepth = self.verdepth
 		starter = fafter-longcount(si)
 		outp = self.core if type(self) is ScopeComplicator else self
-		if type(outp) is RefTree and outp.name<starter:
+		if type(outp) is RefTree and outp.name<starter and outp.args!=None:
 			elim=0
 			while elim<len(si) and elim<len(outp.args.subs):
 				ndepth = starter+longcount(si[:len(si)-elim-1])
@@ -1679,7 +1839,7 @@ class Tobj:
 			if elim:
 				ndepth = starter+longcount(si[:len(si)-elim])
 				stretch = ScopeDelta([(ndepth-fafter,ndepth)])
-				nsubs = SubsObject([k.dpush(stretch) for k in outp.args.subs[:len(outp.args.subs)-elim]],verdepth=ndepth)
+				nsubs = SubsObject([k.dpush(stretch) for k in outp.args.subs[:len(outp.args.subs)-elim]],verdepth=ndepth) if len(outp.args.subs)!=elim else None
 				core = None
 				if outp.core != None:
 					core = outp.core.dpush_ds(stretch,outp.name)
@@ -1831,7 +1991,7 @@ class Tobj:
 			mak = self.dpush(ScopeDelta(),exob=args,frozen=True).reference(s)
 			if mak == None or mak.isfrozen(): raise DpushError
 			return mak
-		elif type(self) is RefTree and self.core!=None and type(self.isSubOb()) is bool and self.isSubOb():
+		elif type(self) is RefTree and self.core!=None and type(self.isSubOb()) is tuple:
 			return self.unwrap().reference(s,args=args)
 		return RefTree(src=self,name=s,args=args,verdepth=self.verdepth,pos=self)
 
@@ -1842,18 +2002,30 @@ class Tobj:
 
 
 
+# <><><> is bool -> is tuple
+
+
+# finish isSubOb and the translator for delaywedsubs
 
 	def isSubOb(self):
 		if type(self) is ScopeComplicator:
 			k = self.core.isSubOb()
+			if type(k) is Inspection:
+				if k.root<self.verdepth: return k
+				else: return inspectref(self.secrets[k.root-self.verdepth].isSubOb(),k.inspect)
 			if type(k) is int:
 				if k<self.verdepth: return k
 				else: return self.secrets[k-self.verdepth].isSubOb()
-			else: return k
-		if type(self) is SubsObject: return True
+			return k
+		if type(self) is SubsObject: return tuple([k.obj.isSubOb() for k in self.subs])
 		if type(self) is Lambda:
 			k = self.obj.isSubOb()
-			if type(k) is bool: return k
+			if type(k) is bool or type(k) is tuple: return k
+			if type(k) is int: adi = []
+			if type(k) is Inspection:
+				if k.root<self.verdepth: return k
+				adi = k.inspect
+				k = k.root
 			if type(k) is int:
 				if k<self.verdepth: return k
 				else:
@@ -1867,14 +2039,12 @@ class Tobj:
 								if type(u) is list: return [m]+u
 								else: k = u
 							return k
-					unu = und(self.si,k-self.verdepth)
-					assert type(unu) is list
-					return unu
+					return und(self.si,k-self.verdepth)+adi
 			return [k[0]+len(self.si)]+k[1:]
 		if type(self) is RefTree and self.core!=None:
 			k = self.core.isSubOb
 			if type(k) is list:
-				if k[0]<len(self.args.subs):
+				if self.args!=None and k[0]<len(self.args.subs):
 					return self.args.deepreference(k).isSubOb()
 				else:
 					return [k[0]-len(self.args.subs)]+k[1:]
@@ -1885,6 +2055,13 @@ class Tobj:
 				k = self.src.isSubOb()
 				if type(k) is list:
 					return k+[self.name]
+				if type(k) is tuple:
+					return k[self.name]
+				if type(k) is int:
+					return Inspection(k,[self.name])
+				if type(k) is Inspection:
+					return Inspection(k.root,k.inspect+[self.name])
+				assert False
 		return False
 
 
@@ -2263,7 +2440,7 @@ class DualSubs(Tobj):
 			try:
 				self.rows[n].name = fixnames(self.rows[n].name,nty)
 
-				vertype = TypeRow(self.rows[n].name,nty,obj if obj!=None else SubsObject(verdepth=len(indesc)) if nty.isemptytype() else None,self.rows[n].silent)
+				vertype = TypeRow(self.rows[n].name,nty,obj if obj!=None else SubsObject([],verdepth=len(indesc)) if nty.isemptytype() else None,self.rows[n].silent)
 				outs.append(vertype)
 
 				if type(self.rows[n].name) is not list:
@@ -2454,7 +2631,7 @@ class DualSubs(Tobj):
 			if any(len(o[0])>len(trail)+1 and o[0][:len(trail)+1] == trail+[n] for o in yoks):
 				assert obj == None
 				moro,earlyabort = rowtype.compacrecurse(yoks,trail+[n],thot,indesc,delta,then=False,earlyabort=earlyabort)
-				obj = SubsObject(verdepth=len(indesc)) if moro.isemptytype() else None
+				obj = SubsObject([],verdepth=len(indesc)) if moro.isemptytype() else None
 				cu.append(TypeRow(row.name,moro,obj,self.rows[n].silent))
 			else:
 				cu.append(TypeRow(row.name,rowtype,obj,self.rows[n].silent))
@@ -2509,7 +2686,7 @@ class DualSubs(Tobj):
 					acu.append(ka)
 			if tail!=None:
 				acu.append(tail.dpush(ScopeDelta([(len(acu),endep)])))
-			sj = TypeRow(secret[1],DualSubs(acu,verdepth=self.verdepth+len(wlist)),SubsObject(verdepth=self.verdepth+len(wlist)))
+			sj = TypeRow(secret[1],DualSubs(acu,verdepth=self.verdepth+len(wlist)),SubsObject([],verdepth=self.verdepth+len(wlist)))
 			if secret[0]!=None:
 				return secretoken(secret[0][0],secret[0][1],stdep-len(wlist),endep,tail=sj)
 			return sj
@@ -2533,12 +2710,13 @@ class DualSubs(Tobj):
 						if c not in wclist[a][3]: wclist[a][3].append(c)
 
 
-					# if 'ASSOCIATIVE' in wclist[b][0].name and 'ASSOCIATIVE' not in wclist[a][0].name:
-					# 	print(wclist[a][0].name," natively and initially found to reference: ",wclist[b][0].name)#,self.verdepth+a,"=",wclist[a][0].getSafetyrow(),self.verdepth+b,"=",wclist[b][0].getSafetyrow()
-					# 	print(wclist[a][0].prepr(FormatterObject(indesc.addflat(ScopeObject([u[0] for u in wclist[:a]])),littleeasier=False,fullrepresent=True)))
-					# 	print(wclist[a][0].prepr(FormatterObject(None,littleeasier=False,fullrepresent=True)))
-					# 	print(ScopeDelta([(-1,self.verdepth+b)]))
-					# 	assert False
+					if 'distributive_join_rev' in wclist[b][0].name:# and 'ASSOCIATIVE' not in wclist[a][0].name:
+						print("-=-=-=-=-=-=-=-=-")
+						print(wclist[a][0].name," natively and initially found to reference: ",wclist[b][0].name)#,self.verdepth+a,"=",wclist[a][0].getSafetyrow(),self.verdepth+b,"=",wclist[b][0].getSafetyrow()
+						print(wclist[a][0].prepr(FormatterObject(indesc.addflat(ScopeObject([u[0] for u in wclist[:a]])),littleeasier=False,fullrepresent=True)))
+						print(wclist[a][0].prepr(FormatterObject(None,littleeasier=False,fullrepresent=True)))
+						print(ScopeDelta([(-1,self.verdepth+b)]))
+						# assert False
 
 
 
@@ -3123,7 +3301,7 @@ class Strategy(Tobj):
 
 
 		sc = longcount(trimargs)
-		if prep == None: prep = SubsObject(verdepth=limit)
+		if prep == None: prep = SubsObject([],verdepth=limit)
 		prep = prep.dpush(ScopeDelta([(limit+sc-prep.verdepth,prep.verdepth)])).subs if prep != None else []
 
 		art = trimargs.emptyinst(limit)
@@ -3245,14 +3423,15 @@ class RefTree(Tobj):
 
 	@initTobj
 	def __init__(self,name=None,args=None,src=None,verdepth=None,pos=None,core=None):
-		self.name       = 0 if name == None else name
-		self.args       = SubsObject(verdepth=verdepth) if args == None else args
-		self.src        = src
-		self.core       = core
-		self.verdepth   = verdepth
+		self.name = 0 if name == None else name
+		self.args = args
+		self.src = src
+		self.core = core
+		self.verdepth = verdepth
 
 		transferlines(self,pos)
 		def _dbgTest():
+			if self.args!=None: assert len(self.args.subs)>0
 			assert type(self.name) is int or type(self.name) is str
 			if self.src==None and self.verdepth!=None and self.name!=0:
 				assert self.name<self.verdepth
@@ -3267,7 +3446,7 @@ class RefTree(Tobj):
 					print(self)
 					print(self.src.isSubOb())
 					assert False
-				if self.src.isSubOb() and type(self.src.isSubOb()) is bool:
+				if type(self.src.isSubOb()) is tuple:
 					assert False
 
 	def semavail(self,mog=False):
@@ -3313,7 +3492,7 @@ class RefTree(Tobj):
 	def detect(self,ranges,light=False):
 		if self.core!=None:
 			if light and not ranges.canTranslate(self.name,self.verdepth): return True
-			if self.args.detect(ranges,light=light): return self.unwrapOne().detect(ranges)#<><><><><><>a component of arg might be unusued....
+			if self.args.detect(ranges,light=light): return True#return self.unwrapOne().detect(ranges)#<><><><><><>a component of arg might be unusued....
 			if hasattr(ranges,'precal') and self.name in ranges.precal: return False
 			if ranges.islowerbound(self.name): return False
 			if self.core.core.detect(self.core.rows + ranges,light=light): return self.unwrapOne().detect(ranges,light=light)#<><><><><> a specific component of a sub could be unused.
@@ -3389,7 +3568,7 @@ class RefTree(Tobj):
 					decargs,
 					pos=self,
 					verdepth=pushdepth,
-					core = DelayedSub(gy[0]).dpush_ds(sems)
+					core = DelayedSub(gy[0],gy[0].isSubOb()).dpush_ds(sems,cr)
 				)
 
 
@@ -4009,7 +4188,7 @@ class Untransformer:
 	def getat(self,ind):
 		if ind not in self.dict: return None
 		ob = self.dict[ind]
-		return DelayedSub(ob,ScopeDelta([(self.head-ob.verdepth,ob.verdepth)]))
+		return DelayedSub(ob,ob.isSubOb(),ScopeDelta([(self.head-ob.verdepth,ob.verdepth)]))
 	def objwrite(self,ty,ds,si):
 		if si==None: hoe = [ds]
 		else: hoe = amorphwidereference(ds,ty,si)
@@ -4361,7 +4540,7 @@ def _dbgTest():
 	# 	# compilefiles({"grouptheory.ax","builtin.ax"},redoAll=True)
 		# print("compiling")
 		# compilefiles({"grouptheory.ax"},verbose=True,basepath="/Users/parkerlawrence/dev/agi/")
-		FileLoader(verbose=True,basepath="/Users/parkerlawrence/dev/agi/",buildpath="/Users/parkerlawrence/dev/agi/build/",redoAll=True).load("lattice.ax")
+		FileLoader(verbose=True,basepath="/Users/parkerlawrence/dev/agi/",buildpath="/Users/parkerlawrence/dev/agi/build/",redoAll=False).load("lattice.ax")
 	except LanguageError as u:
 		u.tohtml()
 		raise u
@@ -4405,7 +4584,8 @@ def _dbgTest():
 
 
 
-
+#<> use less threes- when all previous inferred objects have subs already in extract you don't need a three.(3)
+#<> crack down on (0,x) and (a,b,c,d) where b+d = c+d-a
 
 
 
