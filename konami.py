@@ -9,18 +9,12 @@ import re
 
 # four things to implement
 
-
 # three speedups
 # 	detect should not unwrap
-# 		keep track of which cores reference which of their parameters
-#			pass down mask of what detects to skip.
-#		pass along dictionary of what subset youre really referencing
+#		pass along chainlist of what subset youre really referencing
 # 	combine trim with dpushes used to generate it. (separate trim unwrap.)
 
 #  doneline -=-=-=-=-=-=-=-=-=-=-=-=-=-=-
-
-
-
 
 
 
@@ -120,9 +114,6 @@ class BuildAxiomCommand(sublime_plugin.ViewEventListener,sublime_plugin.TextComm
 	def update_phantoms(self):
 		self.phantom_set.update([])
 		self.phantom_set.update(self.syntaxphantoms+self.selectorphantoms)
-
-
-
 
 
 
