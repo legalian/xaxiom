@@ -894,8 +894,6 @@ class ScopeDelta:
 					if fug==key:
 						return (symbol,ScopeDelta(self.pushes[i+1:]),fug,changefar,ScopeDelta(self.pushes[:i+1]))
 
-						#teleport
-
 		return fug
 	def subset(self,fug):
 		track = []
@@ -1015,6 +1013,11 @@ def compose(mapone,maptwo):
 def noneiflatten(map):
 	if type(map) is list: return [noneiflatten(m) for m in map]
 	return None
+
+def isimportant(m,start,run):
+	if type(m) is not list: return m>=start and m<start+run
+	return any(isimportant(a,start,run) for a in m)
+
 def buildfrom(si,plat,vdp):
 	def _dbgEnter():
 		def recurse(s):
@@ -1023,11 +1026,11 @@ def buildfrom(si,plat,vdp):
 			else:
 				for r in s: recurse(r)
 		recurse(si)
-
-
 	if type(si) is list:
 		return SubsObject([SubRow(None,buildfrom(m,plat,vdp)) for m in si],verdepth=vdp)
-	return plat[si]
+	else:
+		return plat[si]
+
 def inR(si,val):
 	if type(si) is list: return any(inR(s,val) for s in si)
 	return val==si
@@ -1041,37 +1044,145 @@ def extfind(h,si,lc=0):
 	if si==h: return (lc,None)
 	return (None,lc+1)
 
+# class MalformedInheritancePath(Exception):
+# 	def __init__(self,index):
+# 		Exception.__init__(self,"_malformedInheritance")
+# 		self.index = index
+
+
 class MalformedInheritancePath(Exception):
-	def __init__(self,index):
+	def __init__(self,ihfb):
 		Exception.__init__(self,"_malformedInheritance")
-		self.index = index
+		self.ihfb = ihfb
 
-def psuedoDpush(si,pushes,h=None):
-	if type(si) is list: return [psuedoDpush(si[s],pushes,h=h if h!=None else s) for s in range(len(si))]
-	for push in reversed(pushes):
-		if si == push: raise MalformedInheritancePath(h)
-		if si > push: si = si-1
-	return si
+# def psuedoDpush(si,pushes,h=None):
+# 	if type(si) is list: return [psuedoDpush(si[s],pushes,h=h if h!=None else s) for s in range(len(si))]
+# 	for push in reversed(pushes):
+# 		if si == push: raise MalformedInheritancePath(h)
+# 		if si > push: si = si-1
+# 	return si
 
-def implicitcast(indesc,expected,provided,obj,blame=None,soften=False,extract=None,thot=None,odsc=None,owner=None):
-	def _dbgEnter():
-		assert expected==None or isinstance(expected,Tobj)
-		assert isinstance(provided,Tobj)
-		if expected!=None: expected.setSafety(obj.getSafety())
-		provided.setSafety(obj.getSafety())
-
-	def _dbgExit(outp):
-		if type(outp) is SubsObject and expected!=None:
-			car = expected.asDualSubs()
-			assert len(car)==len(outp.subs)
-
-
+def reparent(provided,pA,provob):
 	def trimout(map,car):
 		if type(map) is not list: return map
 		car = car.asDualSubsNonspecific()
 		assert len(map)==len(car.rows)
 		return [trimout(map[s],car.rows[s].type) for s in range(len(map)) if car.rows[s].obj==None]
 
+	if pA==0: return provob
+	dualprovided = provided.asDualSubs()
+	pp,obk,upgradesPrime = dualprovided.origin
+	upgrades = {up:1 for up in upgradesPrime}
+
+	pp = pp.asDualSubs()
+	# for y in reversed(pp.erased): del obk[y]
+	p=1
+	while p<pA:
+		pp,obi,upgradesPrime = pp.origin
+		nup = {}
+		canmerge = True
+		for k,v in upgrades.items():
+			for i in range(len(obi)):
+				if obk[i]==k:
+					nup[i] = v
+					canmerge = False
+					break
+		if not canmerge: break
+		for j in upgradesPrime: nup[j] = nup.get(j,0)+1
+		upgrades = nup
+		pp = pp.asDualSubs()
+		obk = compose(obi,obk)
+
+		p+=1
+
+	tar = dualprovided.inheritpopulate(trimout(obk,pp),provob,upgrades)
+	if pA-p==0: return tar
+	assert False
+	return reparent(pp,pA-p,tar)
+
+def downparent(expected,headE,eA,provob):
+	if eA==0: return provob
+
+
+	dualexpected = expected.asDualSubs()
+
+	pp,obk,upgrades = dualexpected.origin
+	pp = pp.asDualSubs()
+	# for y in reversed(pp.erased): del obk[y]
+	for e in range(1,eA):
+		pp,obi,upgrades = pp.origin
+		pp = pp.asDualSubs()
+		# for y in reversed(pp.erased): del obi[y]
+		obk = compose(obi,obk)
+
+	print()
+	print(obk)
+	# print(whamtrimmed)
+	print("GUFLATTEN: ",provob)
+	print()
+	# its a more fundamental problem...
+	# when you use the partial templating, it tracks the similarity as if they were the exact same type... that shit aint true...
+	print(headE)
+	print()
+	print(headE.fulavail())
+	print(headE.semavail())
+	print()
+	guflat = headE.flatten(ScopeDelta([]),noneiflatten(obk),obj=provob)
+	
+	finob = []
+
+
+	moat = ScopeDelta()
+
+	# vvleft = 0
+
+	cusecrets = []
+
+	for h in range(len(dualexpected.rows)):
+		fou = extfind(h,obk)[0]
+		if fou==None:
+			raise MalformedInheritancePath((dualexpected.rows[h],None,[a.name for a in dualexpected.rows[:h]],None))
+
+		vv = longcount(dualexpected.rows[h].name)
+		inquestion     = complicate(guflat.flat[fou].obj, [a.obj for a in guflat.flat[:fou]])
+		inquestiontype = complicate(guflat.flat[fou].type,[a.obj for a in guflat.flat[:fou]])
+
+		# def _dbgTest():
+		# 	assert dualexpected.rows[h].type.verdepth == provob.verdepth+len(cusecrets)
+
+		if dualexpected.rows[h].obj==None:
+			against = complicate(dualexpected.rows[h].type.dpush(moat),cusecrets)
+
+			amt = upgrades.get(fou,0)
+
+			if amt!=0: inquestion = downparent(against,inquestiontype,amt,inquestion)
+			if not against.compare(inquestiontype,odsc,thot,extract):
+				raise MalformedInheritancePath((dualexpected.rows[h].type.dpush(moat),guflat.flat[fou].type,[dualexpected.rows[a].name for a in range(h)],[a.name for a in guflat.flat[:fou]]))
+
+			finob.append(SubRow(None,inquestion))
+			moat = moat + ScopeDelta([(longflattenunravel(dualexpected.rows[h].name,dualexpected.rows[h].type,inquestion,provob.verdepth+len(cusecrets))[0],)])#,(-vv,provob.verdepth)
+			# cusecrets = cusecrets +
+
+
+			cusecrets = cusecrets + TypeRow(dualexpected.rows[h].name,dualexpected.rows[h].type,inquestion.dpush(ScopeDelta([(len(cusecrets),inquestion.verdepth)]))).ripsingle()
+
+
+		else:
+			cusecrets = cusecrets + dualexpected.rows[h].ripsingle()
+
+	return SubsObject(finob,verdepth=provob.verdepth)
+
+
+def implicitcast(indesc,expected,provided,obj,blame=None,soften=False,extract=None,thot=None,odsc=None,owner=None):
+	# def _dbgEnter():
+	# 	assert expected==None or isinstance(expected,Tobj)
+	# 	assert isinstance(provided,Tobj)
+	# 	if expected!=None: expected.setSafety(obj.getSafety())
+	# 	provided.setSafety(obj.getSafety())
+	# def _dbgExit(outp):
+	# 	if type(outp) is SubsObject and expected!=None:
+	# 		car = expected.asDualSubs()
+	# 		assert len(car)==len(outp.subs)
 
 	if expected==None: return obj
 
@@ -1092,130 +1203,13 @@ def implicitcast(indesc,expected,provided,obj,blame=None,soften=False,extract=No
 			if headE.compare(headP,odsc,thot,extract):
 				if extract!=None:
 					for kt in range(st,len(extract)): extract[kt] = (extract[kt][0],extract[kt][1],extract[kt][2],owner)
-				provob = obj
 				valid = True
-				if pA>0:
-					dualprovided = provided.asDualSubs()
-					pp,obk = dualprovided.origin
-					pp = pp.asDualSubs()
-					for y in reversed(pp.erased): del obk[y]
-					for p in range(1,pA):
-						pp,obi = pp.origin
-						pp = pp.asDualSubs()
-						for y in reversed(pp.erased): del obi[y]
-						obk = compose(obi,obk)
-
-					try:
-						obk = psuedoDpush(obk,dualprovided.erased)
-					except MalformedInheritancePath as u:
-						if ihfb==None: ihfb = (pp.rows[u.index],None,[a.name for a in pp.rows[:u.index]],None)
-						valid = False
-
-					# if valid: provob = dualprovided.inheritpopulate([obk[i] for i in range(len(obk)) if pp.rows[i].obj==None],provob)
-					whamtrimmed = trimout(obk,pp)
-					if valid: provob = dualprovided.inheritpopulate(whamtrimmed,provob)
-				if valid:
-
-					if eA==0: return provob
-
-					dualexpected = expected.asDualSubs()
-
-					pp,obk = dualexpected.origin
-					pp = pp.asDualSubs()
-					for y in reversed(pp.erased): del obk[y]
-					for e in range(1,eA):
-						pp,obi = pp.origin
-						pp = pp.asDualSubs()
-						for y in reversed(pp.erased): del obi[y]
-						obk = compose(obi,obk)
-
-					try:
-						obk = psuedoDpush(obk,dualexpected.erased)
-					except MalformedInheritancePath as u:
-						print([k.name for k in dualexpected.rows])
-						print([k.name for k in pp.rows])
-						print(dualexpected.erased)
-						print(obk)
-						if ihfb==None: ihfb = (None,pp.rows[u.index],None,[a.name for a in pp.rows[:u.index]])
-						valid = False
-				if valid:
-					print()
-					print(obk)
-					print(whamtrimmed)
-					print("GUFLATTEN: ",provob)
-					print()
-					print(headE)
-					print()
-					print(headE.fulavail())
-					print(headE.semavail())
-					print()
-					guflat = headE.flatten(ScopeDelta([]),noneiflatten(obk),obj=provob)
-					
-					finob = []
-
-
-					moat = ScopeDelta()
-
-					# vvleft = 0
-
-					cusecrets = []
-
-					for h in range(len(dualexpected.rows)):
-						# if dualexpected.rows[h].obj!=None:
-
-
-						# 	continue
-						fou = extfind(h,obk)[0]
-						if fou==None:
-							valid = False
-							if ihfb==None: ihfb = (dualexpected.rows[h],None,[a.name for a in dualexpected.rows[:h]],None)
-							break
-
-						vv = longcount(dualexpected.rows[h].name)
-
-						inquestion = complicate(guflat.flat[fou].obj,[a.obj for a in guflat.flat[:fou]])
-						inquestiontype = complicate(guflat.flat[fou].type,[a.obj for a in guflat.flat[:fou]])
-						# inquestion = guflat.flat[fou].obj.dpush( ScopeDelta([(-fou,provob.verdepth)]))
-
-
-						def _dbgTest():
-							assert dualexpected.rows[h].type.verdepth == provob.verdepth+len(cusecrets)
-
-
-						if dualexpected.rows[h].obj==None:
-							against = complicate(dualexpected.rows[h].type.dpush(moat),cusecrets)
-							if not against.compare(inquestiontype,odsc,thot,extract):
-								valid = False
-								if ihfb==None: ihfb = (dualexpected.rows[h].type.dpush(moat),guflat.flat[fou].type,[dualexpected.rows[a].name for a in range(h)],[a.name for a in guflat.flat[:fou]])
-								break
-
-							finob.append(SubRow(None,inquestion))
-							moat = moat + ScopeDelta([(longflattenunravel(dualexpected.rows[h].name,dualexpected.rows[h].type,inquestion,provob.verdepth+len(cusecrets))[0],)])#,(-vv,provob.verdepth)
-							# cusecrets = cusecrets +
-
-
-							cusecrets = cusecrets + TypeRow(dualexpected.rows[h].name,dualexpected.rows[h].type,inquestion.dpush(ScopeDelta([(len(cusecrets),inquestion.verdepth)]))).ripsingle()
-
-
-						else:
-							cusecrets = cusecrets + dualexpected.rows[h].ripsingle()
-
-						# TypeRow(expected.rows[h].name,expected.rows[h].type,inquestion).getSafetyrow()
-
-
-							# moat = moat + ScopeDelta([(longflattenunravel(expected.rows[h].name,expected.rows[h].type,expected.rows[h].obj,provob.verdepth)[0],),(-vv,provob.verdepth)])
-							# moat = moat + ScopeDelta([(-vv,provob.verdepth)])
-								#would need to call longflattunravel at a different starting point...
-						# moat = moat + ScopeDelta([(longflattenunravel(expected.rows[h].name,expected.rows[h].type,inquestion,provob.verdepth)[0],),(-vv,provob.verdepth)])
-				if valid: return SubsObject(finob,verdepth=provob.verdepth)
-			# else:
-			# 	one = headE.compare(headP,odsc,thot,extract)
-			# 	two = headE.unwrap().compare(headP.unwrap(),odsc,thot,extract)
-			# 	print("FAILURE ",headE,headP,headE.unwrap(),headP.unwrap())
-			# 	print(katype)
-			# 	print(katype is RefTree)
-			# 	print(one)
-			# 	print(two)
+				provob = reparent(provided,pA,obj)
+				try:
+					return downparent(expected,headE,eA,provob)
+				except MalformedInheritancePath as u:
+					if ihfb==None: ihfb = u.ihfb
+					valid = False
 			if extract!=None:
 				while st<len(extract): del extract[st]
 
@@ -1223,14 +1217,6 @@ def implicitcast(indesc,expected,provided,obj,blame=None,soften=False,extract=No
 			if type(headE) is ScopeComplicator: headE = headE.decode()
 			if type(headP) is RefTree: headP = headP.mangle_UE()
 			if type(headE) is RefTree: headE = headE.mangle_UE()
-			# if type(headP) is Strategy:
-			# 	if type(headE) is Strategy and headE.args.compare(headP.args,odsc,thot,extract):
-			# 		raise TypeMismatch(blame,expected,provided,indesc).ihfb(ihfb).soften(soften)
-			# 		# assert False#now I have to worry about pushing with exob and then adding the SI back in... 
-			# 		# return implicitcast(indesc,expected,provided,obj,blame=None,soften=False,extract=None,thot=None,odsc=None,owner=None)
-			# 	if extract!=None:
-			# 		while st<len(extract): del extract[st]
-			# 	raise TypeMismatch(blame,expected,provided,indesc).ihfb(ihfb).soften(soften)
 			headP = headP.origin[0] if type(headP) is DualSubs and type(headE) is DualSubs and headP.origin!=None else None
 			pA += 1
 		headE = headE.origin[0] if type(headE) is DualSubs and type(headE) is DualSubs and headE.origin!=None else None
@@ -2210,19 +2196,17 @@ class DualSubs(Tobj):
 			if self.rows[j].obj!=None: self.rows[j].obj.assertcomp(other.rows[j].obj)
 
 	@initTobj
-	def __init__(self,rows=None,verdepth=None,origin =None,pos=None,erased=None):
+	def __init__(self,rows=None,verdepth=None,origin =None,pos=None):
 		self.rows = rows if rows != None else []
 		self.origin = origin
 		self.verdepth = verdepth
-		self.erased = [] if erased==None else erased
+		# self.erased = [] if erased==None else erased
 		transferlines(self,pos)
 		def _dbgTest():
 			for k in self.rows:
 				assert type(k) is TypeRow
 				if self.verdepth!=None:
 					assert not hasfixes(k.name)
-
-
 
 	def extractbetween(self,older,blame=None):#this one is better if it just does the dpush flat out
 		for j in self.rows:
@@ -2251,6 +2235,7 @@ class DualSubs(Tobj):
 				file.writeChar("D")
 				self.origin[0].writefile(file)
 				file.writeNumInc(self.origin[1])
+				file.writeNumInc(self.origin[2])
 		file.writeNum(len(self.rows))
 		for j in self.rows:
 			j.writefile(file)
@@ -2281,14 +2266,16 @@ class DualSubs(Tobj):
 		disgrace = ScopeDelta() if disgrace == None else disgrace
 		left = 0
 		cu = []
-		er = []
+		# er = []
+		er = False
 		for k in range(len(self.rows)):
 			try:
 				m = self.rows[k].dpush(pushes+disgrace)
 			except  DpushError as u:
 				if self.rows[k].obj == None: raise u
 				disgrace.append((-longcount(self.rows[k].name),self.verdepth+pushes.lenchange+left))
-				er.append(k)
+				# er.append(k)
+				er = True
 			else:
 				cu.append(m)
 				left += longcount(self.rows[k].name)
@@ -2301,7 +2288,10 @@ class DualSubs(Tobj):
 		# 		cu.append(self.rows[k].dpush(disgrace+pushes))
 		# 		left += longcount(self.rows[k].name)
 		if not worrynot and hasattr(pushes,'delaymemo'): pushes.delaymemo = {k:v for (k,v) in pushes.delaymemo.items() if k<self.verdepth}
-		return DualSubs(cu,verdepth=self.verdepth+pushes.lenchange,origin=None if self.origin ==None else (self.origin[0].dpush(pushes),self.origin[1]),pos=self,erased=er+self.erased)
+		passor = None
+		if self.origin!=None and not er:
+			passor = (self.origin[0].dpush(pushes),self.origin[1],self.origin[2])
+		return DualSubs(cu,verdepth=self.verdepth+pushes.lenchange,origin=passor,pos=self)
 
 	def compare(self,other,odsc=None,thot=None,extract=None,lefpush=None,rigpush=None,keepr=False,advanced=None):
 		if type(other) is ScopeComplicator: return self.compare(other.core,odsc,thot,extract,lefpush,other.correction() if rigpush==None else other.correction()+rigpush)
@@ -2445,10 +2435,7 @@ class DualSubs(Tobj):
 
 
 
-	def inheritpopulate(self,mapping,obj):
-		def isimportant(m,start,run):
-			if type(m) is not list: return m>=start and m<start+run
-			return any(isimportant(a,start,run) for a in m)
+	def inheritpopulate(self,mapping,obj,upgrades):
 		s = 0
 		cu = []
 		delta = ScopeDelta()
@@ -2466,7 +2453,10 @@ class DualSubs(Tobj):
 			if nobj==None:
 				cu = cu+[None]*vv
 			else:
-				cu = cu+widereference(nobj,self.rows[n].type.dpush(oldelta),self.rows[n].name)
+				amt = upgrades.get(n,0)
+				typ = self.rows[n].type.dpush(oldelta)
+				if amt!=0: nobj = reparent(typ,amt,nobj)
+				cu = cu+widereference(nobj,typ,self.rows[n].name)
 			delta = delta + ScopeDelta([(-vv,self.verdepth)])
 			left+=vv
 		return buildfrom(mapping,cu,self.verdepth)
@@ -2901,12 +2891,15 @@ class DualSubs(Tobj):
 						b = (lis[h][2] in lis[k][3])
 						if (c or a) and not b: assert False
 
+
+		upgrades = []
+
 		dn = copy.copy(subs)
 		while len(dn):
 			if dn[0].name!=None and dn[0].name[0] in dn: continue
-			for origindex in range(len(wclist)):
+			for odex in range(len(wclist)):
 				a=0
-				while wclist[a][2]!=origindex+self.verdepth: a+=1
+				while wclist[a][2]!=odex+self.verdepth: a+=1
 				if dn[0].name==None or (wclist[a][0].obj==None or len(dn[0].name)==1) and dn[0].name[0]==wclist[a][0].name:
 					# everything without a ref | everything with a ref.
 					sources,wlist = shape1(wclist,a)
@@ -3000,6 +2993,8 @@ class DualSubs(Tobj):
 						hab = (None,wclist[a][0].name) if secret==None else ((secret,wlist),wclist[a][0].name)
 						retype = ty.applytemplate(wonk,([],[]),desc,[],blame=blame,shortname=ltype,secret=hab)
 						yarn = TypeRow(wclist[a][0].name,retype,SubsObject(verdepth=retype.verdepth) if len(retype)==0 else None,wclist[a][0].silent)
+
+						upgrades.append(wclist[a][2])
 					
 						addrefs(wclist,sources,a,yarn.type)
 						b = self.verdepth+len(wlist)
@@ -3037,8 +3032,8 @@ class DualSubs(Tobj):
 
 
 		geit = unlongcount(NANms,[i[2] for i in wclist])[0]
-		for j in self.erased:
-			geit.insert(j,None)
+		# for j in self.erased:
+		# 	geit.insert(j,None)
 
 		# def recurse(s):
 		# 	if type(s) is not list:
@@ -3047,7 +3042,12 @@ class DualSubs(Tobj):
 		# 		for r in s: recurse(r)
 		# recurse(geit[0])
 
-		return DualSubs([i[0] for i in wclist],verdepth=self.verdepth,pos=blame,origin=(shortname if shortname!=None else self,geit))
+		# charm = []
+		# for up in upgrades:
+		# 	for c in range(len(wclist)):
+		# 		if wclist[c][2]==up: charm.append(c)
+
+		return DualSubs([i[0] for i in wclist],verdepth=self.verdepth,pos=blame,origin=(shortname if shortname!=None else self,geit,upgrades))
 class SubsObject(Tobj):
 	def isfrozen(self):
 		return any(s==None or s.obj.isfrozen() for s in self.subs)
@@ -4421,7 +4421,7 @@ class DataBlockTransformer:
 				verdepth=depth.head
 			)
 		elif code == "C": return self.DualSubs(depth)
-		elif code == "D": return self.DualSubs(depth,origin=(self.generic(depth),self.readNumInc()))
+		elif code == "D": return self.DualSubs(depth,origin=(self.generic(depth),self.readNumInc(),self.readNumInc()))
 		elif code == "E": return self.Strategy(depth)
 		elif code == "F": return self.SubsObject(depth)
 		elif code == "G": return self.Lambda(depth)
@@ -4520,6 +4520,8 @@ class FileLoader:
 
 	def arrangeTo(self,fve,targdeps,ver):
 		def _dbgEnter():
+			# for pi in targdeps:
+			# 	assert pi in fve
 			count = 0
 			for k in fve: count+=self.lengths[k]
 			for s in range(len(ver)): ver[s].setSafetyrow(s+count)
@@ -4568,6 +4570,8 @@ class FileLoader:
 
 
 	def load(self,filename,circular=None):
+		def _dbgExit(ou):
+			assert filename in self.deps
 		circular = [] if circular == None else circular
 		if filename in circular: raise LanguageError(None,"Cyclic import: "+filename)
 		if filename in self.deps: return
@@ -4627,7 +4631,6 @@ class FileLoader:
 		except LanguageError as u: raise u.setfile(filename)
 
 		deps = self.filloutdeps(deps)
-
 		print("arranging ",filename," from ",self.deps,"to ",deps)
 
 		tosave = self.arrangeTo(self.deps,deps,ncumu.flat[olen:])
@@ -4685,7 +4688,6 @@ def _dbgTest():
 	# print("debug")
 
 
-
 #if mangle_ue starts taking up a lot of time, remember that you can store ful/semavail on a property so yo don't have ot unwrap<><><>
 #you could also create a separate unwrap function for trimming and dpushing at the same time to avoid all those extra properties you dont need.<><><>
 
@@ -4715,23 +4717,10 @@ def _dbgTest():
 #<><><> so many useless scopecomplicators...
 
 
-#<><><><><> save/loading doesn't work... dualsubs erased doesn't get saved and it's a problem.
-
-
-
 #<> use less threes- when all previous inferred objects have subs already in extract you don't need a three.(3)
 #<> crack down on (0,x) and (a,b,c,d) where b+d = c+d-a
 
-
-
-
-
-
 #<><>mangles rely on 1 reftrees always having three parameters- what about fibers???
-
-
-
-
 
 
 

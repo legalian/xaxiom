@@ -94,6 +94,7 @@ class Madscience_debugger(ast.NodeTransformer):
 		return node
 	def visit_Return(self,node:ast.Return):
 		if self.hot == None or (not self.hotHasReturnCheck and self.funcNames[self.hot] not in self.exitpatterns): return node
+		print("Assign: ",self.funcNames[self.hot])
 		sin = [
 			Assign(targets=[Name(id='_dbg_ret_var', ctx=Store())], value=node.value),
 			Return(value=Name(id='_dbg_ret_var', ctx=Load()))
@@ -154,7 +155,11 @@ class Madscience_debugger(ast.NodeTransformer):
 
 		shobb = []
 		for z in range(len(node.args.args) if hasExit else len(self.exitpatterns.get(node.name,[]))):
-			shobb.append(Assign(targets=[Name(id=node.args.args[z].arg+'_dbg_str_var_'+str(frozone), ctx=Store())],value=Name(id=node.args.args[z].arg,ctx=Load())))
+			# print("Assign2: ",str(frozone))
+			shobb.append(Assign(
+				targets=[Name(id=node.args.args[z].arg+'_dbg_str_var_'+str(frozone), ctx=Store())],
+				value=Name(id=node.args.args[z].arg,ctx=Load())
+			))
 
 		if hasExit:
 			expattern = [k.arg for k in node.args.args]
@@ -393,8 +398,9 @@ tree = madscience_debugger.visit(tree)
 # 	if ismyprintline(node):
 # 		print("awakawaka")
 	# if type(tree) is
+# print(tree,filename)
 
-
+# print(tree)
 co = compile(tree, filename, 'exec')
 try:
 	start = time.time()
