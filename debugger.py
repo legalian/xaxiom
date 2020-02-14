@@ -94,7 +94,7 @@ class Madscience_debugger(ast.NodeTransformer):
 		return node
 	def visit_Return(self,node:ast.Return):
 		if self.hot == None or (not self.hotHasReturnCheck and self.funcNames[self.hot] not in self.exitpatterns): return node
-		print("Assign: ",self.funcNames[self.hot])
+		# print("Assign: ",self.funcNames[self.hot])
 		sin = [
 			Assign(targets=[Name(id='_dbg_ret_var', ctx=Store())], value=node.value),
 			Return(value=Name(id='_dbg_ret_var', ctx=Load()))
