@@ -628,6 +628,7 @@ class DelayedSub:
 		self.core = core
 		self.isSubOb = isSubOb
 		self.rows = ScopeDelta() if rows==None else rows
+		self.memo = {}
 		def _dbgTest():
 			self.rows.objconforms(self.core,self.core.verdepth)
 			global RRR
@@ -671,6 +672,7 @@ class DelayedSub:
 			assert iso == self.isSubOb
 
 	def dpush_ds(self,rows,myname):
+		if rows.isempty(): return self
 		if rows.islowerbound(myname):
 			iso = self.isSubOb
 			dok = rows
@@ -1140,18 +1142,18 @@ def downparent(expected,headE,eA,provob,extract=None,thot=None,odsc=None,owner=N
 		upgrades = nup
 		obk = compose(obi,obk)
 
-	print()
-	print(obk)
-	# print(whamtrimmed)
-	print("GUFLATTEN: ",provob)
-	print()
-	# its a more fundamental problem...
-	# when you use the partial templating, it tracks the similarity as if they were the exact same type... that shit aint true...
-	print(headE)
-	print()
-	print(headE.fulavail())
-	print(headE.semavail())
-	print()
+	# print()
+	# print(obk)
+	# # print(whamtrimmed)
+	# print("GUFLATTEN: ",provob)
+	# print()
+	# # its a more fundamental problem...
+	# # when you use the partial templating, it tracks the similarity as if they were the exact same type... that shit aint true...
+	# print(headE)
+	# print()
+	# print(headE.fulavail())
+	# print(headE.semavail())
+	# print()
 	guflat = headE.flatten(ScopeDelta([]),noneiflatten(obk),obj=provob)
 	
 	finob = []
@@ -1184,7 +1186,7 @@ def downparent(expected,headE,eA,provob,extract=None,thot=None,odsc=None,owner=N
 		amt = upgrades.get(fou,0)
 
 		if amt!=0: inquestion = downparent(against,inquestiontype,amt,inquestion)
-
+                    
 		if extract!=None: st = len(extract)
 
 		if not against.compare(inquestiontype,odsc,thot,extract):
@@ -1219,10 +1221,12 @@ def implicitcast(indesc,expected,provided,obj,blame=None,soften=False,extract=No
 	# 		car = expected.asDualSubs()
 	# 		assert len(car)==len(outp.subs)
 
-
+	bounce = 0
 
 	# if type(provided) is ScopeComplicator: provided = provided.decode()
 	# if type(expected) is ScopeComplicator: expected = expected.decode()
+
+
 
 	ihfb = None
 
@@ -1234,19 +1238,42 @@ def implicitcast(indesc,expected,provided,obj,blame=None,soften=False,extract=No
 		headP = provided
 		while headP!=None:
 			# katype = type(headE)
+
+			if bounce==1:
+				huahua = obj
+				obj = RefTree(name=expected.verdepth,core=DelayedSub(obj,obj.isSubOb(),ScopeDelta([(1,expected.verdepth)])),verdepth=expected.verdepth+1)
+				expected = expected.dpush(ScopeDelta([(1,expected.verdepth)]))
+				provided = provided.dpush(ScopeDelta([(1,provided.verdepth)]))
+				headE = headE.dpush(ScopeDelta([(1,headE.verdepth)]))
+				headP = headP.dpush(ScopeDelta([(1,headP.verdepth)]))
+			bounce += 1
+
+
+
 			if headE.compare(headP,odsc,thot,extract):
 				if extract!=None:
 					for kt in range(st,len(extract)): extract[kt] = (extract[kt][0],extract[kt][1],extract[kt][2],owner)
 				provob = reparent(provided,pA,obj)
 				try:
-					return downparent(expected,headE,eA,provob,extract=extract,thot=thot,odsc=odsc,owner=owner)
+					au = downparent(expected,headE,eA,provob,extract=extract,thot=thot,odsc=odsc,owner=owner)
+					if bounce==1: return au
+					return complicate(au,[huahua])
 				except MalformedInheritancePath as u:
 					if ihfb==None: ihfb = u.ihfb
 			if extract!=None:
 				while st<len(extract): del extract[st]
 
-			if type(headP) is ScopeComplicator: headP = headP.decode()
-			if type(headE) is ScopeComplicator: headE = headE.decode()
+
+
+
+			if type(headP) is ScopeComplicator:
+				# print("decoding: ",headP.prepr(FormatterObject(None,printcomplicators=True)))
+				headP = headP.decode()
+				# print("no longer decoding.")
+			if type(headE) is ScopeComplicator:
+				# print("decoding: ",headE.prepr(FormatterObject(None,printcomplicators=True)))
+				headE = headE.decode()
+				# print("no longer decoding.")
 			if type(headP) is RefTree: headP = headP.mangle_UE()
 			if type(headE) is RefTree: headE = headE.mangle_UE()
 			headP = headP.origin[0] if type(headP) is DualSubs and type(headE) is DualSubs and headP.origin!=None else None
@@ -2161,6 +2188,8 @@ def lazyflatten(F):
 		return F(sel1,delta,mog,assistmog,prep,obj,fillout,then=then)
 	return wrapper
 
+
+
 class DualSubs(Tobj):
 	def assertcomp(self,other):
 		assert type(other) is DualSubs
@@ -2170,11 +2199,18 @@ class DualSubs(Tobj):
 			self.rows[j].type.assertcomp(other.rows[j].type)
 			if self.rows[j].obj!=None: self.rows[j].obj.assertcomp(other.rows[j].obj)
 
+	def __eq__(self,other):
+		return type(other) is DualSubs and [a.type for a in self.rows if a.obj==None]==[a.type for a in other.rows if a.obj==None]
+	def __hash__(self):
+		if self.cachehash != None: return self.cachehash
+		self.cachehash = hash(tuple([a.type for a in self.rows if a.obj==None]))
+		return self.cachehash
 	@initTobj
 	def __init__(self,rows=None,verdepth=None,origin =None,pos=None):
 		self.rows = rows if rows != None else []
 		self.origin = origin
 		self.verdepth = verdepth
+		self.cachehash = None
 		# self.erased = [] if erased==None else erased
 		transferlines(self,pos)
 		def _dbgTest():
@@ -3036,6 +3072,13 @@ class SubsObject(Tobj):
 			assert self.subs[a].name == other.subs[a].name
 			self.subs[a].obj.assertcomp(other.subs[a].obj)
 
+	def __eq__(self,other):
+		return type(other) is SubsObject and [a.obj for a in self.subs]==[a.obj for a in other.subs]
+	def __hash__(self):
+		if self.cachehash != None: return self.cachehash
+		self.cachehash = hash(tuple([a.obj for a in self.subs]))
+		return self.cachehash
+
 	@initTobj
 	def __init__(self,subs=None,verdepth=None,pos=None):
 		# def _dbgEnter():
@@ -3043,6 +3086,7 @@ class SubsObject(Tobj):
 		# 		assert type(sub) is SubRow
 		self.subs = subs if subs != None else []
 		self.verdepth = verdepth
+		self.cachehash = None
 		transferlines(self,pos)
 
 	def writefile(self,file,shutup=False):
@@ -3118,7 +3162,6 @@ class SubsObject(Tobj):
 			u.callingcontext([("(Constructing element of union)",carry,len(indesc),indesc,None)],0)
 			raise u
 		return SubsObject(ga,verdepth=len(indesc),pos=self)
-
 class Template(Tobj):
 	@initTobj
 	def __init__(self,src,NSC=None,rows=None,subs=None,pos=None):
@@ -3163,8 +3206,6 @@ class Template(Tobj):
 		def calls(context_,out,prepend):
 			pmultilinecsv(context,out,indent,self.rows+self.subs,prepend+"<",">"+postpend,callback=callback)
 		self.src.pmultiline(context,out,indent,prepend,"",calls)
-
-
 def correctLambda(si,obj,inp,verdepth=None,pos=None):
 	def smush(tok):
 		if type(tok) is list:
@@ -3183,8 +3224,6 @@ def correctLambda(si,obj,inp,verdepth=None,pos=None):
 				(-vv,verdepth+s+1)
 			])
 	return Lambda([smush(s) for s in si],obj if delta.isempty() else obj.dpush(delta),verdepth=verdepth,pos=pos)
-
-
 class Lambda(Tobj):
 
 	def isfrozen(self):
@@ -3194,6 +3233,12 @@ class Lambda(Tobj):
 		assert self.si == other.si
 		self.obj.assertcomp(other.obj)
 
+	def __eq__(self,other):
+		return type(other) is Lambda and conservativeeq(self.si,other.si) and self.obj==other.obj
+	def __hash__(self):
+		if self.cachehash != None: return self.cachehash
+		self.cachehash = hash(self.obj)
+		return self.cachehash
 
 	@initTobj
 	def __init__(self,si,obj,verdepth=None,pos=None):
@@ -3201,6 +3246,7 @@ class Lambda(Tobj):
 		# assert len(si)>0
 		self.obj = obj
 		self.verdepth = verdepth
+		self.cachehash = None
 		transferlines(self,pos)
 		def _dbgTest():
 			if verdepth!=None:
@@ -3283,6 +3329,13 @@ class Strategy(Tobj):
 		self.args.assertcomp(other.args)
 		self.type.assertcomp(other.type)
 
+	def __eq__(self,other):
+		return type(other) is Strategy and self.args == other.args and self.type == other.type
+	def __hash__(self):
+		if self.cachehash != None: return self.cachehash
+		self.cachehash = hash((self.args,self.type))
+		return self.cachehash
+
 
 	@initTobj
 	def __init__(self,args=None,type=None,verdepth=None,pos=None):
@@ -3290,6 +3343,7 @@ class Strategy(Tobj):
 		self.args = DualSubs(pos=pos,verdepth=verdepth) if args == None else args
 		self.type = type
 		self.verdepth = verdepth
+		self.cachehash = None
 		transferlines(self,pos)
 	def isemptytype(self):
 		return self.type.isemptytype()
@@ -3462,8 +3516,6 @@ class Strategy(Tobj):
 		pmultilinecsv(context,out,indent,self.args.rows,prepend+context.red("["),context.red("]"),lamadapt=lambda x:x.name,callback=calls,delim=context.red(","))
 def u_type(verdepth):
 	return RefTree(verdepth=verdepth)
-
-
 class RefTree(Tobj):
 	def assertcomp(self,other):
 		assert type(other) is RefTree
@@ -3482,6 +3534,14 @@ class RefTree(Tobj):
 		assert (self.args==None)==(other.args==None)
 		if self.args!=None:
 			self.args.assertcomp(other.args)
+	def __eq__(self,other):
+		return type(other) is RefTree and self.name == other.name and self.args == other.args and self.src == other.src
+	def __hash__(self):
+		if self.cachehash != None: return self.cachehash
+		self.cachehash = hash(tuple([self.src,self.name]+([] if self.args==None else [a.obj for a in self.args.subs])))
+		return self.cachehash
+
+
 
 	@initTobj
 	def __init__(self,name=None,args=None,src=None,verdepth=None,pos=None,core=None):
@@ -3490,6 +3550,7 @@ class RefTree(Tobj):
 		self.src = src
 		self.core = core
 		self.verdepth = verdepth
+		self.cachehash = None
 
 		# if self.args!=None: assert len(self.args.subs)
 		transferlines(self,pos)
@@ -3549,7 +3610,12 @@ class RefTree(Tobj):
 			self.core.core = am
 			self.core.rows = ScopeDelta()
 			return am
-		return self.core.core.dpush(self.core.rows,exob=self.args).decode()
+		guac = self.core.memo.get(self.args)
+		if guac==None:
+			fo = self.core.core.dpush(self.core.rows,exob=self.args).decode()
+			self.core.memo[self.args] = fo
+			return fo
+		return guac
 
 	def detect(self,ranges,light=False):
 		# def 
@@ -4041,6 +4107,8 @@ class OperatorSet(Tobj):
 					self.array[token].pmultiline(context,out,indent,rowprep,"",callback=None)
 				rowprep = ""
 
+
+
 def complicate(core,secrets,pos=None):
 	if len(secrets):
 		if type(core) is ScopeComplicator:
@@ -4082,11 +4150,20 @@ class ScopeComplicator(Tobj):
 			self.secrets[s].assertcomp(other.secrets[s])
 		self.core.assertcomp(other.core)
 
+	def __eq__(self,other):
+		return type(other) is ScopeComplicator and self.secrets==other.secrets and self.core==other.core
+	def __hash__(self):
+		if self.cachehash != None: return self.cachehash
+		self.cachehash = hash((tuple(self.secrets),self.core))
+		return self.cachehash
+
 	@initTobj
 	def __init__(self,core,secrets,verdepth=None,pos=None):
 		self.core = core
 		self.secrets = secrets
 		self.verdepth = verdepth
+		self.cache = None
+		self.cachehash = None
 		# self.legaltracking = True
 		transferlines(self,pos)
 		def _dbgTest():
@@ -4101,8 +4178,10 @@ class ScopeComplicator(Tobj):
 	def correction(self):
 		return ScopeDelta([(-len(self.secrets),self.verdepth)])
 	def decode(self):
+		if self.cache != None: return self.cache
+		self.cache = self.core.dpush(self.correction()).decode()
 		# if not self.legaltracking: assert False
-		return self.core.dpush(self.correction()).decode()
+		return self.cache
 	def compare(self,other,odsc=None,thot=None,extract=None,lefpush=None,rigpush=None):
 		return self.core.compare(other,odsc,thot,extract,self.correction() if lefpush==None else self.correction()+lefpush,rigpush)
 	def dpush(self,pushes,exob=None,frozen=False):
