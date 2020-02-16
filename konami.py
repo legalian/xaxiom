@@ -65,7 +65,7 @@ class BuildAxiomCommand(sublime_plugin.ViewEventListener,sublime_plugin.TextComm
 		self.syntaxphantoms = []
 
 		# Don't do any calculations on 1MB or larger files
-		if self.view.size() < 2**20:
+		if self.view.size() < 2**20 and False:
 			document = self.view.substr(sublime.Region(0,self.view.size()))
 			# self.tooltipranges = []
 			# self.insertpoints = []
