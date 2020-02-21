@@ -4134,10 +4134,11 @@ class DelayedComplication:
 		return isSubObPush(self.ob.isSubOb(),self.srows)
 	def dpush(self,pushes,testy=False):
 		"""dbg_ignore"""
-		comb = self.srows+pushes
-		if testy and not comb.islowerbound(self.ob.verdepth):
-			return DelayedComplication(self.ob.dpush(comb))
-		return DelayedComplication(self.ob,comb)
+		# comb = self.srows+pushes
+		# if testy and not comb.islowerbound(self.ob.verdepth):
+			# return DelayedComplication(self.ob.dpush(comb))
+		# return DelayedComplication(self.ob,comb)
+		return DelayedComplication(self.ob,self.srows+pushes)
 	def observe(self):
 		if self.srows.isempty(): return self.ob
 		self.ob = self.ob.dpush(self.srows)
@@ -4218,7 +4219,9 @@ class ScopeComplicator(Tobj):
 		res = []
 		for k in self.secrets:
 			word = context.newcolors(None)
-			res.append(k.observe().prepr(context))
+			try:
+				res.append(k.observe().prepr(context))
+			except DpushError: pass
 			context = context.addbits(word)
 		return context.red("[[[")+",".join(res)+context.red("]]]")+self.core.prepr(context)
 	def pmultiline(self,context,out,indent,prepend,postpend,callback=None):
