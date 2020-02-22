@@ -174,6 +174,10 @@ class Madscience_debugger(ast.NodeTransformer):
 				assert False
 
 
+			node.body.append(Expr(value=Call(func=Name(id='_dbgExit_'+node.name, ctx=Load()), args=[Name(id=pn+'_dbg_str_var_'+str(self.hot),ctx=Load()) for pn in expattern]+[NameConstant(value=None)], keywords=[])))
+
+
+
 
 		node.body = [
 			*shobb,

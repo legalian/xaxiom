@@ -279,6 +279,30 @@ def _dbgEnter_detect(self,ranges):
 # 		assert not outp
 
 
+	# def look(self,result):
+	# def advlook(self,result,pushes):
+
+
+def _dbgEnter_look(self,result):
+	if type(self) is not TypeRow:
+		for i in result:
+			assert i<self.verdepth
+def _dbgExit_look(self,result,outp):
+	if type(self) is not TypeRow and type(self) is not DualSubs:
+		for i in result:
+			assert i<self.verdepth
+
+def _dbgEnter_advlook(self,result,pushes):
+	if type(self) is not TypeRow:
+		for i in result:
+			assert i<self.verdepth+pushes.lenchange
+def _dbgExit_advlook(self,result,pushes,outp):
+	if type(self) is not TypeRow and type(self) is not DualSubs:
+		for i in result:
+			assert i<self.verdepth+pushes.lenchange
+
+
+
 
 def _dbgEnter_dpush(self,pushes,exob,frozen):
 	if not frozen:
@@ -805,8 +829,6 @@ class ScopeDelta:
 			# key is beneath you: it'll sub out but the resultant stuff will all be beneath you anyway, so you continue onwards.
 
 	# def breakdown(self):
-
-
 
 	def subprots(self,fug):
 		hama = []
@@ -1634,6 +1656,14 @@ class TypeRow:
 		else:
 			return [DelayedComplication(self.obj)]
 
+
+	def look(self,result):
+		self.type.look(result)
+		if self.obj!=None: self.obj.look(result)
+	def advlook(self,result,pushes):
+		self.type.advlook(result,pushes)
+		if self.obj!=None: self.obj.advlook(result,pushes)
+
 	def dpush(self,pushes):
 		"""dbg_ignore"""
 		return TypeRow(self.name,self.type.dpush(pushes),None if self.obj == None else self.obj.dpush(pushes),self.silent)
@@ -1825,8 +1855,13 @@ class Tobj:
 		elim=0
 		fafter = self.verdepth
 		ndepth = self.verdepth
+		goffset = 0
 		starter = fafter-longcount(si)
-		outp = self.core if type(self) is ScopeComplicator else self
+		outp = self
+		if type(self) is ScopeComplicator:
+			goffset = len(self.secrets)
+			# fafter = fafter+len(self.secrets)
+			outp = self.core
 		if type(outp) is RefTree and outp.name<starter and outp.args!=None:
 			elim=0
 			while elim<len(si) and elim<len(outp.args.subs):
@@ -1851,12 +1886,12 @@ class Tobj:
 				core = None
 				if outp.core != None:
 					core = outp.core.dpush_ds(stretch,outp.name)
-				outp = RefTree(outp.name,nsubs,None if outp.src==None else outp.src.dpush(stretch),verdepth=ndepth,pos=outp,core=core)
+				outp = RefTree(outp.name,nsubs,None if outp.src==None else outp.src.dpush(stretch),verdepth=ndepth+goffset,pos=outp,core=core)
 		if type(self) is ScopeComplicator:
 			if elim==0:
 				outp = self
 			else:
-				res =[secret.dpush(ScopeDelta([(ndepth-fafter,ndepth)])) for secret in self.secrets]
+				res =[secret.dpush(stretch) for secret in self.secrets]
 				# res,sof = semi_complicate_dpush(self.verdepth+ndepth-fafter,self.secrets,ScopeDelta([(ndepth-fafter,ndepth)]))
 				outp = complicate(outp,res)
 		if len(si)==elim: return outp
@@ -2279,6 +2314,25 @@ class DualSubs(Tobj):
 # # 	descend on b
 # # 	delete seg from a
 
+	def look(self,result,worrynot=False):
+		for row in self.rows: row.look(result)
+		if not worrynot:
+			for i in range(self.verdepth,self.verdepth+longcount(self)): result.discard(i)
+			# for i in result:
+			# 	if i>=self.verdepth: result.remove(i)
+	def advlook(self,result,pushes,worrynot=False):
+		for row in self.rows: row.advlook(result,pushes)
+		if not worrynot:
+			for i in range(self.verdepth+pushes.lenchange,self.verdepth+pushes.lenchange+longcount(self)):
+				result.discard(i)
+			if hasattr(pushes,'lookmemo'):
+				for i in range(self.verdepth,self.verdepth+longcount(self)):
+					pushes.lookmemo.discard(i)
+			# for i in result:
+			# 	if i>=self.verdepth: result.remove(i)
+
+
+
 
 
 	def dpush(self,pushes,exob=None,frozen=False,selective=None,worrynot=False):
@@ -2456,10 +2510,6 @@ class DualSubs(Tobj):
 			fillout = fillout + len(nflat.flat)
 		return (cu,delta) if then else cu
 
-
-
-
-
 	def inheritpopulate(self,mapping,obj,fullmapping,upgrades):
 		s = 0
 		cu = []
@@ -2489,13 +2539,6 @@ class DualSubs(Tobj):
 			delta = delta + ScopeDelta([(-vv,self.verdepth)])
 			left+=vv
 		return buildfrom(mapping,cu,self.verdepth)
-
-
-
-
-
-
-
 
 	def emptyinst(self,limit,mog=False,prep=None):
 		if mog == False: mog,limit = striphuman(limit,self.fulavail())
@@ -3091,6 +3134,15 @@ class SubsObject(Tobj):
 	def detect(self,ranges,light=False):
 		return any(sub.detect(ranges,light=light) for sub in self.subs)
 
+
+	def look(self,result):
+		for sub in self.subs: sub.obj.look(result)
+	def advlook(self,result,pushes):
+		for sub in range(len(self.subs)):
+			self.subs[sub].obj.advlook(result,pushes)
+
+
+
 	def dpush(self,pushes,exob=None,frozen=False,selective=None):
 		if frozen:
 			res = []
@@ -3242,6 +3294,26 @@ class Lambda(Tobj):
 	def detect(self,ranges,light=False):
 		return self.obj.detect(ranges,light=light)
 
+
+	def look(self,result):
+		self.obj.look(result)
+
+		for i in range(self.verdepth,self.verdepth+len(self.si)): result.discard(i)
+
+		# for i in result:
+		# 	if i>=self.verdepth: result.remove(i)
+	def advlook(self,result,pushes):
+		self.obj.advlook(result,pushes)
+		for i in range(self.verdepth+pushes.lenchange,self.verdepth+pushes.lenchange+len(self.si)):
+			result.discard(i)
+		if hasattr(pushes,'lookmemo'):
+			for i in range(self.verdepth,self.verdepth+len(self.si)):
+				pushes.lookmemo.discard(i)
+
+		# for i in result:
+		# 	if i>=self.verdepth: result.remove(i)
+
+
 	def dpush(self,pushes,exob=None,frozen=False,selective=None):
 		if exob!=None:
 			aftburn = self.verdepth+pushes.lenchange
@@ -3337,6 +3409,30 @@ class Strategy(Tobj):
 		if hasattr(ranges,'precal'): ranges.precal = [a for a in ranges.precal if a<self.verdepth]
 		return False
 		
+
+
+	def look(self,result):
+		self.args.look(result,worrynot=True)
+		self.type.look(result)
+		for i in range(self.verdepth,self.verdepth+longcount(self.args)): result.discard(i)
+
+		# for i in result:
+		# 	if i>=self.verdepth: result.remove(i)
+	def advlook(self,result,pushes):
+		self.args.advlook(result,pushes,worrynot=True)
+		self.type.advlook(result,pushes)
+		for i in range(self.verdepth+pushes.lenchange,self.verdepth+pushes.lenchange+longcount(self.args)):
+			result.discard(i)
+		if hasattr(pushes,'lookmemo'):
+			for i in range(self.verdepth,self.verdepth+longcount(self.args)):
+				pushes.lookmemo.discard(i)
+		# 	if self.verdepth+pushes.lenchange+i in result:
+
+
+
+		# for i in result:
+		# 	if i>=self.verdepth: result.remove(i)
+
 
 	def dpush(self,pushes,exob=None,frozen=False,selective=None):
 		# disgrace = ScopeDelta()
@@ -3591,6 +3687,42 @@ class RefTree(Tobj):
 			if not ranges.canTranslate(self.name,self.verdepth): return True
 		elif self.src.detect(ranges,light=light): return True
 		return self.args!=None and self.args.detect(ranges,light=light)
+
+
+
+	def look(self,result):
+		if self.args!=None:
+			for sub in self.args.subs: sub.obj.look(result)
+		if self.src==None: result.add(self.name)
+		else: self.src.look(result)
+	def advlook(self,result,pushes):
+		if self.args!=None:
+			for sub in self.args.subs: sub.obj.advlook(result,pushes)
+		if self.src==None:
+			if not hasattr(pushes,'lookmemo'): pushes.lookmemo=set()
+			if self.name not in pushes.lookmemo:
+				if pushes.canTranslate(self.name,inlen=self.verdepth):
+					mow = pushes.translate(self.name)
+					if type(mow) is tuple:
+
+						madra = ScopeDelta([(self.verdepth+mow[3]-mow[0].verdepth,mow[0].verdepth)])+mow[1]
+
+						mow[0].advlook(result,madra)
+						if mow[1].canTranslate(mow[2]):
+							result.add(mow[1].translate(mow[2]))
+					else:
+						result.add(mow)
+				pushes.lookmemo.add(self.name)
+		else: self.src.advlook(result,pushes)
+
+
+
+
+
+
+
+
+
 	def dpush(self,pushes,exob=None,frozen=False,selective=None):
 		gy = self.name
 
@@ -4082,30 +4214,6 @@ def complicate(core,secrets,pos=None):
 		return ScopeComplicator(core,secrets,verdepth=core.verdepth-len(secrets),pos=pos)
 	return core
 
-# def carefulcomplicate(core,secrets,pos=None):
-# 	if not any(s==None for s in secrets): return complicate(core,secrets,pos=pos)
-# 	verdepth=core.verdepth-len(secrets)
-# 	return complicate(core.dpush(ScopeDelta([ (-1,verdepth+s) for s in reversed(range(len(secrets))) if secrets[s]==None ])),[s for s in secrets if s!=None],pos=pos)
-
-# def semi_complicate_dpush(depth,secrets,pushes):
-# 	res = []
-# 	sof = ScopeDelta()
-# 	s = depth
-# 	for secret in secrets:
-# 		# if secret.detect(pushes):
-# 		# 	sof.append((-1,s))
-# 		# else:
-# 		# 	res.append(secret.dpush(pushes+sof))
-# 		# 	s+=1
-# 		# if secret.detect(pushes):
-# 		try:
-# 			res.append(secret.dpush(pushes+sof,testy=True))
-# 			s+=1
-# 		except DpushError:
-# 			sof.append((-1,s))
-
-# 	return res,sof
-
 
 class DelayedComplication:
 	def __init__(self,obj,srows=None):
@@ -4117,7 +4225,7 @@ class DelayedComplication:
 		return self.ob.dpush(self.srows+ScopeDelta([(target-ldep,min(ldep,target))]),exob=exob)
 	def delayAT(self,target):
 		ldep = self.ob.verdepth+self.srows.lenchange
-		return DelayedSub(self.ob,self.ob.isSubOb(),self.srows+ScopeDelta([(target-ldep,min(ldep,target))]))
+		return DelayedSub(self.ob,self.isSubOb(),self.srows+ScopeDelta([(target-ldep,min(ldep,target))]))
 
 
 
@@ -4189,6 +4297,34 @@ class ScopeComplicator(Tobj):
 		return self.cache
 	def compare(self,other,odsc=None,thot=None,extract=None,lefpush=None,rigpush=None):
 		return self.core.compare(other,odsc,thot,extract,self.correction() if lefpush==None else self.correction()+lefpush,rigpush)
+
+
+
+	def look(self,result):
+		self.core.look(result)
+		for i in reversed(range(len(self.secrets))):
+			if self.verdepth+i in result:
+				result.remove(self.verdepth+i)
+				if self.secrets[i].srows.isempty(): self.secrets[i].ob.look(result)
+				else: self.secrets[i].ob.advlook(result,self.secrets[i].srows)
+				
+
+		# if self.src==None: result.add(self.name)
+		# else: self.src.look(result)
+	def advlook(self,result,pushes):
+		self.core.advlook(result,pushes)
+		for i in reversed(range(len(self.secrets))):
+			if self.verdepth+pushes.lenchange+i in result:
+				result.remove(self.verdepth+pushes.lenchange+i)
+				self.secrets[i].ob.advlook(result,self.secrets[i].srows+pushes)
+				
+
+		# if self.src==None: result.add(self.name)
+		# else: self.src.advlook(result,pushes)
+
+
+
+
 	def dpush(self,pushes,exob=None,frozen=False,selective=None):
 		# res,sof = semi_complicate_dpush(self.verdepth+pushes.lenchange,self.secrets,pushes)
 		# mom = complicate(self.core.dpush(pushes+sof,exob=exob,frozen=frozen,selective=selective),res,pos=self)
@@ -4203,15 +4339,33 @@ class ScopeComplicator(Tobj):
 		if hasattr(ranges,'precal'): ranges.precal = [a for a in ranges.precal if a<self.verdepth]
 		return False
 	def writefile(self,file):
-		file.writeChar("J")
-		file.writeNum(len(self.secrets))
 		conv = ScopeDelta()
-		for secret in range(len(self.secrets)):
-			try:
-				self.secrets[secret].observe().writefile(file)
-			except DpushError:
-				conv.append((1,secret))
-		self.core.dpush(-conv).writefile(file)
+
+
+
+		oust = []
+
+		result = set()
+		self.core.look(result)
+		for i in reversed(range(len(self.secrets))):
+			if self.verdepth+i in result:
+				result.remove(self.verdepth+i)
+				# if conv.isempty():
+				# 	jala = self.secrets[i]#.observe()
+				# else:
+				# 	jala = self.secrets[i].ob.dpush(self.secrets[i].srows+conv)
+				oust.insert(0,self.secrets[i])
+				if self.secrets[i].srows.isempty(): self.secrets[i].ob.look(result)
+				else: self.secrets[i].ob.advlook(result,self.secrets[i].srows)
+			else:
+				conv.append((-1,i+self.verdepth))
+				for i in range(len(oust)): oust[i] = oust[i].dpush(ScopeDelta([(-1,i+self.verdepth)])) 
+
+		if len(oust):
+			file.writeChar("J")
+			file.writeNum(len(oust))
+			for oe in oust: oe.observe().writefile(file)
+		self.core.dpush(conv).writefile(file)
 
 	def prepr(self,context):
 		if not context.printcomplicators: return self.decode().prepr(context)
