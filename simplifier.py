@@ -75,15 +75,17 @@ if True:
 			callback(context,out,tail)
 
 
+
+
 	def firstSubObPush(iso,dok,inlen):
 		while (type(iso) is int or type(iso) is Inspection) and not dok.isempty():
 			if type(iso) is int:
 				try:
-					iso = dok.translate(iso)
+					iso = dok.translate(iso,inlen=inlen)
 				except DpushError: return None
 				if type(iso) is tuple:
-					inlen += iso[4].lenchange
-					brok = iso[4]
+					inlen += iso[3].lenchange
+					brok = iso[3]
 					dok = iso[1]
 					iso = iso[0].isSubOb()
 					if type(iso) is tuple: return (brok,dok)
@@ -91,11 +93,11 @@ if True:
 			else:
 				ko = iso.inspect
 				try:
-					iso = dok.translate(iso.root)
+					iso = dok.translate(iso.root,inlen=inlen)
 				except DpushError: return None
 				if type(iso) is tuple:
-					inlen += iso[4].lenchange
-					brok = iso[4]
+					inlen += iso[3].lenchange
+					brok = iso[3]
 					dok = iso[1]
 					iso = inspectref(iso[0].isSubOb(),ko)
 					if type(iso) is tuple: return (brok,dok)
@@ -104,21 +106,23 @@ if True:
 					break
 		return None
 
-	def isSubObPush(iso,dok):
+	def isSubObPush(iso,dok,inlen):
 
 		while (type(iso) is int or type(iso) is Inspection or type(iso) is tuple) and not dok.isempty():
 			if type(iso) is int:
-				iso = dok.translate(iso)
+				iso = dok.translate(iso,inlen=inlen)
 				if type(iso) is tuple:
+					inlen += iso[3].lenchange
 					dok = iso[1]
 					iso = iso[0].isSubOb()
 				else: break
 			elif type(iso) is tuple:
-				return tuple(isSubObPush(k,dok) for k in iso)
+				return tuple(isSubObPush(k,dok,inlen=inlen) for k in iso)
 			else:
 				ko = iso.inspect
-				iso = dok.translate(iso.root)
+				iso = dok.translate(iso.root,inlen=inlen)
 				if type(iso) is tuple:
+					inlen += iso[3].lenchange
 					dok = iso[1]
 					iso = inspectref(iso[0].isSubOb(),ko)
 				else:
@@ -338,15 +342,6 @@ def _dbgExit_dpush(self,pushes,exob,frozen,outp):
 		safe = self.getSafety()
 		outp.setSafety(None if safe == None else safe+pamt)
 		outp.setVerified()
-
-	# outp.alsubbedsafety = copy.copy(pushes.subprots(self.verdepth))
-	# if hasattr(self,'alsubbedsafety'):
-	# 	for k in self.alsubbedsafety:
-	# 		if pushes.canTranslate(k,inlen=safe):
-	# 			v = pushes.translate(k)
-	# 			assert type(v) is int
-	# 			assert v not in outp.alsubbedsafety
-	# 			outp.alsubbedsafety.append(v)
 
 
 def _dbgEnter_pmultiline(self,context,out,indent,prepend,postpend,callback):
@@ -684,16 +679,18 @@ class DelayedSub:
 					assert False
 			RRR-=1
 
-			assert isSubObPush(self.core.isSubOb(),self.rows) == self.isSubOb
+			assert isSubObPush(self.core.isSubOb(),self.rows,self.core.verdepth) == self.isSubOb
 
 
 
 	def dpush_ds(self,rows,myname):
 		if rows.isempty(): return self
-		ko = self.rows+rows
-		ko.tampdown()
+		if self.rows.isempty(): ko = rows
+		else: ko = self.rows+rows
+
+		# ko.tampdown()
 		if rows.islowerbound(myname):
-			return DelayedSub(self.core,isSubObPush(self.isSubOb,rows),ko)
+			return DelayedSub(self.core,isSubObPush(self.isSubOb,rows,inlen=self.core.verdepth+self.rows.lenchange),ko)
 		# print(self.core.)
 		# if len(ko.pushes)==1 and len(ko.pushes[0])==2 and ko.pushes[0][0]>=0:
 		# 	debugg = self.core.simpush(SimpleDelta(ko.pushes[0][0],ko.pushes[0][1]))
@@ -705,11 +702,24 @@ class DelayedSub:
 
 # the cure- six different ways
 
+	# there are more memos...
+
+	# the most important one: <><>
+	# the least important one: tm
+
+
+# need to ensure that objects all have the same delayedsub.
+# on load you can do better w this.
+# on verify you can also do better w this.
+# mergedeltas will also help.
+
 
 
 class ScopeDelta:
 	def __hash__(self):
 		return hash(tuple(tuple(a[0]) if len(a)==1 else a for a in self.pushes))
+	def __eq__(self,other):
+		return type(other) is ScopeDelta and self.pushes == other.pushes
 
 	def tampdown(self):
 		# while len(self.pushes)>1 and len(self.pushes[-1])==2 and len(self.pushes[-2])==2:
@@ -824,7 +834,7 @@ class ScopeDelta:
 			car = self.subprots(safe)
 			for j in obj.alsubbedsafety:
 				if self.canTranslate(j,inlen=safe):
-					jah = self.translate(j)
+					jah = self.translate(j,inlen=safe)
 					assert type(jah) is int
 					assert jah not in car
 					car.append(jah)
@@ -863,7 +873,7 @@ class ScopeDelta:
 						assert symbol.verdepth<=key
 					trans = ScopeDelta([(safe-symbol.verdepth,symbol.verdepth)]+self.pushes[i+1:])
 					if trans.canTranslate(key,inlen=safe):
-						assert type(trans.translate(key)) is int
+						assert type(trans.translate(key,inlen=safe)) is int
 
 					# assert symbol.verdepth>key
 					# assert not symbol.detect(ScopeDelta([(symbol.verdepth-key,key)]))
@@ -938,11 +948,22 @@ class ScopeDelta:
 						return trans.islowerbound(key) or not symbol.detect(trans)
 						# return symbol.detect(trans)
 		return True
-	def translate(self,fug,ignoresubs=False):
+	def translate(self,fug,inlen=None,ignoresubs=False):
 		if not hasattr(self,'tm'): self.tm = {}
-		else:
-			dtry = self.tm.get(fug)
-			if dtry!=None: return dtry
+		# else:
+		# 	dtry = self.tm.get(fug)
+		# 	if dtry!=None:
+		# 		if type(dtry) is dict:
+		# 			further = dtry.get(inlen)
+		# 			if further != None: return further
+		# 			tlen,further = next(iter(dtry.items()))
+		# 			if len(further)==3:
+		# 				further = (further[0],ScopeDelta(further[1].pushes[:-1]+[(further[1].pushes[-1][0]+tlen-inlen,further[1].pushes[-1][1])]),further[2])
+		# 			else:
+		# 				further = (further[0],ScopeDelta([(further[1].pushes[0][0]+inlen-tlen,further[1].pushes[0][1])]+further[1].pushes[1:]),further[2])
+		# 			dtry[inlen]=further
+		# 			return further
+		# 		return dtry
 		ifug = fug
 		changefar = 0
 		for i in range(len(self.pushes)):
@@ -957,18 +978,37 @@ class ScopeDelta:
 				elif fug>=j[2] and fug<j[2]+j[3]: fug+=j[0]-j[2]
 				elif fug>=j[0]+j[1] and fug<j[2]: fug+=j[3]-j[1]
 			elif len(j)==3:
-				changefar += j[0]+len(j[2])
 				if fug>=j[1]:
 					if fug+j[0]<j[1]:
-						fug = (j[2],ScopeDelta(self.pushes[:i]),ScopeDelta(self.pushes[i+1:]))
-						self.tm[ifug]=fug
+						fug = (j[2],ScopeDelta(self.pushes[:i]+[(j[2][0].verdepth-(inlen+changefar),j[2][0].verdepth)]),ScopeDelta(self.pushes[i+1:]))
+						self.tm[ifug]={inlen:fug}
 						return fug
 					fug+=j[0]+len(j[2])
+				changefar += j[0]+len(j[2])
 			elif not ignoresubs:
 				for key,symbol in j[0]:
 					if fug==key:
-						fug = (symbol,ScopeDelta(self.pushes[i+1:]),fug,changefar,ScopeDelta(self.pushes[:i+1]))
-						self.tm[ifug]=fug
+						for w in self.pushes[i+1:]:
+							if len(w)==2:
+								if fug>=w[1]:
+									fug+=w[0]
+									if fug<w[1]:
+										fug = (symbol,ScopeDelta([(inlen+changefar-symbol.verdepth,symbol.verdepth)]+self.pushes[i+1:]),None,ScopeDelta(self.pushes[:i+1]))
+										break
+							elif len(w)==4:
+								if   fug>=w[0] and fug<w[0]+w[1]: fug+=w[2]+w[3]-w[0]-w[1]
+								elif fug>=w[2] and fug<w[2]+w[3]: fug+=w[0]-w[2]
+								elif fug>=w[0]+w[1] and fug<w[2]: fug+=w[3]-w[1]
+						else:
+							fug = (symbol,ScopeDelta([(inlen+changefar-symbol.verdepth,symbol.verdepth)]+self.pushes[i+1:]),fug,ScopeDelta(self.pushes[:i+1]))
+
+						# if not hasattr(self,'isdr'): self.isdr = {}
+						# mod = self.isdr.get(i)
+						# if mod==None:
+						# 	mod = ScopeDelta(self.pushes[i+1:])
+						# 	self.isdr[i] = mod
+						# assert changefar+ScopeDelta(self.pushes[:i+1]).lenchange == self.lenchange
+						self.tm[ifug]={inlen:fug}
 						return fug
 		self.tm[ifug]=fug
 		return fug
@@ -1342,10 +1382,31 @@ def implicitcast(indesc,expected,provided,obj,blame=None,soften=False,extract=No
 
 
 class ContextYam:
-	def __init__(self,operators=None):
+	def __init__(self,operators=None,mergememo=None):
 		self.operators = operators
+		self.mergememo = {} if mergememo == None else mergememo
 		# self.lastComputation = lastComputation
 		# self.nextComputation = Computation()
+
+
+	def mergedeltas(self,typerows):
+		global hits
+		global references
+
+		suh = copy.copy(self.mergememo)
+		for t in typerows: t.mergewith(suh)
+		ya = ContextYam(self.operators,suh)
+
+		# if references!=0: print("Current hit rate: ",100*float(hits)/float(references),"%")
+
+		return ya
+
+
+
+# spawn with your own...
+# preserve memo over add...
+# modify new elements that were added in...
+
 
 class ScopeObject:
 	def __init__(self,flat=None,prpush=None,popush=None,oprows=None):
@@ -1371,7 +1432,7 @@ class ScopeObject:
 			newflat.setSafety(len(self))
 		def _dbgExit(ahjs):
 			ahjs.setSafety(0)
-		return ScopeObject(self.flat+newflat.flat,self.prepushes,self.postpushes,self.oprows)
+		return ScopeObject(self.flat+newflat.flat,self.prepushes,self.postpushes,None if self.oprows == None else self.oprows.mergedeltas(newflat.flat))
 	def invisadd(self,newflat):
 		def _dbgEnter():
 			self.setSafety(0)
@@ -1381,6 +1442,7 @@ class ScopeObject:
 			assert len(ahjs)==len(self)
 			assert self.beginlen()+len(newflat.flat)==ahjs.beginlen()
 		if len(newflat.flat) == 0: return self
+		if self.oprows != None: self.oprows.mergedeltas(newflat.flat)
 		return ScopeObject(self.flat+newflat.flat,self.prepushes,self.postpushes+ScopeDelta([(-len(newflat.flat),len(self))]),self.oprows)
 	def sneakadd(self,newflat):
 		def _dbgEnter():
@@ -1389,15 +1451,15 @@ class ScopeObject:
 		def _dbgExit(ahjs):
 			ahjs.setSafety(0)
 		if len(newflat.flat) == 0: return self
-		return ScopeObject(self.flat+newflat.flat,self.prepushes+ScopeDelta([(len(newflat.flat),len(self.flat))]),self.postpushes,self.oprows)
+		return ScopeObject(self.flat+newflat.flat,self.prepushes+ScopeDelta([(len(newflat.flat),len(self.flat))]),self.postpushes,None if self.oprows == None else self.oprows.mergedeltas(newflat.flat))
 
 
-	def posterase(self,amt):
-		if amt == 0: return self
-		return ScopeObject(self.flat,self.prepushes,self.postpushes+ScopeDelta([(amt-len(self),amt)]),self.oprows)
+	# def posterase(self,amt):
+	# 	if amt == 0: return self
+	# 	return ScopeObject(self.flat,self.prepushes,self.postpushes+ScopeDelta([(amt-len(self),amt)]),self.oprows)
 	def preerase(self,amt):
 		if amt == 0: return self
-		return ScopeObject(self.flat,self.prepushes+ScopeDelta([(amt,len(self.flat)-amt)]),self.postpushes,self.oprows)
+		return ScopeObject(self.flat,self.prepushes+ScopeDelta([(amt,len(self.flat)-amt)]),self.postpushes,None if self.oprows == None else self.oprows)
 
 
 	def setSafety(self,safe):
@@ -1420,13 +1482,13 @@ class ScopeObject:
 		def _dbgExit(ahjs):
 			assert len(self)-amt == len(ahjs)
 			assert self.beginlen() == ahjs.beginlen()
-		ahjs = ScopeObject(self.flat[:len(self.flat)-amt],-(-self.prepushes).subset(len(self.flat)-amt),self.postpushes,self.oprows)
+		ahjs = ScopeObject(self.flat[:len(self.flat)-amt],-(-self.prepushes).subset(len(self.flat)-amt),self.postpushes,None if self.oprows == None else self.oprows)
 		return ahjs
 
 
 	def prepushPR(self,pushes):
 		if pushes.isempty(): return self
-		return ScopeObject(self.flat,pushes+self.prepushes,self.postpushes,self.oprows)
+		return ScopeObject(self.flat,pushes+self.prepushes,self.postpushes,None if self.oprows == None else self.oprows)
 
 
 	def beginlen(self):
@@ -1561,6 +1623,12 @@ class ScopeObject:
 		return repr(output)+repr(self.postpushes)+" -- "+repr(self.prepushes)
 
 
+
+
+
+
+
+
 def shortwidereferencerecurse(obj,si):
 	if type(si) is not list: return [obj]
 	cu = []
@@ -1593,6 +1661,8 @@ def juris(name):
 	return (name,None)
 
 
+references = 0
+hits = 0
 
 
 class DelayedTypeRow:
@@ -1642,6 +1712,27 @@ class DelayedTypeRow:
 			else:
 				self.obj.srows.lookmemo=set()
 				self.obj.ob.advlook(result,self.obj.srows,lowerbound=lowerbound)
+
+
+	def mergewith(self,suh):
+		global hits
+		global references
+		if not self.type.srows.isempty():
+			k = self.type.srows
+			j = suh.get(k)
+			references+=1
+			if j!=None:
+				hits+=1
+				self.type.srows = j
+			else: suh[k] = k
+		if self.obj!=None and not self.obj.srows.isempty():
+			k = self.obj.srows
+			j = suh.get(k)
+			references+=1
+			if j!=None:
+				hits+=1
+				self.obj.srows = j
+			else: suh[k] = k
 
 
 class SimpleDelta:
@@ -1943,8 +2034,8 @@ class Tobj:
 		if type(self) is RefTree and self.core!=None:
 			return self.core.core.get_sem_si(sem,self.core.rows if pushes==None else self.core.rows+pushes)
 		if type(self) is RefTree and self.src==None and pushes!=None:
-			mow = pushes.translate(self.name)
-			if type(mow) is tuple: return mow[0].get_sem_si(sem,ScopeDelta([(self.verdepth+mow[3]-mow[0].verdepth,mow[0].verdepth)])+mow[1])
+			mow = pushes.translate(self.name,inlen=self.verdepth)
+			if type(mow) is tuple: return mow[0].get_sem_si(sem,mow[1])
 		return None
 
 	def get_si(self,pushes=None):
@@ -1955,8 +2046,8 @@ class Tobj:
 		if type(self) is RefTree and self.core!=None:
 			return self.core.core.get_si(self.core.rows if pushes==None else self.core.rows+pushes)
 		if type(self) is RefTree and self.src==None and pushes!=None:
-			mow = pushes.translate(self.name)
-			if type(mow) is tuple: return mow[0].get_si(ScopeDelta([(self.verdepth+mow[3]-mow[0].verdepth,mow[0].verdepth)])+mow[1])
+			mow = pushes.translate(self.name,inlen=self.verdepth)
+			if type(mow) is tuple: return mow[0].get_si(mow[1])
 		print("get failed",self)
 		return None
 
@@ -1968,8 +2059,8 @@ class Tobj:
 		if type(self) is RefTree and self.core!=None:
 			return self.core.core.get_divisibility_si(self.core.rows if pushes==None else self.core.rows+pushes)
 		if type(self) is RefTree and self.src==None and pushes!=None:
-			mow = pushes.translate(self.name)
-			if type(mow) is tuple: return mow[0].get_divisibility_si(ScopeDelta([(self.verdepth+mow[3]-mow[0].verdepth,mow[0].verdepth)])+mow[1])
+			mow = pushes.translate(self.name,inlen=self.verdepth)
+			if type(mow) is tuple: return mow[0].get_divisibility_si(mow[1])
 		return True
 
 	def get_corrector_si(self,pushes=None):
@@ -1980,8 +2071,8 @@ class Tobj:
 		if type(self) is RefTree and self.core!=None:
 			return self.core.core.get_corrector_si(self.core.rows if pushes==None else self.core.rows+pushes)
 		if type(self) is RefTree and self.src==None and pushes!=None:
-			mow = pushes.translate(self.name)
-			if type(mow) is tuple: return mow[0].get_corrector_si(ScopeDelta([(self.verdepth+mow[3]-mow[0].verdepth,mow[0].verdepth)])+mow[1])
+			mow = pushes.translate(self.name,inlen=self.verdepth)
+			if type(mow) is tuple: return mow[0].get_corrector_si(mow[1])
 		return (None,None)
 
 
@@ -3287,7 +3378,9 @@ class DualSubs(Tobj):
 		for up in upgrades:
 			charm.append(up-self.verdepth)
 
-		return DualSubs([i[0].observe() for i in wclist],verdepth=self.verdepth,pos=blame,origin=(shortname if shortname!=None else self,geit,charm))
+		dengua = [i[0] for i in wclist]
+		indesc.oprows.mergedeltas(dengua)
+		return DualSubs([d.observe() for d in dengua],verdepth=self.verdepth,pos=blame,origin=(shortname if shortname!=None else self,geit,charm))
 class SubsObject(Tobj):
 	def isfrozen(self):
 		return any(s==None or s.obj.isfrozen() for s in self.subs)
@@ -3933,14 +4026,13 @@ class RefTree(Tobj):
 		if self.src==None:
 			# if not hasattr(pushes,'lookmemo'): pushes.lookmemo=set()
 			if self.name not in pushes.lookmemo:
-				mow = pushes.translate(self.name)
+				mow = pushes.translate(self.name,inlen=self.verdepth)
 				if type(mow) is tuple:
-					if mow[1].canTranslate(mow[2]):
-						result.add(mow[1].translate(mow[2]))
+					if mow[2] != None:
+						result.add(mow[2])
 					else:
-						madra = ScopeDelta([(self.verdepth+mow[3]-mow[0].verdepth,mow[0].verdepth)])+mow[1]
-						madra.lookmemo = set()
-						mow[0].advlook(result,madra,lowerbound=lowerbound)
+						mow[1].lookmemo = set()
+						mow[0].advlook(result,mow[1],lowerbound=lowerbound)
 				else:
 					result.add(mow)
 				pushes.lookmemo.add(self.name)
@@ -3948,7 +4040,7 @@ class RefTree(Tobj):
 			self.src.advlook(result,pushes)
 		elif type(self.src) is RefTree and self.src.core==None and self.src.src==None:
 			# if self.src.name not in pushes.lookmemo:
-			mow = pushes.translate(self.src.name)
+			mow = pushes.translate(self.src.name,inlen=self.verdepth)
 			if type(mow) is tuple: return
 			else: result.add(mow)
 			pushes.lookmemo.add(self.src.name)
@@ -3999,7 +4091,7 @@ class RefTree(Tobj):
 				res = self.core.core.dpush(self.core.rows+pushes,exob=decargs,frozen=frozen,selective=selective)
 				if selective==None: pushes.setmemo(self,exob,frozen,res)
 				return res
-			gy = pushes.translate(self.name,ignoresubs=self.core!=None)
+			gy = pushes.translate(self.name,ignoresubs=self.core!=None,inlen=self.verdepth)
 		if type(gy) is int:
 			if decargs!=None and decargs.isfrozen():
 				if self.core==None: raise DpushError()
@@ -4010,7 +4102,7 @@ class RefTree(Tobj):
 			pushes.setmemo(self,exob,False,res)
 			return res
 		elif len(gy)==3:
-			pard = self.dpush(gy[1]+ScopeDelta([(gy[0][0].verdepth-(self.verdepth+gy[1].lenchange),gy[0][0].verdepth)]))
+			pard = self.dpush(gy[1])
 			for j in range(len(gy[0])):
 				if pard.compare(gy[0][j]):
 					vdep = self.verdepth+pushes.lenchange-gy[2].lenchange
@@ -4023,24 +4115,23 @@ class RefTree(Tobj):
 			if gy[0]==None: raise DpushError()
 			froze = gy[0].isfrozen()
 			if froze and not frozen: raise DpushError()
-			sems = ScopeDelta([(self.verdepth+gy[3]-gy[0].verdepth,gy[0].verdepth)])+gy[1]
-			sems.tampdown()
-			if froze or not gy[1].canTranslate(gy[2],ignoresubs=True) or decargs!=None and decargs.isfrozen():
+			# sems = ScopeDelta([(self.verdepth+gy[3]-gy[0].verdepth,gy[0].verdepth)])+gy[1]
+			# sems.tampdown()
+			if froze or gy[2]==None or decargs!=None and decargs.isfrozen():
 				# if decargs==None and not frozen and len(sems.pushes)==1 and len(sems.pushes[0])==2 and sems.pushes[0][0]>=0:
 				# 	res = gy[0].simpush(SimpleDelta(sems.pushes[0][0],sems.pushes[0][1]))
 				# else:
-				res = gy[0].dpush(sems,exob=decargs,frozen=frozen)
+				res = gy[0].dpush(gy[1],exob=decargs,frozen=frozen)
 				pushes.setmemo(self,exob,frozen,res)
 				return res
 			else:
 				assert self.core == None
-				cr = gy[1].translate(gy[2])
 				res = RefTree(
-					cr,
+					gy[2],
 					decargs,
 					pos=self,
 					verdepth=pushdepth,
-					core = pushes.memoizeGet(sems,self.name,DelayedSub(gy[0],gy[0].isSubOb()),pushdepth)
+					core = pushes.memoizeGet(gy[1],self.name,DelayedSub(gy[0],gy[0].isSubOb()),pushdepth)
 				)
 				pushes.setmemo(self,exob,False,res)
 				return res
@@ -4468,8 +4559,14 @@ class DelayedComplication:
 		# 	return self.ob.simpush(SimpleDelta(target-ldep,min(ldep,target)))
 		return self.ob.dpush(self.srows+ScopeDelta([(target-ldep,min(ldep,target))]),exob=exob)
 	def delayAT(self,target):
+		if not hasattr(self,'dam'): self.dam = {}
+		else:
+			jar = self.dam.get(target)
+			if jar != None: return jar
 		ldep = self.ob.verdepth+self.srows.lenchange
-		return DelayedSub(self.ob,self.isSubOb(),self.srows+ScopeDelta([(target-ldep,min(ldep,target))]))
+		jam = DelayedSub(self.ob,self.isSubOb(),self.srows+ScopeDelta([(target-ldep,min(ldep,target))]))
+		self.dam[target] = jam
+		return jam
 	def reference(self,s):
 		return DelayedComplication(self.ob.reference(s),self.srows)
 
@@ -4484,7 +4581,7 @@ class DelayedComplication:
 
 
 	def isSubOb(self):
-		return isSubObPush(self.ob.isSubOb(),self.srows)
+		return isSubObPush(self.ob.isSubOb(),self.srows,inlen=self.ob.verdepth)
 	def dpush(self,pushes):
 		"""dbg_ignore"""
 		comb = self.srows+pushes
@@ -4786,31 +4883,37 @@ class MyTransformer(Transformer):
 	def wdualsubs(self,children,meta):
 		return children[0] if len(children) else DualSubs(pos=meta)
 class Untransformer:
-	def __init__(self,dict,head=0):
+	def __init__(self,dict,subdict,head=0):
 		self.dict = dict
+		self.postob = subdict
 		self.head = head
 	def update(self,scope):
 		for s in scope:
 			if s.obj!=None:
-				self.dict[self.head] = s.obj.observe()
+				self.dict[self.head] = s.obj
 			self.head+=1
 		return self
 	def isolate(self):
-		return Untransformer(copy.copy(self.dict),self.head)
+		return Untransformer(copy.copy(self.dict),self.postob,self.head)
 	def emptywrite(self,amt):
-		return Untransformer(copy.copy(self.dict),self.head+amt)
+		return Untransformer(copy.copy(self.dict),{},self.head+amt)
 	def getat(self,ind):
+		if ind in self.postob: return self.postob[ind]
 		if ind not in self.dict: return None
-		ob = self.dict[ind]
-		return DelayedSub(ob,ob.isSubOb(),ScopeDelta([(self.head-ob.verdepth,ob.verdepth)]))
+		# ob = self.dict[ind]
+		# res = DelayedSub(ob,ob.isSubOb(),ScopeDelta([(self.head-ob.verdepth,ob.verdepth)]))
+		res = self.dict[ind].delayAT(self.head)
+		self.postob[ind] = res
+		return res
 	def objwrite(self,ty,ds,si):
 		# assert type(ds) is not DelayedComplication
 		if si==None: hoe = [ds]
 		else: hoe = amorphwidereference(ds,ty,si)
 		for t in range(len(hoe)):
 			if hoe[t]!=None:
-				self.dict[self.head+t] = hoe[t]
+				self.dict[self.head+t] = DelayedComplication(hoe[t])
 		self.head += len(hoe)
+		self.postob = {}
 
 # global_debugging = False
 
@@ -5090,7 +5193,7 @@ class FileLoader:
 								print("beginning load: ",self.buildpath+filename)
 								fve = [a[0] for a in fdeps]
 							# try:
-								ver = self.arrangeTo(fve,self.deps,dbt.readScope(Untransformer({}).update(self.getdepsas(fve))))
+								ver = self.arrangeTo(fve,self.deps,dbt.readScope(Untransformer({},{}).update(self.getdepsas(fve))))
 							# except: pass
 							# else:
 								self.cumu += ver
@@ -5161,7 +5264,7 @@ class FileLoader:
 def _dbgTest():
 	print("OSIDJFOIDJFS")
 	try:
-		FileLoader(verbose=True,basepath="/Users/parkerlawrence/dev/agi/",buildpath="/Users/parkerlawrence/dev/agi/build/",redoAll=False).load("lattice_extensions.ax",redo=True)
+		FileLoader(verbose=True,basepath="/Users/parkerlawrence/dev/agi/",buildpath="/Users/parkerlawrence/dev/agi/build/",redoAll=True).load("lattice_extensions.ax",redo=True)
 	except LanguageError as u:
 		u.tohtml()
 		raise u
