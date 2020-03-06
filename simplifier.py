@@ -442,7 +442,7 @@ def _dbgExit_verify(self,indesc,carry,reqtype,then,outp):
 
 def htmlformat(struct,context,prepend,postpend="",tabs=0,forbidrange=None,additional = None):
 	a = []
-	fo = FormatterObject(context,forhtml=True,forbidrange=forbidrange)
+	fo = FormatterObject(context,forhtml=True,forbidrange=forbidrange,fullrepresent=False)
 	if additional!=None:
 		fo = fo.addbits(fo.newcolors(additional))
 	try:
@@ -521,30 +521,36 @@ class LanguageError(Exception):
 		choices = []
 		callpattern = None
 
+		# encounter = {}
 		for choice in range(len(self.choices)):
-			name,row,cr,indesc,error = self.choices[choice]
-			pushedrow = row.simpush(SimpleDelta(len(indesc)-cr,   min(cr,len(indesc))  ))
-
-
+			name,row,indesc,error = self.choices[choice]
+			pushedrow = row.observeAT(len(indesc))
+			# pushedrow = row.simpush(SimpleDelta(len(indesc)-cr,   min(cr,len(indesc))  ))
 			formatted = htmlformat(pushedrow,indesc,name+":")
-			if choice==self.callpattern:
-				callpattern = formatted
+			for subch in range(len(choices)):
+				if choices[subch][0].compare(pushedrow):
+					if len(formatted)<len(choices[subch][1]):
+						choices[subch] = (pushedrow,formatted,error)
+					break
 			else:
-				choices.append((formatted,error))
+				if choice==self.callpattern: callpattern = len(choices)
+				choices.append((pushedrow,formatted,error))
 
 		message = ""
-		for k in choices:
+		for choice in range(len(choices)):
+			if choice == callpattern: continue
+			discard,msg,err = choices[choice]
 			message += "<div style='background-color:#8969C3;border-radius:5px;margin-bottom:5px;'><div style='color:#282923;margin-left:10px;margin-right:10px'>Alternate interpretation:</div><div style='background-color:#594973;padding:10px;border-bottom-right-radius:5px;border-bottom-left-radius:5px;'>"
-			message += k[0]
-			if k[1]==None:
+			message += msg
+			if err==None:
 				message += "<div>Possibility not considered; parameters matched earlier possibility already.</div>"
 			else:
 				message += "<div>Disregarded Because:</div>"
-				message += k[1].errorhtml()
+				message += err.errorhtml()
 			message += "</div></div>"
 		if callpattern != None:
 			message += "<div style='background-color:#4F99A5;border-radius:5px;margin-bottom:5px;'><div style='color:#282923;margin-left:10px;margin-right:10px'>Inside function call:</div><div style='background-color:#39595B;padding:10px;border-bottom-right-radius:5px;border-bottom-left-radius:5px;'>"
-			message += callpattern
+			message += choices[callpattern][1]
 			message += "</div></div>"
 		message += self.errorhtml()
 		return message
@@ -1592,7 +1598,7 @@ class ScopeObject:
 			if self.flat[row].name != name: continue
 			if limiter== None and not (-self.prepushes).canTranslate(row): continue
 
-			errorcontext.insert(0,(name,self.flat[row].type.observe(),self.postpushes.translateGentle(row),self,None))
+			errorcontext.insert(0,(name,self.flat[row].type,self,None))
 			possib.append(row)
 		mmatch = len(errorcontext)
 		for row in possib:
@@ -1601,7 +1607,7 @@ class ScopeObject:
 			except LanguageError as u:
 				mmatch -= 1
 				if u.soft and len(possib)!=1:
-					errorcontext[mmatch] = (errorcontext[mmatch][0],errorcontext[mmatch][1],errorcontext[mmatch][2],errorcontext[mmatch][3],u)
+					errorcontext[mmatch] = (errorcontext[mmatch][0],errorcontext[mmatch][1],errorcontext[mmatch][2],u)
 					continue
 
 				u.callingcontext(errorcontext,mmatch)
@@ -3490,7 +3496,7 @@ class SubsObject(Tobj):
 			st = carry.peelcompactify(indesc,garbo,earlyabort=False)[0]
 			ga = st.extractbetween(carry,blame=self)
 		except LanguageError as u:
-			u.callingcontext([("(Constructing element of union)",carry,len(indesc),indesc,None)],0)
+			u.callingcontext([("(Constructing element of union)",DelayedComplication(carry),indesc,None)],0)
 			raise u
 		return SubsObject(ga,verdepth=len(indesc),pos=self)
 class Template(Tobj):

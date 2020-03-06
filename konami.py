@@ -56,7 +56,6 @@ class BuildAxiomCommand(sublime_plugin.ViewEventListener,sublime_plugin.TextComm
 
 		self.update_phantoms()
 
-
 	@classmethod
 	def is_applicable(cls, settings):
 		syntax = settings.get('syntax')
