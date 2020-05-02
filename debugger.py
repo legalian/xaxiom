@@ -176,13 +176,10 @@ class Madscience_debugger(ast.NodeTransformer):
 
 			node.body.append(Expr(value=Call(func=Name(id='_dbgExit_'+node.name, ctx=Load()), args=[Name(id=pn+'_dbg_str_var_'+str(self.hot),ctx=Load()) for pn in expattern]+[NameConstant(value=None)], keywords=[])))
 
-
-
-
-		node.body = [
-			*shobb,
-			*node.body[:fpad],
-			With(
+		track_frames = False
+		freebody = node.body[fpad:]+[]
+		if track_frames:
+			freebody = [With(
 				items=[
 					withitem(
 						context_expr=Call(func=Attribute(value=Name(id='madscience_debugger', ctx=Load()), attr='push_context', ctx=Load()), args=[Num(n=frozone)], keywords=[]),
@@ -190,10 +187,18 @@ class Madscience_debugger(ast.NodeTransformer):
 					)
 				],
 				body=node.body[fpad:]+[]
-			)
+			)]
+
+		node.body = [
+			*shobb,
+			*node.body[:fpad],
+			*freebody
 		]
 
-		self.visitblock(node.body[-1].body,"func")
+		if track_frames:
+			self.visitblock(node.body[-1].body,"func")
+		else:
+			self.visitblock(node.body[-1],"func")
 		# if node.name=="verify":
 		# 	print("verify mutated",node.lineno)
 		# 	node.body.insert(0,Expr(value=Call(func=Name(id='print', ctx=Load()), args=[Str(s='function was knocked on '+str(node.lineno))], keywords=[])))
