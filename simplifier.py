@@ -271,6 +271,7 @@ if True:
 				if safe!=None: downdeepverify(ahjs,safe)
 				return safe
 		if type(ahjs) is SubsObject:
+
 			just = None
 			for j in ahjs.subs:
 				if j !=None:
@@ -279,6 +280,9 @@ if True:
 						downdeepverify(ahjs,just)
 						return just
 		if type(ahjs) is DualSubs:
+			if ahjs.origin!=None:
+				downdeepverify(ahjs,ahjs.origin[0].verdepth)
+				return ahjs.origin[0].verdepth
 			if ahjs.verdepth==None: return
 			just = None
 			compen = 0
@@ -336,6 +340,8 @@ def _dbgEnter_dpush(self,pushes,exob,frozen):
 	if dbg_haw==0:
 		pushes.objconforms(self)
 	dbg_haw += 1
+
+	self.canbetranslated(pushes)
 def _dbgExit_dpush(self,pushes,exob,frozen,outp):
 	global dbg_haw
 	dbg_haw -= 1
@@ -348,6 +354,18 @@ def _dbgExit_dpush(self,pushes,exob,frozen,outp):
 		safe = self.getSafety()
 		outp.setSafety(None if safe == None else safe+pamt)
 		outp.setVerified()
+	try:
+		outp.canbetranslated(ScopeDelta())
+	except Exception as u:
+		print("pushed:")
+		print("\t",self.verdepth)
+		print("\t",self)
+		print("\t",pushes)
+		print("\t",outp)
+		print()
+		print("\t",outp.verdepth)
+		print("\t",pushes.subprots())
+		raise u
 
 
 	# car = pushes.subprots(self.verdepth)
@@ -462,6 +480,8 @@ def _dbgExit_verify(self,indesc,carry,reqtype,then,outp):
 	if type(outp) is SubsObject and carry!=None:
 		car = carry.asDualSubs()
 		assert len(car)==len(outp.subs)
+
+	outp.canbetranslated(ScopeDelta())
 
 	# outp.alsubbedsafety = indesc.subprots()
 
@@ -771,7 +791,7 @@ class DelayedSub:
 def alreadycanbetranslated(self,pushes,cobt=set()):
 	# return True
 	hashpushes = tuple(sorted(pushes.subprots()))
-	if hashpushes == tuple([]): return True
+	# if hashpushes == tuple([]): return True
 	if (self,hashpushes) in cobt:
 		# print("already discovered")
 		return True
@@ -825,7 +845,7 @@ class ScopeDelta:
 					assert type(j[2]) is list
 				else:
 					assert type(j[0]) is list
-					for key,symbol in j[0]:
+					for key,symbol in j[0]:#insert subtags for dbg
 						if symbol!=None: assert symbol.verdepth<=key
 
 	def memoizeGet(self,pushes,key,core,pushdepth):
@@ -836,6 +856,16 @@ class ScopeDelta:
 				precal_ds = whomd.get(pushdepth)
 				if precal_ds==None:
 					precal_vd,precal_ds = next(iter(whomd.items()))
+
+
+					if pushdepth-precal_vd == -1:
+						if precal_ds.rows != core.rows+pushes:
+							print(precal_ds.rows)
+							print(core.rows+pushes)
+							assert False
+
+						# def _dbgTest():
+						# 	assert early.pushes == self.pushes
 
 					# assert type(precal_ds.isSubOb) is not int or precal_ds.isSubOb < min(precal_vd,pushdepth)
 					# assert precal_ds.isSubOb == isSubObPush(precal_ds.core.isSubOb(),precal_ds.rows,precal_ds.core.verdepth)
@@ -867,6 +897,8 @@ class ScopeDelta:
 				early = whomd.get(fef)
 				if early==None:
 					vov,early = next(iter(whomd.items()))
+					# def _dbgTest():
+					# 	assert early.pushes == self.pushes
 					early = early.simpush(SimpleDelta(fef-vov,min(vov,fef)))
 					whomd[fef] = early
 				return early
@@ -878,6 +910,8 @@ class ScopeDelta:
 					early = whomd.get(fef)
 					if early==None:
 						vov,early = next(iter(whomd.items()))
+						# def _dbgTest():
+						# 	assert early.pushes == self.pushes
 						early = early.simpush(SimpleDelta(fef-vov,min(vov,fef)))
 						whomd[fef] = early
 					return early
@@ -902,8 +936,8 @@ class ScopeDelta:
 				a = self.subprots()
 				b = other.subprots()+[]
 				for u in a:
-					if not other.canTranslate(u): continue
-					c = other.translate(u)
+					if not other.canTranslate(u,ignoresubs=True): continue
+					c = other.translate(u,ignoresubs=True)
 					assert c not in b
 					b.append(c)
 				ko.memoSBP = b
@@ -974,7 +1008,7 @@ class ScopeDelta:
 				assert type(j[2]) is list
 			else:
 				assert type(j[0]) is list
-				for key,symbol in j[0]:
+				for key,symbol in j[0]:#insert subtags for dbg
 					if symbol==None: continue
 					assert key<safe
 					if symbol.verdepth>key:
@@ -1043,7 +1077,7 @@ class ScopeDelta:
 		for i in range(len(self.pushes)):
 			j = self.pushes[i]
 			if len(j)==1:
-				for key,symbol in j[0]:
+				for key,symbol in j[0]:#insert subtags for dbg
 					trans = ScopeDelta(self.pushes[i+1:])
 					if trans.canTranslate(key):
 						hama.append(trans.translate(key))
@@ -1071,7 +1105,7 @@ class ScopeDelta:
 					if fug+j[0]<j[1]: return False
 					fug+=j[0]+len(j[2])
 			elif not ignoresubs:
-				for key,symbol in j[0]:
+				for key,symbol in j[0]:#insert subtags for dbg
 					if fug==key:
 						if symbol==None: return False
 						trans = ScopeDelta([(inlen+changefar-symbol.verdepth,symbol.verdepth)]+self.pushes[i+1:])
@@ -1116,7 +1150,7 @@ class ScopeDelta:
 					fug+=j[0]+len(j[2])
 				changefar += j[0]+len(j[2])
 			elif not ignoresubs:
-				for key,symbol in j[0]:
+				for key,symbol in j[0]:#insert subtags for dbg
 					if fug==key:
 						if symbol==None: raise DpushError
 						for w in self.pushes[i+1:]:
@@ -1836,7 +1870,9 @@ class DelayedTypeRow:
 		def _dbgTest():
 			self.type.assertValid()
 			if self.obj!=None: self.obj.assertValid()
-
+	def canbetranslated(self,pushes):
+		self.type.canbetranslated(pushes)
+		if self.obj!=None: self.obj.canbetranslated(pushes)
 	def observe(self):
 		return TypeRow(self.name,self.type.observe(),None if self.obj==None else self.obj.observe(),self.silent)
 	def setVerified(self):
@@ -2253,14 +2289,26 @@ class Tobj:
 	def flatten(self,delta,mog,assistmog=None,prep=None,obj=None,fillout=None,then=False):
 		if type(mog) is list:
 
-			if type(self) is RefTree and self.core==None:
-				return self.dpush(delta).flatten(ScopeDelta(),mog,assistmog,prep,obj,fillout,then)
+			if type(self) is RefTree:
+				if self.core==None:
+					if delta.isempty():
+						yap = self.mangle_UE()
+						if yap!=None: return yap.flatten(delta,mog,assistmog,prep,obj,fillout,then)
+					else:
+						return self.dpush(delta).flatten(ScopeDelta(),mog,assistmog,prep,obj,fillout,then)
+				else:
+					if self.args == None:
+						return self.core.core.flatten(self.core.rows+delta,mog,assistmog,prep,obj,fillout,then)
+					else:
+						yap = self.unwrap()
+						if yap!=None: return yap.flatten(delta,mog,assistmog,prep,obj,fillout,then)
+
 
 			if type(self) is ScopeComplicator:
 				return self.core.flatten(self.correction()+delta,mog,assistmog,prep,obj,fillout,then)
-			if type(self) is RefTree:
-				yap = self.mangle_UE()
-				if yap!=None: return yap.flatten(delta,mog,assistmog,prep,obj,fillout,then)
+			# if type(self) is RefTree:
+			# 	yap = self.mangle_UE()
+			# 	if yap!=None: return yap.flatten(delta,mog,assistmog,prep,obj,fillout,then)
 			print("-=-=-=-=-=-")
 			print(self)
 			raise InvalidSplit()
@@ -2690,6 +2738,9 @@ class DualSubs(Tobj):
 					assert not hasfixes(k.name)
 
 
+	def preprot_fordebug(self):
+		return ScopeDelta([([(self.verdepth+r,None) for r in range(len(self.rows)) if self.rows[r].obj==None],)])
+
 	def extractbetween(self,older,hiju=None,blame=None):#this one is better if it just does the dpush flat out
 		for j in self.rows:
 			if j.obj==None:
@@ -2740,6 +2791,7 @@ class DualSubs(Tobj):
 	def detect(self,ranges,worrynot=False):
 		# if light:
 		if any(row.detect(ranges) for row in self.rows): return True
+
 		# else:
 		# 	if any(row.obj==None and row.detect(ranges) for row in self.rows): return True
 		if not worrynot and hasattr(ranges,'precal'): ranges.precal = [a for a in ranges.precal if a<self.verdepth]
@@ -2768,17 +2820,30 @@ class DualSubs(Tobj):
 	# def changeVD(self,amt):
 	# 	return DualSubs([row.changeVD(amt) for row in self.rows],self.verdepth+amt,None if self.origin==None else (self.origin[0].changeVD(amt),self.origin[1],self.origin[2]))
 	def simpush(self,alo):
-		# short = alo.mem2.get(id(self));
-		# if short!=None: return short
+		short = alo.mem2.get(id(self));
+		if short!=None: return short
 		res = DualSubs([a.simpush(alo) for a in self.rows],verdepth=self.verdepth+alo.amt,origin=None if self.origin==None else (self.origin[0].simpush(alo),self.origin[1],self.origin[2]),pos=self)
 		alo.mem2[id(self)] = res
 		return res
 
 	def canbetranslated(self,pushes):
+		# ScopeDelta([([(self.verdepth+r,None) for r in range(len(self.rows)) if self.rows[r].obj==None],)])
+
+
 		if alreadycanbetranslated(self,pushes): return
-		for j in self.rows:
-			j.type.canbetranslated(pushes)
-			if j.obj!=None: j.obj.canbetranslated(pushes)
+		aid = ScopeDelta()
+		sof = self.verdepth
+		for j in range(len(self.rows)):
+			self.rows[j].type.canbetranslated(aid+pushes)
+			nsof = sof+longcount(self.rows[j].name)
+			if self.rows[j].obj!=None: self.rows[j].obj.canbetranslated(aid+pushes)
+			else:
+				aid = aid+ScopeDelta([([(k,None) for k in range(sof,nsof)],)])
+			sof = nsof
+		if self.origin!=None: 
+			self.origin[0].canbetranslated(pushes)
+
+
 	def dpush(self,pushes,exob=None,frozen=False,selective=None,worrynot=False):
 		early = pushes.getmemo(self,exob,False)
 		if early!=None: return early
@@ -2923,6 +2988,8 @@ class DualSubs(Tobj):
 
 	@lazyflatten
 	def flatten(self,delta,mog,assistmog,prep=None,obj=None,fillout=None,then=False):
+		def _dbgTest():
+			self.canbetranslated(ScopeDelta())
 		s = 0
 		cu = ScopeObject()
 		left = self.verdepth + delta.lenchange
@@ -3273,6 +3340,8 @@ class DualSubs(Tobj):
 		return ((outp,earlyabort),(indesc,delta)) if then else (outp,earlyabort)
 
 	def applytemplate(self,indesc,NSC,subs,rows,blame=None,shortname=None,secret=None):
+		def _dbgTest():
+			self.canbetranslated(ScopeDelta())
 		poppo = [(NSC[0][a],NSC[1][a]) for a in range(len(NSC[0]))]
 		inc = []
 		def triplecopy(ma):
@@ -3319,6 +3388,7 @@ class DualSubs(Tobj):
 		wlist = self.flatten(ScopeDelta([]),NANms).flat
 		wonk = indesc.addflat(ScopeObject(wlist)).prepushPR(ScopeDelta([(1,indesc.beginlen()+n) for n in range(len(wlist)) if not inc[n]]))
 
+		print("templating:",NANms)
 		jmore = DualSubs(rows,pos=blame).verify(wonk).flatten(ScopeDelta([])).flat
 
 		wclist = [((wlist+jmore)[d],(inc+[True for j in jmore])[d],self.verdepth+d,[]) for d in range(len(inc)+len(jmore))]
@@ -3370,7 +3440,7 @@ class DualSubs(Tobj):
 			sources = []
 			for b in range(len(wclist)):
 				if b!=a and wclist[a][2] not in wclist[b][3]:
-					wlist.append((wclist[b][0].dpush(ScopeDelta(tub)),wclist[b][1],wclist[b][2],wclist[b][3]))
+					wlist.append((wclist[b][0].dpush(ScopeDelta(copy.copy(tub))),wclist[b][1],wclist[b][2],wclist[b][3]))
 					sources.append(b)
 				else:
 					tub.insert(0,(-1,self.verdepth+b))
@@ -3406,6 +3476,10 @@ class DualSubs(Tobj):
 									if d not in wclist[c][3]: wclist[c][3].append(d)
 				hs+=1
 		def shape2(sources,wlist,wclist,converter):
+			# for v in range(len(wclist)):
+			# 	wclist[v][0].canbetranslated(ScopeDelta([([(self.verdepth+x,None) for x in range(v) if wclist[x][0].obj==None],)]))
+
+
 			assert len(sources)==len(wlist)
 			for b in range(len(wclist)):
 				if b not in sources: sources.append(b)
@@ -3439,9 +3513,32 @@ class DualSubs(Tobj):
 						assert hacakewalk[f+1]>hacakewalk[f]
 					# if any(len(k)==4 for k in tub):
 					# 	assert False
+				# wclist[sources[b]][0].canbetranslated(tub)
+				# tub = -ScopeDelta(tub)
+				# tub = tub+converter
+
 				tub = -ScopeDelta(tub)+converter
+
 				# tub = tub3+tub1
-				wlist.append((wclist[sources[b]][0].dpush(tub),wclist[sources[b]][1],wclist[sources[b]][2],wclist[sources[b]][3]))
+				try:
+					# wclist[sources[b]][0].canbetranslated(ScopeDelta([([(self.verdepth+x,None) for x in range(len(wclist)) if wclist[x][0].obj==None],)]))
+					# wclist[sources[b]][0].canbetranslated(ScopeDelta())
+					wclist[sources[b]][0].canbetranslated(tub)
+					wlist.append((wclist[sources[b]][0].dpush(tub),wclist[sources[b]][1],wclist[sources[b]][2],wclist[sources[b]][3]))
+				except Exception as u:
+					print("EXCEPTION:")
+					print(sources)
+					print(indesc.prepushes,indesc.postpushes)
+					print("\t",tub)
+					print("\t",ScopeDelta([([(self.verdepth+x,None) for x in range(len(wclist)) if wclist[x][0].obj==None],)]))
+					print()
+					print("\t",converter)
+					print("\t",len(indesc))
+					print("\t",self.verdepth)
+					print("\t",[a[0].name for a in wclist])
+					print("\t",[a[0].name for a in wlist])
+					print("\t",indesc.flatnamespace())
+					raise u
 		def correctness(lis):
 
 			for a in range(len(lis)):
@@ -3491,14 +3588,6 @@ class DualSubs(Tobj):
 							wonk = wonk.invisadd(ScopeObject([secretoken(secret,wlist,self.verdepth,self.verdepth+len(wlist))]))
 
 						if wclist[a][0].obj==None:
-							# if "old_meet_ASSOCIATIVE"==wclist[a][0].name:
-							# 	slouts = []
-							# 	for h in wclist[a][3]:
-							# 		for j in wclist:
-							# 			if j[2]==h: slouts.append(j[0].name)
-							# 	print("old_meet references: ",slouts)
-							# 	print([a.name for a in wonk.flat])
-							# 	print([a[0].name for a in wlist])
 
 							obob = dn[0].obj.verify(wonk,ltype)
 							yarn = DelayedTypeRow(wclist[a][0].name,DelayedComplication(ltype),DelayedComplication(obob),wclist[a][0].silent)
@@ -3583,7 +3672,16 @@ class DualSubs(Tobj):
 								desc.append(SubRow(dn[o].name[1:],dn[o].obj))
 								del dn[o]
 						hab = (None,wclist[a][0].name) if secret==None else ((secret,wlist),wclist[a][0].name)
+
+						# shortname = ltype...
+						# assert False
+						# def _dbgTest():
+						# 	karma = ScopeDelta([(self.verdepth+v,None) for v in wlist if wlist[v][0].obj==None])
+						# 	print("\t\t",karma)
+						# 	ltype.canbetranslated(karma)
+
 						retype = ty.applytemplate(wonk,([],[]),desc,[],blame=blame,shortname=ltype,secret=hab)
+
 
 						yarn = DelayedTypeRow(wclist[a][0].name,DelayedComplication(retype),DelayedComplication(SubsObject(verdepth=retype.verdepth)) if len(retype)==0 else None,wclist[a][0].silent)
 
@@ -3632,6 +3730,8 @@ class DualSubs(Tobj):
 
 		dengua = [i[0] for i in wclist]
 		indesc.oprows.mergedeltas(dengua)
+		def _dbgTest():
+			for d in dengua: d.canbetranslated(ScopeDelta())
 		return DualSubs([d.observe() for d in dengua],verdepth=self.verdepth,pos=blame,origin=(shortname if shortname!=None else self,geit,charm))
 class SubsObject(Tobj):
 	def isfrozen(self):
@@ -3683,8 +3783,8 @@ class SubsObject(Tobj):
 			if sub!=None: sub.obj.advlook(result,pushes,lowerbound=lowerbound)
 
 	def simpush(self,alo):
-		# short = alo.mem2.get(id(self));
-		# if short!=None: return short
+		short = alo.mem2.get(id(self));
+		if short!=None: return short
 		res = SubsObject([None if a==None else SubRow(None,a.obj.simpush(alo)) for a in self.subs],verdepth=self.verdepth+alo.amt,pos=self)
 		alo.mem2[id(self)] = res
 		return res
@@ -3871,8 +3971,8 @@ class Lambda(Tobj):
 
 
 	def simpush(self,alo):
-		# short = alo.mem2.get(id(self));
-		# if short!=None: return short
+		short = alo.mem2.get(id(self));
+		if short!=None: return short
 		res = Lambda(self.si,self.obj.simpush(alo),verdepth=self.verdepth+alo.amt,pos=self)
 		alo.mem2[id(self)] = res
 		return res
@@ -3880,7 +3980,7 @@ class Lambda(Tobj):
 
 	def canbetranslated(self,pushes):
 		if alreadycanbetranslated(self,pushes): return
-		self.obj.canbetranslated(pushes)
+		self.obj.canbetranslated(ScopeDelta([([(x,None) for x in range(self.verdepth,self.verdepth+len(self.si))],)])+pushes)
 
 
 	def dpush(self,pushes,exob=None,frozen=False,selective=None):
@@ -4010,17 +4110,39 @@ class Strategy(Tobj):
 
 
 	def simpush(self,alo):
-		# short = alo.mem2.get(id(self));
-		# if short!=None: return short
+		short = alo.mem2.get(id(self));
+		if short!=None: return short
 		res = Strategy(self.args.simpush(alo),self.type.simpush(alo),verdepth=self.verdepth+alo.amt,pos=self)
 		alo.mem2[id(self)] = res
 		return res
 
 
+
 	def canbetranslated(self,pushes):
 		if alreadycanbetranslated(self,pushes): return
 		self.args.canbetranslated(pushes)
-		self.type.canbetranslated(pushes)
+		assist = []
+		sof = self.verdepth
+		for r in range(len(self.args.rows)):
+			vv = longcount(self.args.rows[r].name)
+			if self.args.rows[r].obj==None:
+				for j in range(sof,sof+vv):
+					assist.append((j,None))
+			sof+=vv
+		try:
+			self.type.canbetranslated(ScopeDelta([(assist,)])+pushes)
+		except Exception as u:
+			print("EXCEPTINO @")
+			print("\t",ScopeDelta([(assist,)])+pushes)
+			print("\t",self)
+			print("\t",self.verdepth)
+			raise u
+
+
+
+	# canbetranslated passes, then dpush happens, then canbetranslated does not pass
+	# this is a contradiction because no sub should be coming in above the verification depth.
+
 
 
 	def dpush(self,pushes,exob=None,frozen=False,selective=None):
@@ -4334,7 +4456,14 @@ class RefTree(Tobj):
 	def canbetranslated(self,pushes):
 		if alreadycanbetranslated(self,pushes): return
 		if self.core!=None:
-			self.core.core.canbetranslated(self.core.rows+pushes)
+			try:
+				self.core.core.canbetranslated(self.core.rows+pushes)
+			except Exception as u:
+				print("CANBETRANSLATED ERROR WITHIN DELAY CORE: ",self.name)
+				print("\t",self.core.core)
+				print("\t",self.core.rows)
+				print("\t",pushes)
+				raise u
 			# (self.core.rows+pushes).objconforms(self.core.core)
 		if self.args!=None: self.args.canbetranslated(pushes)
 		if self.src!=None: self.src.canbetranslated(pushes)
@@ -4850,6 +4979,9 @@ class DelayedComplication:
 		self.srows = ScopeDelta() if srows==None else srows
 		def _dbgTest():
 			self.srows.objconforms(self.ob)
+	def canbetranslated(self,pushes):
+		self.ob.canbetranslated(self.srows+pushes)
+
 	def assertValid(self):
 		self.ob.canbetranslated(self.srows)
 		# if self.ob.detect(self.srows):
@@ -5040,8 +5172,8 @@ class ScopeComplicator(Tobj):
 				madra.lookmemo = set()
 				self.secrets[i].ob.advlook(result,madra,lowerbound=lowerbound)
 	def simpush(self,alo):
-		# short = alo.mem2.get(id(self));
-		# if short!=None: return short
+		short = alo.mem2.get(id(self));
+		if short!=None: return short
 		fukko = ScopeDelta([(alo.amt,alo.lim)])
 		res = ScopeComplicator(self.core.simpush(alo),[g.dpush(fukko) for g in self.secrets],verdepth=self.verdepth+alo.amt,pos=self,names=self.names)
 		alo.mem2[id(self)] = res
@@ -5050,7 +5182,7 @@ class ScopeComplicator(Tobj):
 
 	def canbetranslated(self,pushes):
 		if alreadycanbetranslated(self,pushes): return
-		for j in self.secrets: j.ob.canbetranslated(j.srows+pushes)
+		for j in self.secrets: j.canbetranslated(pushes)
 		self.core.canbetranslated(pushes)
 
 
