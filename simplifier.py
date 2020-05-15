@@ -812,8 +812,6 @@ def alreadycanbetranslated(self,pushes,cobt=set()):
 	# cobt.add((self,hashpushes))
 	return False
 
-gdpm = {}
-gdfm = {}
 
 class ScopeDelta:
 	def __hash__(self):
