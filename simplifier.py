@@ -207,6 +207,10 @@ if True:
 		if type(jj) is DualSubs: return sum(longcount(k.name) for k in jj.rows)
 		if type(jj) is list: return sum(longcount(k) for k in jj)
 		return 1
+	def truncateby(jj,ss):
+		if type(ss) is not list: return ss
+		if type(jj) is not list: return jj
+		return [truncateby(jj[s],ss[s]) for s in range(len(jj))]
 	def longlist(jj):
 		if type(jj) is DualSubs: return sum((longlist(k.name) for k in jj.rows),[])
 		if type(jj) is list: return sum((longlist(k) for k in jj),[])
@@ -341,8 +345,8 @@ def _dbgEnter_dpush(self,pushes,exob,frozen):
 		pushes.objconforms(self)
 	dbg_haw += 1
 
-	self.canbetranslated(pushes)
-	self.hascorrectlinks()
+	# self.canbetranslated(pushes)
+	# self.hascorrectlinks()
 
 def _dbgExit_dpush(self,pushes,exob,frozen,outp):
 	global dbg_haw
@@ -357,8 +361,8 @@ def _dbgExit_dpush(self,pushes,exob,frozen,outp):
 		outp.setSafety(None if safe == None else safe+pamt)
 		outp.setVerified()
 	# try:
-	outp.canbetranslated(ScopeDelta())
-	outp.hascorrectlinks()
+	# outp.canbetranslated(ScopeDelta())
+	# outp.hascorrectlinks()
 	# except Exception as u:
 	# 	print("pushed:")
 	# 	print("\t",self.verdepth)
@@ -485,8 +489,8 @@ def _dbgExit_verify(self,indesc,carry,reqtype,then,outp):
 		car = carry.asDualSubs()
 		assert len(car)==len(outp.subs)
 
-	outp.canbetranslated(ScopeDelta())
-	outp.hascorrectlinks()
+	# outp.canbetranslated(ScopeDelta())
+	# outp.hascorrectlinks()
 	# outp.alsubbedsafety = indesc.subprots()
 
 
@@ -808,6 +812,8 @@ def alreadycanbetranslated(self,pushes,cobt=set()):
 	# cobt.add((self,hashpushes))
 	return False
 
+gdpm = {}
+gdfm = {}
 
 class ScopeDelta:
 	def __hash__(self):
@@ -836,6 +842,10 @@ class ScopeDelta:
 		# 	break
 		pass
 
+
+		# do the memo thing for gy[2]
+		# then dual memo
+
 	def __init__(self,pushes=None):
 		self.pushes = pushes if pushes !=None else []
 		self.lenchange = sum(j[0] if len(j)==2 else j[0]+len(j[2]) for j in self.pushes if len(j)==2 or len(j)==3)
@@ -844,19 +854,23 @@ class ScopeDelta:
 				if len(j)==2:
 					assert type(j[0]) is int
 					assert type(j[1]) is int
+					assert j[0]!=0
 				elif len(j)==4:
 					assert type(j[0]) is int
 					assert type(j[1]) is int
 					assert type(j[2]) is int
 					assert type(j[3]) is int
+					assert j[0]+j[1]!=j[2]+j[3] and j[0]!=j[2]
 				elif len(j)==3:
 					assert type(j[0]) is int
 					assert type(j[1]) is int
 					assert type(j[2]) is list
+					assert j[0]!=0
 				else:
 					if type(j[0]) is not list:
 						print(j)
 						assert False
+					assert len(j[0])!=0
 					for key,symbol in j[0]:#insert subtags for dbg
 						if symbol!=None: assert symbol.verdepth<=key
 
@@ -881,8 +895,6 @@ class ScopeDelta:
 				early = whomd.get(fef)
 				if early==None:
 					vov,early = next(iter(whomd.items()))
-					# def _dbgTest():
-					# 	assert early.pushes == self.pushes
 					early = early.simpush(SimpleDelta(fef-vov,min(vov,fef)))
 					whomd[fef] = early
 				return early
@@ -894,8 +906,6 @@ class ScopeDelta:
 					early = whomd.get(fef)
 					if early==None:
 						vov,early = next(iter(whomd.items()))
-						# def _dbgTest():
-						# 	assert early.pushes == self.pushes
 						early = early.simpush(SimpleDelta(fef-vov,min(vov,fef)))
 						whomd[fef] = early
 					return early
@@ -947,7 +957,7 @@ class ScopeDelta:
 	def objconforms(self,obj):
 		safe = obj.verdepth
 		self.conforms(safe)
-		obj.canbetranslated(self)
+		# obj.canbetranslated(self)
 		# if hasattr(obj,'alsubbedsafety'):
 		# 	car = self.subprots(safe)
 		# 	for j in obj.alsubbedsafety:
@@ -1000,7 +1010,7 @@ class ScopeDelta:
 					# trans = ScopeDelta([(safe-symbol.verdepth,symbol.verdepth)]+self.pushes[i+1:])
 
 					trans = ScopeDelta(self.pushes[i+1:])
-					symbol.canbetranslated(ScopeDelta([(safe-symbol.verdepth,symbol.verdepth)]+self.pushes[i+1:]))
+					# symbol.canbetranslated(ScopeDelta([(safe-symbol.verdepth,symbol.verdepth)]+self.pushes[i+1:]))
 
 					if trans.canTranslate(key,inlen=safe):
 						if type(trans.translate(key,inlen=safe)) is not int:
@@ -1139,7 +1149,7 @@ class ScopeDelta:
 			elif len(j)==3:
 				if fug>=j[1]:
 					if fug+j[0]<j[1]:
-						fug = (j[2],ScopeDelta(self.pushes[:i]+[(j[2][0].verdepth-(inlen+changefar),j[2][0].verdepth)]),ScopeDelta(self.pushes[i+1:]))
+						fug = (j[2],ScopeDelta(self.pushes[:i] if j[2][0].verdepth==(inlen+changefar) else self.pushes[:i]+[(j[2][0].verdepth-(inlen+changefar),j[2][0].verdepth)]),ScopeDelta(self.pushes[i+1:]))
 						self.tm[ifug]={inlen:fug}
 						return fug
 					fug+=j[0]+len(j[2])
@@ -1153,15 +1163,15 @@ class ScopeDelta:
 								if fug>=w[1]:
 									fug+=w[0]
 									if fug<w[1]:
-										fug = (symbol,ScopeDelta([(inlen+changefar-symbol.verdepth,symbol.verdepth)]+self.pushes[i+1:]),None,ScopeDelta(self.pushes[:i+1]))
+										fug = (symbol,ScopeDelta(self.pushes[i+1:] if inlen+changefar==symbol.verdepth else [(inlen+changefar-symbol.verdepth,symbol.verdepth)]+self.pushes[i+1:]),None,ScopeDelta(self.pushes[:i+1]))
 										break
 							elif len(w)==4:
 								if   fug>=w[0] and fug<w[0]+w[1]: fug+=w[2]+w[3]-w[0]-w[1]
 								elif fug>=w[2] and fug<w[2]+w[3]: fug+=w[0]-w[2]
 								elif fug>=w[0]+w[1] and fug<w[2]: fug+=w[3]-w[1]
 						else:
-							fug = (symbol,ScopeDelta([(inlen+changefar-symbol.verdepth,symbol.verdepth)]+self.pushes[i+1:]),fug,ScopeDelta(self.pushes[:i+1]))
-
+							fug = (symbol,ScopeDelta(self.pushes[i+1:] if inlen+changefar==symbol.verdepth else [(inlen+changefar-symbol.verdepth,symbol.verdepth)]+self.pushes[i+1:]),fug,ScopeDelta(self.pushes[:i+1]))
+						if hasattr(self,'delaymemo'): fug[1].delaymemo = self.delaymemo
 						# if not hasattr(self,'isdr'): self.isdr = {}
 						# mod = self.isdr.get(i)
 						# if mod==None:
@@ -1978,6 +1988,8 @@ class SimpleDelta:
 		self.lim = lim
 		# self.mem1 = {}
 		self.mem2 = {}
+		def _dbgTest():
+			assert amt!=0
 
 # def _dbgEnter_simpush(self,alo,outp):
 # 	s
@@ -2362,11 +2374,13 @@ class Tobj:
 
 		yatta = self.verdepth+delta.lenchange
 
-		if prep != None: njprep = prep.simpush(SimpleDelta(yatta-(longcount(prep) if prep!=None else 0)-prep.verdepth,prep.verdepth))
+		targo = yatta-(longcount(prep) if prep!=None else 0)
+
+		if prep != None: njprep = prep if targo==prep.verdepth else prep.simpush(SimpleDelta(targo-prep.verdepth,prep.verdepth))
 		pushob = None
 		if obj!=None:
 			yar = obj.ob.verdepth+obj.srows.lenchange
-			pushob = obj.dpush(ScopeDelta([(yatta-yar,yar)]))
+			pushob = obj if yatta==yar else obj.dpush(ScopeDelta([(yatta-yar,yar)]))
 		if prep == None or len(njprep.rows)==0:
 			outp = ScopeObject([DelayedTypeRow(mog,DelayedComplication(self,delta),pushob)])
 		else:
@@ -2378,7 +2392,7 @@ class Tobj:
 		return False
 	def emptyinst(self,limit,mog,prep=None):
 		if type(mog) is not int: raise InvalidSplit()
-		prep = None if prep == None else prep.simpush(SimpleDelta(limit-prep.verdepth,prep.verdepth))
+		prep = prep if prep == None or limit==prep.verdepth else prep.simpush(SimpleDelta(limit-prep.verdepth,prep.verdepth))
 
 		return RefTree(name=mog,args=prep,verdepth=limit)
 	def addfibration(self,args,pos=None):
@@ -2391,9 +2405,12 @@ class Tobj:
 		si = args.semavail()
 		disgrace = ([],[])
 		largs = args.trimallnonessential(si,disgrace=disgrace)
+
 		# ntype = self
 		ntype = compassionate_reshift(self,disgrace[0],disgrace[1])
-
+		def _dbgTest():
+			assert len(disgrace[1]) == longcount(args)-longcount(si)
+			ntype.setSafety(self.verdepth-longcount(args)+longcount(si))
 		# if len(disgrace[0]): ntype = complicate(ntype.dpush(ScopeDelta([(c[1],c[0],ntype.verdepth,0) for c in disgrace[0]])),disgrace[1],names=disgrace[2])
 		return ntype.addlambdasphase2(si,pos=pos)
 	def addlambdasphase2(self,si,pos=None):
@@ -2430,13 +2447,20 @@ class Tobj:
 				if not valid: break
 				elim+=1
 			if elim:
+				# def _dbgTest():
+				# 	if ndepth==fafter:
+				# 		print(si)
+				# 		print(elim)
+				# 		print(starter+longcount(si[:len(si)-elim]))
+				# 		print(starter)
+				# 		print(fafter)
 				ndepth = starter+longcount(si[:len(si)-elim])
-				stretch = SimpleDelta(ndepth-fafter,ndepth)
-				nsubs = SubsObject([SubRow(None,k.obj.simpush(stretch)) for k in outp.args.subs[:len(outp.args.subs)-elim]],verdepth=ndepth) if len(outp.args.subs)!=elim else None
+				stretch = ScopeDelta([(ndepth-fafter,ndepth)])
+				nsubs = SubsObject([SubRow(None,k.obj.dpush(stretch)) for k in outp.args.subs[:len(outp.args.subs)-elim]],verdepth=ndepth) if len(outp.args.subs)!=elim else None
 				# core = None
 				# if outp.core != None:
 				# 	core = outp.core.dpush_ds(ScopeDelta([(ndepth-fafter,ndepth)]),outp.name)
-				outp = RefTree(outp.name,nsubs,None if outp.src==None else outp.src.simpush(stretch),verdepth=ndepth+goffset,pos=outp,core=outp.core)
+				outp = RefTree(outp.name,nsubs,None if outp.src==None else outp.src.dpush(stretch),verdepth=ndepth+goffset,pos=outp,core=outp.core)
 		if type(self) is ScopeComplicator:
 			if elim==0:
 				outp = self
@@ -2471,7 +2495,7 @@ class Tobj:
 	def extractfibration(self,indesc,si,blame=None):
 		if len(si)==0: return (DualSubs(verdepth=self.verdepth),self)
 		try:
-			carry = self.trimallnonessential(si) if type(self) is Strategy else self
+			carry = self.trimallnonessential(si[:min(len(si),len(self.args.semavail()))]+([None]*max(0,len(self.args.semavail())-len(si)))) if type(self) is Strategy else self
 		except InvalidSplit as u:
 			u.reblame(blame,self.args,si,indesc)
 			raise u
@@ -2743,6 +2767,8 @@ def lazyflatten(F):
 
 
 def compassionate_reshift(nty,delta,cuweird):
+	def _dbgExit(outp):
+		outp.setSafety(nty.verdepth-len(cuweird))
 	if len(delta)==0: return nty
 	# if len(delta) 
 	# print("compassionate_reshifting... ",delta)
@@ -2752,9 +2778,9 @@ def compassionate_reshift(nty,delta,cuweird):
 		reqind = nty.verdepth+len(nosec)-len(cuweird)
 		actualind = ob.ob.verdepth+ob.srows.lenchange
 		nonam.append(name)
-		nosec.append(ob.dpush(ScopeDelta([(reqind-actualind,actualind)]+[(c[1],c[0],reqind,0) for c in delta[:ind]])))
+		nosec.append(ob.dpush(ScopeDelta(([] if reqind==actualind else [(reqind-actualind,actualind)])+[(c[1],c[0],reqind,0) for c in delta[:ind] if c[1]+c[0]!=reqind])))
 	try:
-		return entrycomplicate(nty.dpush(ScopeDelta([(c[1],c[0],nty.verdepth,0) for c in delta])),nosec,names=nonam)# <><><><> this is broke
+		return entrycomplicate(nty.dpush(ScopeDelta([(c[1],c[0],nty.verdepth,0) for c in delta if c[1]+c[0]!=nty.verdepth])),nosec,names=nonam)# <><><><> this is broke
 	except Exception as u:
 		print("CONTAIN")
 		print("\t",nty.verdepth)
@@ -2807,7 +2833,7 @@ class DualSubs(Tobj):
 		left = 0
 		for g in range(len(self.rows)):
 			if older.rows[g].obj == None:
-				jah = self.rows[g].obj.dpush(ScopeDelta([(-left,self.verdepth)]))
+				jah = self.rows[g].obj.dpush(ScopeDelta([(-left,self.verdepth)])) if left else self.rows[g].obj
 				if hiju!=None: jah = entrycomplicate(jah,hiju[0],names=hiju[1])
 				cuu.append(SubRow(None,jah))
 				# cuu.append(SubRow(None,complicate(self.rows[g].obj,cu)))
@@ -3011,6 +3037,9 @@ class DualSubs(Tobj):
 		def killcompare(si,divisibility):
 			if type(si) is not list: return si
 			return [si[k] if divisibility[k]==True else killcompare(k[k],divisibility[k]) for k in range(len(si)) if divisibility[k]!=False]
+		def _dbgTest():
+			if type(si) is list:
+				assert len(si)==len(self.semavail())
 		left = self.verdepth
 		cu = []
 		s = 0
@@ -3028,12 +3057,29 @@ class DualSubs(Tobj):
 			# for i in self.rows[k].ripsingle(): cusecrets.append(i.dpush(chdelta))
 			# delta.append((longcount(self.rows[k].name),left))
 			if type(self.rows[k].name) is not list:
+				# assert type(si[s-1]) is not list
 				if self.rows[k].obj!=None:
 					# chdelta = ScopeDelta([(c[1],c[0],left,0) for c in delta])
 					cuweird.append((self.rows[k].name,DelayedComplication(self.rows[k].obj),len(delta)))
 					# cunames.append(self.rows[k].name)
 					delta.append((1,left-sum(a[0] for a in delta)))
-			elif not conservativeeq(self.rows[k].type.get_sem_si(self.rows[k].name),self.rows[k].name):
+					# def _dbgTest():
+					# 	# assert longcount(self.rows[k].name)==1
+					# 	# assert len(cuweird)-1==longcount(self.semavail()[:s])-longcount([n.name for n in self.rows[:k]])
+					# 	# assert longcount(self.rows[k].name)+longcount([n.name for n in self.rows[:k]])==longcount([n.name for n in self.rows[:k+1]])
+					# 	# print([a.name for a in self.rows])
+					# 	# print(self.semavail())
+					# 	# print(s,k)
+					# 	# print(len(cuweird))
+					# 	# print(longcount(self.semavail()[:s])-longcount([n.name for n in self.rows[:k+1]]))
+					# 	assert -len(cuweird)==longcount(self.semavail(si)[:s])-longcount([n.name for n in self.rows[:k+1]])
+				# else:
+				# 	assert type(si[s-1]) is not list
+
+				# def _dbgTest():
+				# 	assert -len(cuweird)==longcount(self.semavail(si)[:s])-longcount([n.name for n in self.rows[:k+1]])
+				# assert False
+			elif not conservativeeq(self.rows[k].type.get_sem_si(self.rows[k].name),self.rows[k].name) or self.rows[k].obj!=None:
 				muz = self.rows[k].type.flatten(ScopeDelta(),self.rows[k].name,obj=None if self.rows[k].obj==None else DelayedComplication(self.rows[k].obj)).flat
 				if self.rows[k].obj!=None:
 					# chdelta = ScopeDelta([(c[1],c[0],left,0) for c in delta])
@@ -3042,6 +3088,8 @@ class DualSubs(Tobj):
 						# cusecrets.append(m.obj)
 						# cunames.append(m.name)
 					delta.append((len(muz),left-sum(a[0] for a in delta)))
+					# def _dbgTest():
+					# 	assert -len(cuweird)==longcount(self.semavail(si)[:s])-longcount([n.name for n in self.rows[:k+1]])
 				else:
 					def unshift(recleft,brap,old,new):
 						if type(old) is not list: return recleft+1
@@ -3065,14 +3113,24 @@ class DualSubs(Tobj):
 							recleft += yat
 						return recleft
 					unshift(0,brap[k],self.rows[k].name,si[s-1])
+					# def _dbgTest():
+					# 	assert -len(cuweird)==longcount(self.semavail(si)[:s])-longcount([n.name for n in self.rows[:k+1]])
+			# else:
+			# 	def _dbgTest():
+			# 		assert longcount(self.rows[k].name)==longcount(self.semavail(si)[s-1])
 			left += longcount(self.rows[k].name)
+		# 	def _dbgTest():
+		# 		assert left == self.verdepth+longcount([n.name for n in self.rows[:k+1]])
+		# 		assert -len(cuweird)==longcount(self.semavail(si)[:s])-longcount([n.name for n in self.rows[:k+1]])
+		# def _dbgTest():
+		# 	assert -len(cuweird)==longcount(self.semavail(si))-longcount(self)
 		return DualSubs(cu,verdepth=self.verdepth)
 
 
 	@lazyflatten
 	def flatten(self,delta,mog,assistmog,prep=None,obj=None,fillout=None,then=False):
-		def _dbgTest():
-			self.canbetranslated(ScopeDelta())
+		# def _dbgTest():
+		# 	self.canbetranslated(ScopeDelta())
 		s = 0
 		cu = ScopeObject()
 		left = self.verdepth + delta.lenchange
@@ -3125,7 +3183,7 @@ class DualSubs(Tobj):
 				s+=1
 				jaaj = longflattenunravel(self.rows[n].name,self.rows[n].type.get_divisibility_si(),cobj,self.verdepth+left)
 				delta = delta + ScopeDelta([(jaaj[0],)])
-				nobj = DelayedComplication(cobj,ScopeDelta([(left,self.verdepth)]))
+				nobj = DelayedComplication(cobj,ScopeDelta([] if left==0 else [(left,self.verdepth)]))
 			else:
 				nobj = DelayedComplication(self.rows[n].obj,delta)
 
@@ -3363,18 +3421,18 @@ class DualSubs(Tobj):
 							if yoks[k][2] != False:
 								if yoks[k][2] != True:
 									st = len(yoks)
-									othertype = yoks[k][2].simpush(SimpleDelta(lentho,lencom1))
-									obj       = yoks[k][1].simpush(SimpleDelta(lentho,lencom1))
+									othertype = yoks[k][2].simpush(SimpleDelta(lentho,lencom1)) if lentho else yoks[k][2]
+									obj       = yoks[k][1].simpush(SimpleDelta(lentho,lencom1)) if lentho else yoks[k][1]
 									obj = implicitcast(indesc,rowtype,othertype,obj,blame=yoks[k][1],soften=earlyabort,extract=yoks,thot=thot,odsc=lencom1,owner=trail+[n])
-									yoks[k] = (yoks[k][0],obj.dpush( ScopeDelta([(-lentho,lencom1)])),True)
+									yoks[k] = (yoks[k][0],obj.dpush( ScopeDelta([(-lentho,lencom1)])) if lentho else obj,True)
 									# yoks[k] = (yoks[k][0],complicate(obj,secretcu),True)
 									ming = getming(thot,st)
 									if ming!=None: raise RestartCompactify(earlyabort)
 								else:
-									obj = yoks[k][1].simpush(SimpleDelta(lentho,lencom1))
-								if rowtype.detect(ScopeDelta([(-lentho,lencom1)])): raise CouldNotDeduceType(yoks[k][1]).soften(earlyabort)
+									obj = yoks[k][1].simpush(SimpleDelta(lentho,lencom1)) if lentho else yoks[k][1]
+								if lentho and rowtype.detect(ScopeDelta([(-lentho,lencom1)])): raise CouldNotDeduceType(yoks[k][1]).soften(earlyabort)
 								break
-							if rowtype.detect(ScopeDelta([(-lentho,lencom1)])):
+							if lentho and rowtype.detect(ScopeDelta([(-lentho,lencom1)])):
 								if type(yoks[k][1]) is Lambda and not yoks[k][1].obj.needscarry():
 									try:
 										truncargs,ntype = rowtype.extractfibration(indesc,yoks[k][1].si,blame=yoks[k][1])
@@ -3386,7 +3444,7 @@ class DualSubs(Tobj):
 										obj,ntyp = yoks[k][1].obj.verify(yfactor,reqtype=True)
 										obj  =  obj.addlambdasphase2(yoks[k][1].si,pos=yoks[k][1])
 										ntyp = ntyp.addfibration(truncargs)
-										yoks[k] = (yoks[k][0],obj.dpush( ScopeDelta([(-lentho,lencom1)])),True)
+										yoks[k] = (yoks[k][0],obj.dpush( ScopeDelta([(-lentho,lencom1)])) if lentho else obj,True)
 										st = len(yoks)
 										obj = implicitcast(indesc,rowtype,ntyp,obj,blame=yoks[k][1],soften=earlyabort,extract=yoks,thot=thot,odsc=lencom1,owner=trail+[n])
 										ming = getming(thot,st)
@@ -3395,7 +3453,7 @@ class DualSubs(Tobj):
 								break
 							earlyabort = False
 							obj = yoks[k][1].verify(indesc,rowtype)
-							yoks[k] = (yoks[k][0],obj.dpush( ScopeDelta([(-lentho,lencom1)])),True)
+							yoks[k] = (yoks[k][0],obj.dpush( ScopeDelta([(-lentho,lencom1)])) if lentho else obj,True)
 							# yoks[k] = (yoks[k][0],complicate(obj,secretcu),True)
 							break
 				except LanguageError as u:
@@ -3423,8 +3481,8 @@ class DualSubs(Tobj):
 		return ((outp,earlyabort),(indesc,delta)) if then else (outp,earlyabort)
 
 	def applytemplate(self,indesc,NSC,subs,rows,blame=None,shortname=None,secret=None):
-		def _dbgTest():
-			self.canbetranslated(ScopeDelta())
+		# def _dbgTest():
+		# 	self.canbetranslated(ScopeDelta())
 		poppo = [(NSC[0][a],NSC[1][a]) for a in range(len(NSC[0]))]
 		inc = []
 		def triplecopy(ma):
@@ -3607,25 +3665,25 @@ class DualSubs(Tobj):
 				tub = -ScopeDelta(tub)+converter
 
 				# tub = tub3+tub1
-				try:
+				# try:
 					# wclist[sources[b]][0].canbetranslated(ScopeDelta([([(self.verdepth+x,None) for x in range(len(wclist)) if wclist[x][0].obj==None],)]))
 					# wclist[sources[b]][0].canbetranslated(ScopeDelta())
 					# wclist[sources[b]][0].canbetranslated(tub)
-					wlist.append((wclist[sources[b]][0].dpush(tub),wclist[sources[b]][1],wclist[sources[b]][2],wclist[sources[b]][3]))
-				except Exception as u:
-					print("EXCEPTION:")
-					print(sources)
-					print(indesc.prepushes,indesc.postpushes)
-					print("\t",tub)
-					print("\t",ScopeDelta([([(self.verdepth+x,None) for x in range(len(wclist)) if wclist[x][0].obj==None],)]))
-					print()
-					print("\t",converter)
-					print("\t",len(indesc))
-					print("\t",self.verdepth)
-					print("\t",[a[0].name for a in wclist])
-					print("\t",[a[0].name for a in wlist])
-					print("\t",indesc.flatnamespace())
-					raise u
+				wlist.append((wclist[sources[b]][0].dpush(tub),wclist[sources[b]][1],wclist[sources[b]][2],wclist[sources[b]][3]))
+				# except Exception as u:
+				# 	print("EXCEPTION:")
+				# 	print(sources)
+				# 	print(indesc.prepushes,indesc.postpushes)
+				# 	print("\t",tub)
+				# 	print("\t",ScopeDelta([([(self.verdepth+x,None) for x in range(len(wclist)) if wclist[x][0].obj==None],)]))
+				# 	print()
+				# 	print("\t",converter)
+				# 	print("\t",len(indesc))
+				# 	print("\t",self.verdepth)
+				# 	print("\t",[a[0].name for a in wclist])
+				# 	print("\t",[a[0].name for a in wlist])
+				# 	print("\t",indesc.flatnamespace())
+				# 	raise u
 		def correctness(lis):
 
 			for a in range(len(lis)):
@@ -4134,7 +4192,11 @@ class Lambda(Tobj):
 	def verify(self,indesc,carry=None,reqtype=False,then=False):
 		if len(self.si) == 0: return self.obj.verify(indesc,carry,reqtype,then)
 		if carry==None: raise TypeRequiredError(self,True)
-		truncargs,ntype = carry.extractfibration(indesc,self.si,blame=self)
+		# if len(self.si)!=carry.args.
+		try:
+			truncargs,ntype = carry.extractfibration(indesc,self.si,blame=self)
+		except InvalidSplit as u:
+			raise u.reblame(self,carry,si,indesc)
 		flatver,converter = truncargs.flatten(ScopeDelta([]),self.si,then=True)
 		nindesc = indesc.addflat(flatver)
 		return self.obj.verify(nindesc,ntype.dpush(converter)).addlambdasphase2(self.si,pos=self)
@@ -4776,7 +4838,10 @@ class RefTree(Tobj):
 
 					# if len(repls):
 					try:
-						gr = other.dpush((ScopeDelta() if rigpush==None else rigpush) + (ScopeDelta([(odsc-dsc,odsc,repls)]) if len(repls) else ScopeDelta([(odsc-dsc,odsc)])))
+						if odsc==dsc:
+							gr = other if rigpush==None else other.dpush(rigpush)
+						else:
+							gr = other.dpush((ScopeDelta() if rigpush==None else rigpush) + (ScopeDelta([(odsc-dsc,odsc,repls)]) if len(repls) else ScopeDelta([(odsc-dsc,odsc)])))
 					except  DpushError:
 						print("there was a dpusherror preventing: ",self)
 						# print("\t",)
@@ -5130,8 +5195,8 @@ class OperatorSet(Tobj):
 
 
 def complicate(core,secrets,pos=None,names=None):
-	def _dbgExit(outp):
-		outp.hascorrectlinks()
+	# def _dbgExit(outp):
+	# 	outp.hascorrectlinks()
 	if len(secrets):
 		if type(core) is ScopeComplicator:
 			return ScopeComplicator(core.core,secrets+core.secrets,verdepth=core.verdepth-len(secrets),pos=pos,names=names+core.names)
@@ -5139,8 +5204,8 @@ def complicate(core,secrets,pos=None,names=None):
 	return core
 
 def entrycomplicate(core,secrets,pos=None,names=None):
-	def _dbgExit(outp):
-		outp.hascorrectlinks()
+	# def _dbgExit(outp):
+	# 	outp.hascorrectlinks()
 	return complicate(core,secrets,pos,names)
 	svod = core.verdepth-len(secrets)
 	while True:
@@ -5199,7 +5264,7 @@ class DelayedComplication:
 		if target==ldep and exob==None: return self.observe()
 		# if self.srows.isempty() and exob==None:
 		# 	return self.ob.simpush(SimpleDelta(target-ldep,min(ldep,target)))
-		return self.ob.dpush(self.srows+ScopeDelta([(target-ldep,min(ldep,target))]),exob=exob)
+		return self.ob.dpush(self.srows if target==ldep else self.srows+ScopeDelta([(target-ldep,min(ldep,target))]),exob=exob)
 	# def delayAT(self,target):
 	# 	if not hasattr(self,'dam'): self.dam = {}
 	# 	else:
