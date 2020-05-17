@@ -723,8 +723,9 @@ class InvalidSplit(LanguageError):
 		self.si = repr(si)
 		self.tt = tt
 		self.context=context
+		return self
 	def innermessage(self):
-		return "Pattern: "+self.si+"<br>"+htmlformat(self.tt,self.context,"Tried to split: ",forbidrange=self.hiddenrange())
+		return "Pattern: "+self.si+"<br>"+self.htmlformat(self.tt,[],self.context,"Tried to split: ",forbidrange=self.hiddenrange())
 	def name(self):
 		return "Invalid split pattern"
 class CouldNotDeduceType(LanguageError):
@@ -839,6 +840,8 @@ class ScopeDelta:
 		# 			continue
 		# 	break
 		pass
+
+	# def isolate(self)
 
 
 		# do the memo thing for gy[2]
@@ -1567,18 +1570,18 @@ def implicitcast(indesc,expected,provided,obj,blame=None,soften=False,extract=No
 
 		headE,heC,heN = headE.diveIntoDualSubs()
 		if headE==None or headE.origin==None:
-			print()
-			print("\t",ihfb)
-			print("\t",ihfb[0].verdepth)
-			print("\t",ihfb[1].verdepth)
-			print("\t",ihfb[0].prepr(FormatterObject(None,fullrepresent=True),[]))
-			print("\t",ihfb[1].prepr(FormatterObject(None,fullrepresent=True),[]))
-			print()
-			print(expected.verdepth)
-			print(provided.verdepth)
-			print("\t",expected.unwrap())
-			print("\t",provided.unwrap())
-			print()
+			# print()
+			# print("\t",ihfb)
+			# print("\t",ihfb[0].verdepth)
+			# print("\t",ihfb[1].verdepth)
+			# print("\t",ihfb[0].prepr(FormatterObject(None,fullrepresent=True),[]))
+			# print("\t",ihfb[1].prepr(FormatterObject(None,fullrepresent=True),[]))
+			# print()
+			# print(expected.verdepth)
+			# print(provided.verdepth)
+			# print("\t",expected.unwrap())
+			# print("\t",provided.unwrap())
+			# print()
 
 			raise TypeMismatch(blame,expected,provided,indesc).ihfb(ihfb).soften(soften)
 		headE = entrycomplicate(headE.origin[0],heC,names=heN)
@@ -2495,8 +2498,7 @@ class Tobj:
 		try:
 			carry = self.trimallnonessential(si[:min(len(si),len(self.args.semavail()))]+([None]*max(0,len(self.args.semavail())-len(si)))) if type(self) is Strategy else self
 		except InvalidSplit as u:
-			u.reblame(blame,self.args,si,indesc)
-			raise u
+			raise u.reblame(blame,self.args,si,indesc)
 		ac = []
 		while len(si)>len(ac):
 			carry = carry.decode()
@@ -2638,6 +2640,8 @@ class Tobj:
 # finish isSubOb and the translator for delaywedsubs
 
 	def isSubOb(self):
+		# def _dbgExit(outp):
+		# 	assert type(outp) is not bool
 		def _dbgEnter():
 			assert self.verdepth!=None
 		# def _dbgExit(outp):
@@ -2704,6 +2708,13 @@ class Tobj:
 					return Inspection(k.root,k.inspect+[self.name])
 				print("==="*8)
 				print(k)
+				print(type(self.src))
+				print(type(self.src.core))
+				print(type(self.src.core.core))
+				print(self.src.core.core)
+				print(self.name)
+				print()
+				# print(self.src.prepr(FormatterObject(None,fullrepresent=True),[]))
 				print(type(k))
 				assert False
 		return False
@@ -3272,8 +3283,7 @@ class DualSubs(Tobj):
 				else:
 					indesc = indesc.addflat(nty.flatten(ScopeDelta([]),self.rows[n].name,obj=None if vertype.obj==None else DelayedComplication(vertype.obj)))
 			except InvalidSplit as u:
-				u.reblame(self,nty,self.rows[n].name,indesc)
-				raise u
+				raise u.reblame(self,nty,self.rows[n].name,indesc)
 
 		outp = DualSubs(outs,pos=self,verdepth=bi)
 		return (outp,indesc) if then else (outp,u_type(bi)) if reqtype else outp
@@ -4194,7 +4204,7 @@ class Lambda(Tobj):
 		try:
 			truncargs,ntype = carry.extractfibration(indesc,self.si,blame=self)
 		except InvalidSplit as u:
-			raise u.reblame(self,carry,si,indesc)
+			raise u.reblame(self,carry,self.si,indesc)
 		flatver,converter = truncargs.flatten(ScopeDelta([]),self.si,then=True)
 		nindesc = indesc.addflat(flatver)
 		return self.obj.verify(nindesc,ntype.dpush(converter)).addlambdasphase2(self.si,pos=self)
@@ -4490,6 +4500,10 @@ class RefTree(Tobj):
 
 		# if self.args!=None: assert len(self.args.subs)
 		transferlines(self,pos)
+
+
+		if self.src!=None and verdepth!=None:
+			assert type(self.src.isSubOb()) is not bool
 		def _dbgTest():
 			if self.args!=None: assert not self.args.isfrozen()
 			# if self.core!=None and self.name==5:
@@ -5243,7 +5257,7 @@ class DelayedComplication:
 	def __init__(self,obj,srows=None):
 		assert obj!=None
 		self.ob = obj
-		self.srows = ScopeDelta() if srows==None else srows
+		self.srows = ScopeDelta() if srows==None else ScopeDelta(srows.pushes)
 		def _dbgTest():
 			self.srows.objconforms(self.ob)
 	def canbetranslated(self,pushes):
@@ -5288,9 +5302,9 @@ class DelayedComplication:
 
 	def dpush(self,pushes):
 		"""dbg_ignore"""
-		comb = self.srows+pushes
-		comb.tampdown()
-		return DelayedComplication(self.ob,comb)
+		# comb = ScopeDelta(
+		# comb.isolate()
+		return DelayedComplication(self.ob,self.srows+pushes)
 	def observe(self):
 		if self.srows.isempty(): return self.ob
 		self.srows.tampdown()
