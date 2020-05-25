@@ -1,8 +1,8 @@
 
 import copy
 from inspect import getfullargspec
-from .lark import Lark, UnexpectedInput, Transformer, v_args, InlineTransformer, Tree
-from .lark.exceptions import VisitError
+from lark import Lark, UnexpectedInput, Transformer, v_args, InlineTransformer, Tree
+from lark.exceptions import VisitError
 import io
 import weakref
 
@@ -6025,3 +6025,4 @@ def _dbgTest():
 
 
 
+FileLoader(verbose=True,basepath="/Users/parkerlawrence/dev/agi/",buildpath="/Users/parkerlawrence/dev/agi/build/",redoAll=True).load("peano.ax",redo=True)
