@@ -22,7 +22,7 @@ import random
 dbg_haw = 0
 
 depth = 0
-len_check = re.compile('::lt::((?!::gt::).)*::gt::')
+len_check = re.compile(':.:lt:;:((?!:.:gt:;:).)*:.:gt:;:')
 variable_check = re.compile('^\\w+$')
 prefix_postfix_check = re.compile('^((\\+\\w+)|(\\w+\\+))$')
 
@@ -528,7 +528,7 @@ class LanguageError(Exception):
 			struct.pmultiline(fo,(self.root if self.root!=None else [])+trail,a,tabs,prepend,postpend)
 		except OutputTooLong:
 			a.append("...")
-		return "<br>".join([j.replace("&","&amp;").replace("\t","&nbsp;&nbsp;&nbsp;&nbsp;").replace("<","&lt;").replace(">","&gt;").replace("::lt::","<").replace("::gt::",">") for j in a])
+		return "<br>".join([j.replace("&","&amp;").replace("\t","&nbsp;&nbsp;&nbsp;&nbsp;").replace("<","&lt;").replace(">","&gt;").replace(":.:lt:;:","<").replace(":.:gt:;:",">") for j in a])
 	def setupstream(self,parent,ind):
 		self.root = (parent.root if parent.root!=None else [])+[ind]
 		self.exceptions = parent.exceptions
@@ -592,7 +592,7 @@ class LanguageError(Exception):
 		for choice in range(len(choices)):
 			if choice == callpattern: continue
 			discard,msg,err = choices[choice]
-			err.setupstream(self,len(self.choices)+choice)
+			if err!=None: err.setupstream(self,len(self.choices)+choice)
 			message += "<div style='background-color:#8969C3;border-radius:5px;margin-bottom:5px;'><div style='color:#282923;margin-left:10px;margin-right:10px'>Alternate interpretation:</div><div style='background-color:#594973;padding:10px;border-bottom-right-radius:5px;border-bottom-left-radius:5px;'>"
 			message += msg
 			if err==None:
@@ -1249,22 +1249,22 @@ class FormatterObject:
 
 	def getname(self,name):
 		if type(name) is str:
-			if self.forhtml: return "::lt::span style='color:#fdee73'::gt::"+name+"::lt::/span::gt::"
+			if self.forhtml: return ":.:lt:;:span style='color:#fdee73':.:gt:;:"+name+":.:lt:;:/span:.:gt:;:"
 			return name
 		if self.context == None: return str(name)
 		if type(name) is int:
 			if name in self.colormap and self.forhtml:
-				return "::lt::span style='color:"+self.colormap[name]+"'::gt::"+("{no name}" if self.context[name]==None else self.context[name])+"::lt::/span::gt::"
+				return ":.:lt:;:span style='color:"+self.colormap[name]+"':.:gt:;:"+("{no name}" if self.context[name]==None else self.context[name])+":.:lt:;:/span:.:gt:;:"
 			if len(self.context)==0: return "{uni"+"verse}"
 			return self.context[name]
 	def clickable(self,trail):
 		if not self.forhtml: return ""
-		# return "::lt::a href='"+str(trail)+"'::gt::::lt::span style='color:#FFF;background-color:#FFFFFF55;border-radius:25%;padding: -.25em .5em -.25em .5em;' ::gt::+::lt::/span::gt::::lt::/a::gt::"
-		return "::lt::a href='"+str(trail)+"' style='color:#FFF;background-color:#FFFFFF55;border-radius:25%;padding: -.25em .5em -.25em .5em;' ::gt::+::lt::/a::gt::"
+		# return ":.:lt:;:a href='"+str(trail)+"':.:gt:;::.:lt:;:span style='color:#FFF;background-color:#FFFFFF55;border-radius:25%;padding: -.25em .5em -.25em .5em;' :.:gt:;:+:.:lt:;:/span:.:gt:;::.:lt:;:/a:.:gt:;:"
+		return ":.:lt:;:a href='"+str(trail)+"' style='color:#FFF;background-color:#FFFFFF55;border-radius:25%;padding: -.25em .5em -.25em .5em;' :.:gt:;:+:.:lt:;:/a:.:gt:;:"
 	def makeclickable(self,content,trail):
 		if not self.forhtml: return content
-		# return "::lt::a href='"+str(trail)+"'::gt::::lt::span style='color:#FFF;background-color:#FFFFFF55;border-radius:25%;padding: -.25em .5em -.25em .5em;' ::gt::+::lt::/span::gt::::lt::/a::gt::"
-		return "::lt::a color=#FFF href='"+str(trail)+"'::gt::"+content+"::lt::/a::gt::"
+		# return ":.:lt:;:a href='"+str(trail)+"':.:gt:;::.:lt:;:span style='color:#FFF;background-color:#FFFFFF55;border-radius:25%;padding: -.25em .5em -.25em .5em;' :.:gt:;:+:.:lt:;:/span:.:gt:;::.:lt:;:/a:.:gt:;:"
+		return ":.:lt:;:a color=#FFF href='"+str(trail)+"':.:gt:;:"+content+":.:lt:;:/a:.:gt:;:"
 	def shouldunwrap(self,name,trail):
 		if not self.forbiddenrange.canTranslate(name): return True
 		if tuple(trail) in self.exceptions: return not self.fullrepresent
@@ -1274,10 +1274,10 @@ class FormatterObject:
 		return self.littleeasier
 
 	def red(self,inp):
-		if self.forhtml: return "::lt::span style='color:#F92672'::gt::"+inp+"::lt::/span::gt::"
+		if self.forhtml: return ":.:lt:;:span style='color:#F92672':.:gt:;:"+inp+":.:lt:;:/span:.:gt:;:"
 		return inp
 	def orange(self,inp):
-		if self.forhtml: return "::lt::span style='color:#FD971F'::gt::"+inp+"::lt::/span::gt::"
+		if self.forhtml: return ":.:lt:;:span style='color:#FD971F':.:gt:;:"+inp+":.:lt:;:/span:.:gt:;:"
 		return inp
 	def addbits(self,nb):
 		if self.context==None: return self
@@ -1304,7 +1304,7 @@ class FormatterObject:
 	def asStr(self,word):
 		if self.forhtml:
 			if word[1]==None: return str(word[0])
-			return "::lt::span style='color:"+word[1]+"'::gt::"+str(word[0])+"::lt::/span::gt::"
+			return ":.:lt:;:span style='color:"+word[1]+"':.:gt:;:"+str(word[0])+":.:lt:;:/span:.:gt:;:"
 		else: return str(word[0])
 
 	# def striphuman(lim,mosh):
