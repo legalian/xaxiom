@@ -2572,16 +2572,16 @@ class Tobj:
 		k = self
 		for s in su: k = k.reference(s)
 		return k
-	def reference(self,s,args=None):
-		def _dbgEnter():
-			if args!=None: args.setSafety(self.verdepth)
+	def reference(self,s,args=None):#
+		# def _dbgEnter():
+		# 	if args!=None: args.setSafety(self.verdepth)
 		if type(self) is SubsObject:
 			if self.subs[s]==None: return None
 			if args!=None:
 				return self.subs[s].obj.dpush(ScopeDelta(),exob=args)
 			return self.subs[s].obj
 		elif type(self) is ScopeComplicator:
-			return entrycomplicate(self.core.reference(s,args=None if args==None else args.simpush(SimpleDelta(len(self.secrets),self.verdepth))),self.secrets,names=self.names)
+			return entrycomplicate(self.core.reference(s,args=args),self.secrets,names=self.names)
 		elif type(self) is Lambda:
 			assert args!=None
 			mak = self.dpush(ScopeDelta(),exob=args,frozen=True).reference(s)
@@ -2590,6 +2590,7 @@ class Tobj:
 		elif type(self) is RefTree and self.core!=None and type(self.isSubOb()) is tuple:
 			return self.unwrapOne(selective=s).reference(s,args=args)
 		if args!=None and args.isfrozen(): raise DpushError()
+		if args!=None and self.verdepth!=args.verdepth: args = args.simpush(SimpleDelta(self.verdepth-args.verdepth,args.verdepth))
 		return RefTree_factory(self.verdepth,name=s,args=args,src=self)
 
 
@@ -4658,15 +4659,17 @@ class RefTree(Tobj):
 		if self.src!=None: self.src.canbetranslated(pushes)
 
 	def dpush(self,pushes,exob=None,frozen=False,selective=None):
-		# def _d
+		pushdepth = self.verdepth+pushes.lenchange
+		if self.name == 0: return RefTree_factory(pushdepth,0)
 		early = pushes.getmemo(self,exob,frozen)
 		if early!=None: return early
-		gy = self.name
-		pushdepth = self.verdepth+pushes.lenchange
-		decargs = SubsObject_factory(self.verdepth,[]) if self.args==None else ( self.args if pushes.isempty() else self.args.dpush(pushes,frozen=True) )
-		if exob != None and exob.verdepth<pushdepth: exob = exob.simpush(SimpleDelta(pushdepth-exob.verdepth,exob.verdepth))
-		if exob != None: decargs = SubsObject_factory(pushdepth,decargs.subs+exob.subs)
-		decargs = decargs if len(decargs.subs) else None
+
+		decargs = exob
+		if self.args!=None:
+			decargs = self.args if pushes.isempty() else self.args.dpush(pushes,frozen=True)
+			if exob != None and exob.verdepth<pushdepth: exob = exob.simpush(SimpleDelta(pushdepth-exob.verdepth,exob.verdepth))
+			if exob != None: decargs = SubsObject_factory(pushdepth,decargs.subs+exob.subs)
+
 		if self.src!=None:
 			outp = self.src.dpush(pushes,frozen=True)
 			outp = outp.reference(self.name,decargs)
@@ -4674,12 +4677,12 @@ class RefTree(Tobj):
 			if not frozen and outp.isfrozen(): raise DpushError()
 			pushes.setmemo(self,exob,frozen,outp)
 			return outp
-		if self.name!=0:
-			if self.core!=None and not pushes.canTranslate(self.name,ignoresubs=True):
-				res = self.core.dpush(self.unwrc()+pushes,exob=decargs,frozen=frozen,selective=selective)
-				if selective==None: pushes.setmemo(self,exob,frozen,res)
-				return res
-			gy = pushes.translate(self.name,ignoresubs=self.core!=None,inlen=self.verdepth)
+
+		if self.core!=None and not pushes.canTranslate(self.name,ignoresubs=True):
+			res = self.core.dpush(self.unwrc()+pushes,exob=decargs,frozen=frozen,selective=selective)
+			if selective==None: pushes.setmemo(self,exob,frozen,res)
+			return res
+		gy = pushes.translate(self.name,ignoresubs=self.core!=None,inlen=self.verdepth)
 		if type(gy) is int:
 			if decargs!=None and decargs.isfrozen():
 				if self.core==None: raise DpushError()
@@ -4687,16 +4690,6 @@ class RefTree(Tobj):
 				pushes.setmemo(self,exob,frozen,res)
 				return res
 
-			# def _dbgTest():
-			# 	pushes.conforms(self.verdepth)
-			# 	if self.core!=None:
-			# 		assert self.unwrc().lenchange+self.core.verdepth == self.verdepth
-			# 		assert (self.unwrc()+pushes).lenchange == self.unwrc().lenchange + pushes.lenchange
-			# 		self.unwrc().conforms(self.core.verdepth)
-			# 		pushes.conforms(self.verdepth)
-			# 		(self.unwrc()+pushes).conforms(self.core.verdepth)
-			# try:
-				# yass = 
 			whomd = None
 			if self.core!=None:
 				if hasattr(pushes,'delaymemo'):
@@ -4706,6 +4699,7 @@ class RefTree(Tobj):
 					whomd = self.core if pushes.islowerboundRev(gy) else self.core.dpush(self.unwrc()+pushes)
 					pushes.delaymemo[gy] = whomd
 
+			if decargs!=None and pushdepth!=decargs.verdepth: decargs = decargs.simpush(SimpleDelta(pushdepth-decargs.verdepth,decargs.verdepth))
 			res = RefTree_factory(pushdepth,gy,decargs,None,core=whomd)#None if self.core==None else pushes.memoizeGet(self.unwrc()+pushes,gy,self.core))
 
 			pushes.setmemo(self,exob,False,res)
@@ -4724,12 +4718,7 @@ class RefTree(Tobj):
 			if gy[0]==None: raise DpushError()
 			froze = gy[0].isfrozen()
 			if froze and not frozen: raise DpushError()
-			# sems = ScopeDelta([(self.verdepth+gy[3]-gy[0].verdepth,gy[0].verdepth)])+gy[1]
-			# sems.tampdown()
 			if froze or gy[2]==None or decargs!=None and decargs.isfrozen():
-				# if decargs==None and not frozen and len(sems.pushes)==1 and len(sems.pushes[0])==2 and sems.pushes[0][0]>=0:
-				# 	res = gy[0].simpush(SimpleDelta(sems.pushes[0][0],sems.pushes[0][1]))
-				# else:
 				res = gy[0] if gy[1].isempty() and decargs==None else gy[0].dpush(gy[1],exob=decargs,frozen=frozen)
 				pushes.setmemo(self,exob,frozen,res)
 				return res
@@ -4743,6 +4732,7 @@ class RefTree(Tobj):
 					whomd = gy[0] if gy[1].islowerboundRev(gy[2]) else gy[0].dpush(gy[1])
 					pushes.delaymemo[gy[2]] = whomd
 
+				if decargs!=None and pushdepth!=decargs.verdepth: decargs = decargs.simpush(SimpleDelta(pushdepth-decargs.verdepth,decargs.verdepth))
 				res = RefTree_factory(pushdepth,
 					gy[2],
 					decargs,

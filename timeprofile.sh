@@ -11,14 +11,14 @@ echo 'FileLoader(verbose=True,basepath="/Users/parkerlawrence/dev/agi/",buildpat
 # echo '  u.tohtml()'                   >> temporary.py
 # echo ' raise u'                       >> temporary.py
 
-python3 -m cProfile -o temp.dat temporary.py
+# python3 -m cProfile -o temp.dat temporary.py
 
-# python3 temporary.py
+python3 temporary.py
 # python3 debugger.py temporary.py
 
 
 rm temporary.py
-snakeviz temp.dat
+# snakeviz temp.dat
 # 
 
 
