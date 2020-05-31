@@ -1,8 +1,8 @@
 
 import copy
 from inspect import getfullargspec
-from .lark import Lark, UnexpectedInput, Transformer, v_args, InlineTransformer, Tree
-from .lark.exceptions import VisitError
+from lark import Lark, UnexpectedInput, Transformer, v_args, InlineTransformer, Tree
+from lark.exceptions import VisitError
 import io
 import weakref
 
