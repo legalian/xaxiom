@@ -915,14 +915,14 @@ class ScopeDelta:
 					for key,symbol in j[0]:#insert subtags for dbg
 						if symbol!=None: assert symbol.verdepth<=key
 
-	def memoizeGet(self,pushes,key,core):
-		if hasattr(self,'delaymemo'):
-			whomd = self.delaymemo.get(key)
-			if whomd!=None: return whomd
-		else: self.delaymemo = {}
-		whomd = core if pushes.islowerboundRev(key) else core.dpush(pushes)
-		self.delaymemo[key] = whomd
-		return whomd
+	# def memoizeGet(self,pushes,key,core):
+	# 	if hasattr(self,'delaymemo'):
+	# 		whomd = self.delaymemo.get(key)
+	# 		if whomd!=None: return whomd
+	# 	else: self.delaymemo = {}
+	# 	whomd = core if pushes.islowerboundRev(key) else core.dpush(pushes)
+	# 	self.delaymemo[key] = whomd
+	# 	return whomd
 		# def _dbgTest():
 		# 	kaka = whomd.isSubOb()
 		# 	if type(kaka) is int: assert kaka<key
@@ -963,7 +963,7 @@ class ScopeDelta:
 				b.append(c)
 			ko.memoSBP = b
 
-		if hasattr(other,'delaymemo'): ko.delaymemo = other.delaymemo
+		# if hasattr(other,'delaymemo'): ko.delaymemo = other.delaymemo
 		return ko
 	def __sub__(self,other):
 		return self+(-other)
@@ -1195,7 +1195,7 @@ class ScopeDelta:
 								elif fug>=w[0]+w[1] and fug<w[2]: fug+=w[3]-w[1]
 						else:
 							fug = (symbol,ScopeDelta(self.pushes[i+1:] if inlen+changefar==symbol.verdepth else [(inlen+changefar-symbol.verdepth,symbol.verdepth)]+self.pushes[i+1:]),fug,ScopeDelta(self.pushes[:i+1]))
-						if hasattr(self,'delaymemo'): fug[1].delaymemo = self.delaymemo
+						# if hasattr(self,'delaymemo'): fug[1].delaymemo = self.delaymemo
 						# if not hasattr(self,'isdr'): self.isdr = {}
 						# mod = self.isdr.get(i)
 						# if mod==None:
@@ -2930,9 +2930,9 @@ class DualSubs(Tobj):
 		if early!=None: return early
 		left = 0
 		cu = [row.dpush(pushes) for row in self.rows]
-		if not worrynot and hasattr(pushes,'delaymemo'):
-			for k in range(self.verdepth+pushes.lenchange,self.verdepth+pushes.lenchange+longcount(self)):
-				pushes.delaymemo.pop(k,None)
+		# if not worrynot and hasattr(pushes,'delaymemo'):
+		# 	for k in range(self.verdepth+pushes.lenchange,self.verdepth+pushes.lenchange+longcount(self)):
+		# 		pushes.delaymemo.pop(k,None)
 			# pushes.delaymemo = {k:v for (k,v) in pushes.delaymemo.items() if k<self.verdepth+pushes.lenchange}
 		passor = None
 		if self.origin!=None: passor = (self.origin[0].dpush(pushes),self.origin[1],self.origin[2])
@@ -4310,10 +4310,10 @@ class Strategy(Tobj):
 		# disgrace = ScopeDelta()
 		newargs = self.args.dpush(pushes,worrynot=True)
 		newtype = self.type.dpush(pushes)
-		if hasattr(pushes,'delaymemo'):
+		# if hasattr(pushes,'delaymemo'):
 
-			for k in range(self.verdepth+pushes.lenchange,self.verdepth+pushes.lenchange+longcount(self.args)):
-				pushes.delaymemo.pop(k,None)
+		# 	for k in range(self.verdepth+pushes.lenchange,self.verdepth+pushes.lenchange+longcount(self.args)):
+		# 		pushes.delaymemo.pop(k,None)
 			# pushes.delaymemo = {k:v for (k,v) in pushes.delaymemo.items() if k<self.verdepth+pushes.lenchange}
 		res = newtype.addfibration(newargs,pos=self)
 		pushes.setmemo(self,exob,False,res)
@@ -4699,12 +4699,12 @@ class RefTree(Tobj):
 				# yass = 
 			whomd = None
 			if self.core!=None:
-				if hasattr(pushes,'delaymemo'):
-					whomd = pushes.delaymemo.get(gy)
-				else: pushes.delaymemo = {}
-				if whomd==None:
-					whomd = self.core if pushes.islowerboundRev(gy) else self.core.dpush(self.unwrc()+pushes)
-					pushes.delaymemo[gy] = whomd
+				# if hasattr(pushes,'delaymemo'):
+				# 	whomd = pushes.delaymemo.get(gy)
+				# else: pushes.delaymemo = {}
+				# if whomd==None:
+				whomd = self.core if pushes.islowerboundRev(gy) else self.core.dpush(self.unwrc()+pushes)
+					# pushes.delaymemo[gy] = whomd
 
 			res = RefTree_factory(pushdepth,gy,decargs,None,core=whomd)#None if self.core==None else pushes.memoizeGet(self.unwrc()+pushes,gy,self.core))
 
@@ -4735,13 +4735,13 @@ class RefTree(Tobj):
 				return res
 			else:
 				assert self.core == None
-				whomd = None
-				if hasattr(pushes,'delaymemo'):
-					whomd = pushes.delaymemo.get(gy[2])
-				else: pushes.delaymemo = {}
-				if whomd==None:
-					whomd = gy[0] if gy[1].islowerboundRev(gy[2]) else gy[0].dpush(gy[1])
-					pushes.delaymemo[gy[2]] = whomd
+				# whomd = None
+				# if hasattr(pushes,'delaymemo'):
+				# 	whomd = pushes.delaymemo.get(gy[2])
+				# else: pushes.delaymemo = {}
+				# if whomd==None:
+				whomd = gy[0] if gy[1].islowerboundRev(gy[2]) else gy[0].dpush(gy[1])
+					# pushes.delaymemo[gy[2]] = whomd
 
 				res = RefTree_factory(pushdepth,
 					gy[2],
@@ -5448,9 +5448,9 @@ class ScopeComplicator(Tobj):
 		# mom = complicate(self.core.dpush(pushes+sof,exob=exob,frozen=frozen,selective=selective),res,pos=self)
 		bok = [secret.dpush(pushes) for secret in self.secrets]
 		res = complicate(self.core.dpush(pushes,exob=exob,frozen=frozen,selective=selective),bok,pos=self,names=self.names)
-		if hasattr(pushes,'delaymemo'):
-			for k in range(self.verdepth+pushes.lenchange,self.verdepth+pushes.lenchange+len(self.secrets)):
-				pushes.delaymemo.pop(k,None)
+		# if hasattr(pushes,'delaymemo'):
+		# 	for k in range(self.verdepth+pushes.lenchange,self.verdepth+pushes.lenchange+len(self.secrets)):
+		# 		pushes.delaymemo.pop(k,None)
 			# pushes.delaymemo = {k:v for (k,v) in pushes.delaymemo.items() if k<self.verdepth+pushes.lenchange}
 		if selective==None: pushes.setmemo(self,exob,frozen,res)
 		return res
