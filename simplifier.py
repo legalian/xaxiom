@@ -846,10 +846,18 @@ def alreadycanbetranslated(self,pushes,cobt=set()):
 	return False
 
 
+
+dpm = {}
+dfm = {}
+
+
+
 class ScopeDelta:
 	def __hash__(self):
 		# try:
-		return hash(tuple(tuple(a[0]) if len(a)==1 else (a[0],a[1],tuple(a[2])) if len(a)==3 else a for a in self.pushes))
+		if hasattr(self,'hashattr'): return self.hashattr
+		self.hashattr = hash(tuple(tuple(a[0]) if len(a)==1 else (a[0],a[1],tuple(a[2])) if len(a)==3 else a for a in self.pushes))
+		return self.hashattr
 		# except:
 		# 	print(self.pushes)
 		# 	assert False
@@ -921,36 +929,23 @@ class ScopeDelta:
 		# 	if type(kaka) is Inspection: assert kaka.root<key
 
 	def getmemo(self,input,exob,frozen):
-		fef = input.verdepth+self.lenchange
-		if hasattr(self,'dpm'):
-			whomd = self.dpm.get((input,exob))
-			if whomd!=None:
-				early = whomd.get(fef)
-				if early==None:
-					vov,early = next(iter(whomd.items()))
-					early = early.simpush(SimpleDelta(fef-vov,min(vov,fef)))
-					whomd[fef] = early
-				return early
-		else: self.dpm = {}
+		global dpm
+		global dfm
+		whomd = dpm.get((self,input,exob))
+		if whomd!=None: return whomd
 		if frozen:
-			if hasattr(self,'dfm'):
-				whomd = self.dfm.get((input,exob))
-				if whomd!=None:
-					early = whomd.get(fef)
-					if early==None:
-						vov,early = next(iter(whomd.items()))
-						early = early.simpush(SimpleDelta(fef-vov,min(vov,fef)))
-						whomd[fef] = early
-					return early
-			else: self.dfm = {}
+			whomd = dfm.get((self,input,exob))
+			if whomd!=None: return whomd
 		return None
 
 
 	def setmemo(self,input,exob,frozen,output):
+		global dpm
+		global dfm
 		if frozen and output.isfrozen():
-			self.dfm[(input,exob)] = {input.verdepth+self.lenchange:output}
+			dfm[(self,input,exob)] = output
 		else:
-			self.dpm[(input,exob)] = {input.verdepth+self.lenchange:output}
+			dpm[(self,input,exob)] = output
 
 
 	def __add__(self,other):
