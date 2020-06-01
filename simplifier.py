@@ -5104,12 +5104,20 @@ class ScopeComplicator(Tobj):
 		for i in reversed(range(len(self.secrets))):
 			if self.verdepth+i in result:
 				result.remove(self.verdepth+i)
-				oust.insert(0,self.secrets[i])
-				shiy.insert(0,self.names[i])
-				if self.secrets[i].srows.isempty(): self.secrets[i].ob.look(result)
+				vom = self.secrets[i].observe()
+				vom.look(result)
+
+				if type(vom) is RefTree and vom.args==None and vom.src==None:
+					conv.append((-1,i+self.verdepth))
+					for i in range(len(oust)): oust[i] = oust[i].dpush(ScopeDelta([(-1,i+self.verdepth)])) 
 				else:
-					self.secrets[i].srows.lookmemo = set()
-					self.secrets[i].ob.advlook(result,self.secrets[i].srows)
+
+					oust.insert(0,self.secrets[i])
+					shiy.insert(0,self.names[i])
+				# if self.secrets[i].srows.isempty(): self.secrets[i].ob.look(result)
+				# else:
+				# 	self.secrets[i].srows.lookmemo = set()
+				# 	self.secrets[i].ob.advlook(result,self.secrets[i].srows)
 			else:
 				conv.append((-1,i+self.verdepth))
 				for i in range(len(oust)): oust[i] = oust[i].dpush(ScopeDelta([(-1,i+self.verdepth)])) 
