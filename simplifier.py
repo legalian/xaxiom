@@ -748,68 +748,6 @@ class VariableAssignmentError(LanguageError):
 
 
 
-# RRR = 0
-
-# class DelayedSub:
-# 	def __init__(self,core,isSubOb):
-# 		self.core = core
-# 		# self.isSubOb = isSubOb
-# 		# self.rows = ScopeDelta() if rows==None else rows
-# 		self.memo = {}
-# 		# def _dbgTest():
-# 		# 	self.rows.objconforms(self.core)
-# 		# 	global RRR
-# 		# 	RRR+=1
-# 		# 	if RRR==1:
-# 		# 		if self.core.detect(self.rows):
-# 		# 			print("-=-=-=--=-==-=-=-=-=")
-# 		# 			print(self.core)
-# 		# 			print(self.rows)
-# 		# 			assert False
-# 		# 	RRR-=1
-
-# 		# 	assert isSubObPush(self.core.isSubOb(),self.rows,self.core.verdepth) == self.isSubOb
-
-
-
-# 	def dpush_ds(self,rows,myname):
-# 		if rows.isempty(): return self
-# 		if self.rows.isempty(): ko = rows
-# 		else: ko = self.rows+rows
-
-# 		# ko.tampdown()
-# 		if rows.islowerboundRev(myname): return self
-# 			# return DelayedSub(self.core,isSubObPush(self.isSubOb,rows,inlen=self.core.verdepth+self.rows.lenchange),ko)
-# 		# print(self.core.)
-# 		# if len(ko.pushes)==1 and len(ko.pushes[0])==2 and ko.pushes[0][0]>=0:
-# 		# 	debugg = self.core.simpush(SimpleDelta(ko.pushes[0][0],ko.pushes[0][1]))
-# 		# else:
-# 		debugg = self.core.dpush(ko)
-# 		return DelayedSub(debugg,debugg.isSubOb())
-# 	def verdepth(self):
-# 		return self.core.verdepth+self.rows.lenchange
-
-
-
-# need to write unwrappers
-
-
-
-
-
-# need to ensure that objects all have the same delayedsub.
-# on load you can do better w this.
-# on verify you can also do better w this.
-# mergedeltas will also help.
-
-
-
-# improve compare so it allows complicated dpushes on descent? (exob too)
-# 	-would weaken memoization
-# 	-would speed up unwraps but not that much; would just undo a triangulization.
-
-# have separate compare that is switched to that doesn't allow extractions
-# 	-triangular detect out of there for when to switch
 
 
 
@@ -837,10 +775,10 @@ def detect_memo(F):
 	def wrapper(self,ranges,**ext):
 		global memo_detect
 		if len(ext): return F(self,ranges,**ext)
-		amem = memo_detect.get((id(self),ranges))
-		if amem!=None and amem[0]() is self: return amem[1]
+		amem = memo_detect.get((self,ranges))
+		if amem!=None: return amem
 		res = F(self,ranges)
-		memo_detect[(id(self),ranges)] = (weakref.ref(self),res)
+		memo_detect[(self,ranges)] = res
 		return res
 	return wrapper
 
@@ -5248,14 +5186,13 @@ class ScopeComplicator(Tobj):
 
 	def dpush(self,pushes,exob=None,frozen=False,selective=None):
 		early = pushes.getmemo(self,exob,frozen)
-		if early!=None: return early 
-		# res,sof = semi_complicate_dpush(self.verdepth+pushes.lenchange,self.secrets,pushes)
-		# mom = complicate(self.core.dpush(pushes+sof,exob=exob,frozen=frozen,selective=selective),res,pos=self)
+		if early!=None: return early
 		bok = [secret.dpush(pushes) for secret in self.secrets]
 		res = complicate(self.core.dpush(pushes,exob=exob,frozen=frozen,selective=selective),bok,pos=self,names=self.names)
 		if hasattr(pushes,'delaymemo'):
-			for k in range(self.verdepth+pushes.lenchange,self.verdepth+pushes.lenchange+len(self.secrets)):
-				pushes.delaymemo.pop(k,None)
+			for k in range(len(self.secrets)):
+				yop = pushes.delaymemo.pop(self.verdepth+pushes.lenchange+k,None)
+				if yop!=None: bok[k] = DelayedComplication(yop)
 		if selective==None: pushes.setmemo(self,exob,frozen,res)
 		return res
 	@detect_memo
