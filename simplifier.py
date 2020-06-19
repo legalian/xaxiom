@@ -4326,7 +4326,7 @@ class OperatorSet(Tobj):
 						insert.append(urnary)
 						insert = urnary[2]
 				else:
-					insert.append(ind.verify(indesc,reqtype=True))
+					insert.append((ind,False) if ind.needscarry() else ind.verify(indesc,reqtype=True))
 					insert = None
 			def douparse(tree,carry=None):
 				if len(tree) == 2: return tree
