@@ -165,6 +165,8 @@ if True:
 	def fixnames(si,ty):
 		if si==None: return None
 		if type(si) is list:
+			if type(ty) is not tuple:
+				assert False
 			if len(ty[0]) != len(si): raise InvalidSplit()
 			return [fixnames(si[s],ty[0][s]) for s in range(len(si))]
 		else:
@@ -1913,7 +1915,7 @@ class Tobj:
 		if type(self) is Lambda: return self.obj.get_corrector_si(pushes)
 		if type(self) is ScopeComplicator: return self.core.get_corrector_si(self.correction() if pushes==None else self.correction()+pushes)
 		if type(self) is Strategy: return self.type.get_corrector_si(pushes)
-		if type(self) is DualSubs: return ([row.type.get_corrector_si(pushes) if row.obj==None else False for row in self.rows],self.get_si(pushes))
+		if type(self) is DualSubs: return ([row.type.get_corrector_si(pushes) for row in self.rows],self.get_si(pushes))
 		if type(self) is RefTree and self.core!=None:
 			return self.core.get_corrector_si(self.unwrc() if pushes==None else self.unwrc()+pushes)
 		if type(self) is RefTree and self.src==None and pushes!=None:
@@ -2120,7 +2122,7 @@ class Tobj:
 			midflow = DualSubs_factory(self.verdepth,ac).compacassign(inflow,oflow,minsafety)
 			carry = carry.type
 			if not len(oflow): break
-		if not goneonce: raise VariableAssignmentError(inflow[0][0])
+		if not goneonce: raise VariableAssignmentError(inflow[0][0]).soften(True)
 		(cuarg,earlyabort),(indesc,ndelta) = DualSubs_factory(self.verdepth,ac).peelcompactify(indesc,midflow,then=True,earlyabort=earlyabort)
 		if minsafety!=None: minsafety -= len(ac)
 		gc = longcount([k.name for k in ac])
