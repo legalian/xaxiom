@@ -2040,7 +2040,7 @@ class Tobj:
 			if elim:
 				ndepth = starter+longcount(si[:len(si)-elim])
 				stretch = ScopeDelta([(ndepth-fafter,ndepth)])
-				nsubs = SubsObject_factory(ndepth,[SubRow(None,k.obj.dpush(stretch)) for k in outp.args.subs[:len(outp.args.subs)-elim]]) if len(outp.args.subs)!=elim else None
+				nsubs = SubsObject_factory(ndepth+goffset,[SubRow(None,k.obj.dpush(stretch)) for k in outp.args.subs[:len(outp.args.subs)-elim]]) if len(outp.args.subs)!=elim else None
 				outp = RefTree_factory(ndepth+goffset,outp.name,nsubs,None if outp.src==None else outp.src.dpush(stretch),core=outp.core)
 		if type(self) is ScopeComplicator:
 			if elim==0:
