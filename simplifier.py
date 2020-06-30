@@ -2579,6 +2579,7 @@ class DualSubs(Tobj):
 		s = 0
 		cu = ScopeObject()
 		left = self.verdepth + delta.lenchange
+		oldfillout = fillout
 		for n in range(len(self.rows)):
 			nobj = None
 			if self.rows[n].obj != None:
@@ -2587,6 +2588,7 @@ class DualSubs(Tobj):
 				if obj != None:
 					nobj = obj.reference(s)
 				s+=1
+				if nobj!=None and oldfillout!=fillout: nobj = nobj.dpush(ScopeDelta([(fillout-oldfillout,oldfillout)]))
 			nflat = self.rows[n].type.flatten(delta,mog[n],assistmog[n],prep,obj=nobj,fillout=fillout)
 			cu.flat += nflat.flat
 			vv = longcount(self.rows[n].name)
@@ -2594,12 +2596,10 @@ class DualSubs(Tobj):
 				if self.rows[n].obj == None and nobj!=None:
 					jaaj = longflattenunravel(self.rows[n].name,self.rows[n].type.get_divisibility_si(),nobj.observe(),left)
 					delta = delta + ScopeDelta([(jaaj[0],)])
-				elif fillout!=left:
+				if fillout!=left:
 					delta = delta + ScopeDelta([(fillout,0,left,vv)])
 				left += vv
 			else:
-				delta = delta + ScopeDelta([(len(nflat.flat),fillout)])
-				left += len(nflat.flat)
 				if self.rows[n].obj == None:
 					if nobj == None:
 						dbgdbg = left
@@ -2609,7 +2609,8 @@ class DualSubs(Tobj):
 						kaya = nobj.observe()
 					jaaj = longflattenunravel(self.rows[n].name,self.rows[n].type.get_divisibility_si(),kaya,left)
 					delta = delta + ScopeDelta([(jaaj[0],)])
-				delta = delta + ScopeDelta([(-vv,left)])
+				delta = delta + ScopeDelta([(-vv,left),(len(nflat.flat),fillout)])
+				left += len(nflat.flat)
 			fillout = fillout + len(nflat.flat)
 		return (cu,delta) if then else cu
 
@@ -3675,13 +3676,15 @@ class Strategy(Tobj):
 		return Strategy_factory(self.verdepth,nargs,ntype)
 	@lazyflatten
 	def flatten(self,delta,mog,assistmog,prep=None,obj=None,fillout=None,then=False):
+		lindsk = self.verdepth+delta.lenchange
 		if obj != None:
-			obj = DelayedComplication(obj.ob.dpush(obj.srows,exob=self.args.emptyinst(obj.ob.verdepth+obj.srows.lenchange-longcount(self.args))))
+			mleb = obj.ob.verdepth+obj.srows.lenchange
+			#longcount(self.args)
+			obj = DelayedComplication(obj.ob.dpush(obj.srows+ScopeDelta([(longcount(self.args)+lindsk-mleb,mleb)]),exob=self.args.emptyinst(lindsk)))
 		arp = self.args.dpush(delta)
 		if prep == None:
 			njprep = arp
 		else:
-			lindsk = self.verdepth+delta.lenchange
 			calmdown = prep.simpush(SimpleDelta(lindsk-longcount(prep)-prep.verdepth,prep.verdepth))
 			njprep = DualSubs_factory(calmdown.verdepth,calmdown.rows+arp.rows)
 		return self.type.flatten(delta,mog,assistmog,njprep,obj,fillout=fillout,then=then)
@@ -5110,15 +5113,15 @@ class FileLoader:
 		self.subdeps[filename] = deps
 
 
-def _dbgTest():
-	print("OSIDJFOIDJFS")
-	try:
-		FileLoader(verbose=True,basepath="/Users/parkerlawrence/dev/agi/",buildpath="/Users/parkerlawrence/dev/agi/build/",redoAll=False).load("turing.ax",redo=True)
-		# FileLoader(verbose=True,basepath="/Users/parkerlawrence/dev/agi/",buildpath="/Users/parkerlawrence/dev/agi/build/",redoAll=False).load("builtin.ax",redo=True)
-	except Exception as u:
-		if hasattr(u,'xaxException'):
-			u.tohtml()
-		raise u
+# def _dbgTest():
+# 	print("OSIDJFOIDJFS")
+# 	try:
+# 		FileLoader(verbose=True,basepath="/Users/parkerlawrence/dev/agi/",buildpath="/Users/parkerlawrence/dev/agi/build/",redoAll=False).load("turing.ax",redo=True)
+# 		# FileLoader(verbose=True,basepath="/Users/parkerlawrence/dev/agi/",buildpath="/Users/parkerlawrence/dev/agi/build/",redoAll=False).load("builtin.ax",redo=True)
+# 	except Exception as u:
+# 		if hasattr(u,'xaxException'):
+# 			u.tohtml()
+# 		raise u
 
 
 
