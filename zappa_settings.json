@@ -1,0 +1,7 @@
+{
+    "staging": {
+        "s3_bucket": "project-x-staging",
+        "project_name": "Project X",
+        "app_function": "app.APP"
+    }
+}

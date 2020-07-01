@@ -1,0 +1,54 @@
+name: Staging Build
+
+on:
+  push:
+    branches:
+      - staging
+
+jobs:
+
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v1
+    - name: "Configure AWS Credentials"
+      uses: aws-actions/configure-aws-credentials@v1.0.1
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: us-east-1
+
+    - name: Set up Python 3.7
+      uses: actions/setup-python@v1
+      with:
+        python-version: 3.7
+
+    - uses: actions/cache@v1
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get install libpq-dev
+        python -m pip install --upgrade pip
+        python3 -m venv ~/venvs/proforma
+        source ~/venvs/proforma/bin/activate
+        pip install -r requirements.txt
+
+    - name: Lint with pylint
+      run: |
+        ~/venvs/proforma/bin/pylint **/*.py
+
+    - name: Run pytest
+      run: |
+        ~/venvs/proforma/bin/pytest --disable-pytest-warnings test/test_* --cov=. --cov-report html
+
+    - name: Zappa Deploy to Staging
+      run: |
+        source ~/venvs/proforma/bin/activate
+        VIRTUAL_ENV=~/venvs/proforma
+        ~/venvs/proforma/bin/zappa update staging

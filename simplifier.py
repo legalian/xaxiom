@@ -23,286 +23,285 @@ prefix_postfix_check = re.compile('^((\\+\\w+)|(\\w+\\+))$')
 def nonhtmllength(html):
 	return len(len_check.sub('',html))
 
-if True:
-	def pmultilinelist(lis,context,word):
-		def ppri(sj):
-			if type(sj) is not list: return context.asStr(sj)
-			return context.orange("[")+",".join([ppri(k) for k in sj])+context.orange("]")
-		if type(word) is not list: return context.asStr(word)
-		return context.orange("|")+",".join([ppri(k) for k in word])+context.orange("|")
+def pmultilinelist(lis,context,word):
+	def ppri(sj):
+		if type(sj) is not list: return context.asStr(sj)
+		return context.orange("[")+",".join([ppri(k) for k in sj])+context.orange("]")
+	if type(word) is not list: return context.asStr(word)
+	return context.orange("|")+",".join([ppri(k) for k in word])+context.orange("|")
 
-	def pmultilinecsv(context,trail,out,indent,lis,head,tail,lamadapt=None,callback=None,delim=",",seplist=None):
-		ocontext = context
-		if nonhtmllength(head)<context.magic:
-			lisrepr = []
-			for k in range(len(lis)):
-				if lamadapt!=None:
-					word = context.newcolors(lamadapt(k,lis[k]))
-					if lis[k]==None:
-						lisrepr.append(pmultilinelist(seplist[k],context,word))
-					elif isinstance(lis[k],Tobj):
-						lisrepr.append(pmultilinelist(seplist[k],context,word)+":="+lis[k].prepr(context,trail+[k]))
-					else:
-						lisrepr.append(lis[k].prepr(context,trail+[k],word=word))
-					context = context.addbits(word)
-				else: lisrepr.append(lis[k].prepr(context,trail+[k]))
-			comb = delim.join(lisrepr)
-			if nonhtmllength(head+comb+tail)<context.magic:
-				if callback == None:
-					out.append("\t"*indent+head+comb+tail)
-				else:
-					callback(context,out,head+comb+tail)
-				return
-		out.append("\t"*indent+head)
-		context = ocontext
+def pmultilinecsv(context,trail,out,indent,lis,head,tail,lamadapt=None,callback=None,delim=",",seplist=None):
+	ocontext = context
+	if nonhtmllength(head)<context.magic:
+		lisrepr = []
 		for k in range(len(lis)):
 			if lamadapt!=None:
 				word = context.newcolors(lamadapt(k,lis[k]))
 				if lis[k]==None:
-					out.append(((indent+1)*"\t")+pmultilinelist(seplist[k],context,word)+(delim if k<len(lis)-1 else ""))
+					lisrepr.append(pmultilinelist(seplist[k],context,word))
 				elif isinstance(lis[k],Tobj):
-					lis[k].pmultiline(context,trail+[k],out,indent+1,pmultilinelist(seplist[k],context,word)+":=",delim if k<len(lis)-1 else "")
+					lisrepr.append(pmultilinelist(seplist[k],context,word)+":="+lis[k].prepr(context,trail+[k]))
 				else:
-					lis[k].pmultiline(context,trail+[k],out,indent+1,"",delim if k<len(lis)-1 else "",word=word)
+					lisrepr.append(lis[k].prepr(context,trail+[k],word=word))
 				context = context.addbits(word)
+			else: lisrepr.append(lis[k].prepr(context,trail+[k]))
+		comb = delim.join(lisrepr)
+		if nonhtmllength(head+comb+tail)<context.magic:
+			if callback == None:
+				out.append("\t"*indent+head+comb+tail)
 			else:
-				lis[k].pmultiline(context,trail+[k],out,indent+1,"",delim if k<len(lis)-1 else "")
-		if callback == None:
-			out.append("\t"*indent+tail)
+				callback(context,out,head+comb+tail)
+			return
+	out.append("\t"*indent+head)
+	context = ocontext
+	for k in range(len(lis)):
+		if lamadapt!=None:
+			word = context.newcolors(lamadapt(k,lis[k]))
+			if lis[k]==None:
+				out.append(((indent+1)*"\t")+pmultilinelist(seplist[k],context,word)+(delim if k<len(lis)-1 else ""))
+			elif isinstance(lis[k],Tobj):
+				lis[k].pmultiline(context,trail+[k],out,indent+1,pmultilinelist(seplist[k],context,word)+":=",delim if k<len(lis)-1 else "")
+			else:
+				lis[k].pmultiline(context,trail+[k],out,indent+1,"",delim if k<len(lis)-1 else "",word=word)
+			context = context.addbits(word)
 		else:
-			callback(context,out,tail)
+			lis[k].pmultiline(context,trail+[k],out,indent+1,"",delim if k<len(lis)-1 else "")
+	if callback == None:
+		out.append("\t"*indent+tail)
+	else:
+		callback(context,out,tail)
 
 
 
 
-	def firstSubObPush(iso,dok,inlen):
-		while (type(iso) is int or type(iso) is Inspection) and not dok.isempty():
-			if type(iso) is int:
-				try:
-					iso = dok.translate(iso,inlen=inlen)
-				except DpushError: return None
-				if type(iso) is tuple:
-					inlen += iso[3].lenchange
-					brok = iso[3]
-					dok = iso[1]
-					iso = iso[0].isSubOb()
-					if type(iso) is tuple: return (brok,dok)
-				else: break
-			else:
-				ko = iso.inspect
-				try:
-					iso = dok.translate(iso.root,inlen=inlen)
-				except DpushError: return None
-				if type(iso) is tuple:
-					inlen += iso[3].lenchange
-					brok = iso[3]
-					dok = iso[1]
-					iso = inspectref(iso[0].isSubOb(),ko)
-					if type(iso) is tuple: return (brok,dok)
-				else:
-					iso = Inspection(iso,ko)
-					break
-		return None
-
-	def isSubObPush(iso,dok,inlen):
-		while (type(iso) is int or type(iso) is Inspection or type(iso) is tuple) and not dok.isempty():
-			if type(iso) is int:
-				iso = dok.translate(iso,inlen=inlen)
-				if type(iso) is tuple:
-					inlen += iso[3].lenchange
-					dok = iso[1]
-					iso = iso[0].isSubOb()
-				else: break
-			elif type(iso) is tuple:
-				return tuple(isSubObPush(k,dok,inlen=inlen) for k in iso)
-			else:
-				ko = iso.inspect
-				iso = dok.translate(iso.root,inlen=inlen)
-				if type(iso) is tuple:
-					inlen += iso[3].lenchange
-					dok = iso[1]
-					iso = inspectref(iso[0].isSubOb(),ko)
-				else:
-					iso = Inspection(iso,ko)
-					break
-		return iso
-
-
-	def transferlines(self,pos):
-		if pos == None:
-			self.column = 0
-			self.row = 0
-		else:
+def firstSubObPush(iso,dok,inlen):
+	while (type(iso) is int or type(iso) is Inspection) and not dok.isempty():
+		if type(iso) is int:
 			try:
-				self.row = pos.row
-				self.column = pos.column
-			except:
-				self.row = pos.line-1
-				self.column = pos.column-1
+				iso = dok.translate(iso,inlen=inlen)
+			except DpushError: return None
+			if type(iso) is tuple:
+				inlen += iso[3].lenchange
+				brok = iso[3]
+				dok = iso[1]
+				iso = iso[0].isSubOb()
+				if type(iso) is tuple: return (brok,dok)
+			else: break
+		else:
+			ko = iso.inspect
+			try:
+				iso = dok.translate(iso.root,inlen=inlen)
+			except DpushError: return None
+			if type(iso) is tuple:
+				inlen += iso[3].lenchange
+				brok = iso[3]
+				dok = iso[1]
+				iso = inspectref(iso[0].isSubOb(),ko)
+				if type(iso) is tuple: return (brok,dok)
+			else:
+				iso = Inspection(iso,ko)
+				break
+	return None
+
+def isSubObPush(iso,dok,inlen):
+	while (type(iso) is int or type(iso) is Inspection or type(iso) is tuple) and not dok.isempty():
+		if type(iso) is int:
+			iso = dok.translate(iso,inlen=inlen)
+			if type(iso) is tuple:
+				inlen += iso[3].lenchange
+				dok = iso[1]
+				iso = iso[0].isSubOb()
+			else: break
+		elif type(iso) is tuple:
+			return tuple(isSubObPush(k,dok,inlen=inlen) for k in iso)
+		else:
+			ko = iso.inspect
+			iso = dok.translate(iso.root,inlen=inlen)
+			if type(iso) is tuple:
+				inlen += iso[3].lenchange
+				dok = iso[1]
+				iso = inspectref(iso[0].isSubOb(),ko)
+			else:
+				iso = Inspection(iso,ko)
+				break
+	return iso
 
 
-	def assertstatequal(indesc,one,two):
-		if two != None and one != None:
-			if not one.compare(two):
-				raise TypeMismatch(one,two,indesc)
+def transferlines(self,pos):
+	if pos == None:
+		self.column = 0
+		self.row = 0
+	else:
+		try:
+			self.row = pos.row
+			self.column = pos.column
+		except:
+			self.row = pos.line-1
+			self.column = pos.column-1
 
 
-	def prefix(si,am):
-		if type(si) is list: return [prefix(s,am) for s in si]
-		if si==None: return '_'
-		if not variable_check.match(si): return si
-		return am+si
-	def postfix(si,am):
-		if type(si) is list: return [postfix(s,am) for s in si]
-		if si==None: return '_'
-		if not variable_check.match(si): return si
-		return si+am
-	def generalfix(si):
-		if type(si) is list: return [generalfix(s) for s in si]
-		if si==None: return '_'
+def assertstatequal(indesc,one,two):
+	if two != None and one != None:
+		if not one.compare(two):
+			raise TypeMismatch(one,two,indesc)
+
+
+def prefix(si,am):
+	if type(si) is list: return [prefix(s,am) for s in si]
+	if si==None: return '_'
+	if not variable_check.match(si): return si
+	return am+si
+def postfix(si,am):
+	if type(si) is list: return [postfix(s,am) for s in si]
+	if si==None: return '_'
+	if not variable_check.match(si): return si
+	return si+am
+def generalfix(si):
+	if type(si) is list: return [generalfix(s) for s in si]
+	if si==None: return '_'
+	return si
+
+def fixnames(si,ty):
+	if si==None: return None
+	if type(si) is list:
+		if type(ty) is not tuple:
+			assert False
+		if len(ty[0]) != len(si): raise InvalidSplit()
+		return [fixnames(si[s],ty[0][s]) for s in range(len(si))]
+	else:
+		if si=='*****': return generalfix(ty[1])
+		if si.endswith('*****'):	 return prefix(ty[1],si[:-5])
+		if si.startswith('*****'): return postfix(ty[1],si[5:])
 		return si
 
-	def fixnames(si,ty):
-		if si==None: return None
-		if type(si) is list:
-			if type(ty) is not tuple:
-				assert False
-			if len(ty[0]) != len(si): raise InvalidSplit()
-			return [fixnames(si[s],ty[0][s]) for s in range(len(si))]
-		else:
-			if si=='*****': return generalfix(ty[1])
-			if si.endswith('*****'):	 return prefix(ty[1],si[:-5])
-			if si.startswith('*****'): return postfix(ty[1],si[5:])
-			return si
 
+def untrim(car,mosh):
+	if type(mosh) is not list: return mosh
+	assert len(car) == len(mosh)
+	l = 0
+	ysu = []
+	for jk in car.rows:
+		if jk.obj == None:
+			if type(jk.type) is Strategy: ysu.append(untrim(jk.type.type,mosh[l]))
+			else: ysu.append(untrim(jk.type,mosh[l]))
+			l+=1
+		else: ysu.append(None)
+	assert l == len(mosh)
+	return ysu
+def conservativeeq(a,b):
+	if type(a) is list:
+		if type(b) is not list: return False
+		if len(a) != len(b): return False
+		return all(conservativeeq(a[c],b[c]) for c in range(len(a)))
+	return type(b) is not list
+def longcount(jj):
+	if type(jj) is DualSubs: return sum(longcount(k.name) for k in jj.rows)
+	if type(jj) is list: return sum(longcount(k) for k in jj)
+	return 1
+def truncateby(jj,ss):
+	if type(ss) is not list: return ss
+	if type(jj) is not list: return jj
+	return [truncateby(jj[s],ss[s]) for s in range(len(jj))]
+def longlist(jj):
+	if type(jj) is DualSubs: return sum((longlist(k.name) for k in jj.rows),[])
+	if type(jj) is list: return sum((longlist(k) for k in jj),[])
+	return [jj]
+def trimlongcount(car,jj):
 
-	def untrim(car,mosh):
-		if type(mosh) is not list: return mosh
-		assert len(car) == len(mosh)
-		l = 0
-		ysu = []
-		for jk in car.rows:
-			if jk.obj == None:
-				if type(jk.type) is Strategy: ysu.append(untrim(jk.type.type,mosh[l]))
-				else: ysu.append(untrim(jk.type,mosh[l]))
-				l+=1
-			else: ysu.append(None)
-		assert l == len(mosh)
-		return ysu
-	def conservativeeq(a,b):
-		if type(a) is list:
-			if type(b) is not list: return False
-			if len(a) != len(b): return False
-			return all(conservativeeq(a[c],b[c]) for c in range(len(a)))
-		return type(b) is not list
-	def longcount(jj):
-		if type(jj) is DualSubs: return sum(longcount(k.name) for k in jj.rows)
-		if type(jj) is list: return sum(longcount(k) for k in jj)
-		return 1
-	def truncateby(jj,ss):
-		if type(ss) is not list: return ss
-		if type(jj) is not list: return jj
-		return [truncateby(jj[s],ss[s]) for s in range(len(jj))]
-	def longlist(jj):
-		if type(jj) is DualSubs: return sum((longlist(k.name) for k in jj.rows),[])
-		if type(jj) is list: return sum((longlist(k) for k in jj),[])
-		return [jj]
-	def trimlongcount(car,jj):
-
-		return longcount(untrim(car,jj))
-	def striphuman(lim,mosh):
-		if type(mosh) is not list: return (lim,lim+1)
-		ysu = []
-		for jk in mosh:
-			nan,lim = striphuman(lim,jk)
-			ysu.append(nan)
-		return (ysu,lim)
+	return longcount(untrim(car,jj))
+def striphuman(lim,mosh):
+	if type(mosh) is not list: return (lim,lim+1)
+	ysu = []
+	for jk in mosh:
+		nan,lim = striphuman(lim,jk)
+		ysu.append(nan)
+	return (ysu,lim)
 
 
 
-	def downdeepverify(ahjs,amt):
-		if type(ahjs) is ScopeComplicator:
-			assert ahjs.core.verdepth == amt+len(ahjs.secrets)
-			for n in range(len(ahjs.secrets)):
-				ahjs.secrets[n].setSafety(amt+n)
-		if type(ahjs) is RefTree:
-			if ahjs.src!=None: ahjs.src.setSafety(amt)
-			if ahjs.args!=None: ahjs.args.setSafety(amt)
-		if type(ahjs) is SubsObject:
-			for j in ahjs.subs:
-				if j !=None: j.setSafetyrow(amt)
-		if type(ahjs) is DualSubs:
-			compen = 0
-			if ahjs.origin!=None: ahjs.origin[0].setSafety(amt)
-			for j in ahjs.rows:
-				if type(j.type) is Strategy and ahjs.verdepth==None:
-					j.type.setSafety(amt+compen)
-				else:
-					j.setSafetyrow(amt+compen)
-				if hasfixes(j.name): break
-				compen = compen + longcount(j.name)
+def downdeepverify(ahjs,amt):
+	if type(ahjs) is ScopeComplicator:
+		assert ahjs.core.verdepth == amt+len(ahjs.secrets)
+		for n in range(len(ahjs.secrets)):
+			ahjs.secrets[n].setSafety(amt+n)
+	if type(ahjs) is RefTree:
+		if ahjs.src!=None: ahjs.src.setSafety(amt)
+		if ahjs.args!=None: ahjs.args.setSafety(amt)
+	if type(ahjs) is SubsObject:
+		for j in ahjs.subs:
+			if j !=None: j.setSafetyrow(amt)
+	if type(ahjs) is DualSubs:
+		compen = 0
+		if ahjs.origin!=None: ahjs.origin[0].setSafety(amt)
+		for j in ahjs.rows:
+			if type(j.type) is Strategy and ahjs.verdepth==None:
+				j.type.setSafety(amt+compen)
+			else:
+				j.setSafetyrow(amt+compen)
+			if hasfixes(j.name): break
+			compen = compen + longcount(j.name)
 
 
-		if type(ahjs) is Template:
-			ahjs.src.setSafety(amt)
-		if type(ahjs) is Lambda:
-			ahjs.obj.setSafety(amt+longcount(ahjs.si))
-		if type(ahjs) is Strategy:
-			ahjs.args.setSafety(amt)
-			if ahjs.args.verdepth!=None: ahjs.type.setSafety(amt+longcount(ahjs.args))
-	def updeepverify(ahjs):
-		if type(ahjs) is ScopeComplicator:
-			return ahjs.core.verdepth+len(ahjs.secrets)
-		if type(ahjs) is RefTree:
-			if ahjs.args!=None:
-				safe = ahjs.args.getSafety()
-				if safe!=None: downdeepverify(ahjs,safe)
-				if ahjs.src!=None:
-					safe = ahjs.src.getSafety()
-					if safe!=None: downdeepverify(ahjs,safe)
-				return safe
+	if type(ahjs) is Template:
+		ahjs.src.setSafety(amt)
+	if type(ahjs) is Lambda:
+		ahjs.obj.setSafety(amt+longcount(ahjs.si))
+	if type(ahjs) is Strategy:
+		ahjs.args.setSafety(amt)
+		if ahjs.args.verdepth!=None: ahjs.type.setSafety(amt+longcount(ahjs.args))
+def updeepverify(ahjs):
+	if type(ahjs) is ScopeComplicator:
+		return ahjs.core.verdepth+len(ahjs.secrets)
+	if type(ahjs) is RefTree:
+		if ahjs.args!=None:
+			safe = ahjs.args.getSafety()
+			if safe!=None: downdeepverify(ahjs,safe)
 			if ahjs.src!=None:
 				safe = ahjs.src.getSafety()
 				if safe!=None: downdeepverify(ahjs,safe)
-				return safe
-		if type(ahjs) is SubsObject:
+			return safe
+		if ahjs.src!=None:
+			safe = ahjs.src.getSafety()
+			if safe!=None: downdeepverify(ahjs,safe)
+			return safe
+	if type(ahjs) is SubsObject:
 
-			just = None
-			for j in ahjs.subs:
-				if j !=None:
-					just = j.getSafetyrow()
-					if just != None:
-						downdeepverify(ahjs,just)
-						return just
-		if type(ahjs) is DualSubs:
-			if ahjs.origin!=None:
-				downdeepverify(ahjs,ahjs.origin[0].verdepth)
-				return ahjs.origin[0].verdepth
-			if ahjs.verdepth==None: return
-			just = None
-			compen = 0
-			for j in ahjs.rows:
+		just = None
+		for j in ahjs.subs:
+			if j !=None:
 				just = j.getSafetyrow()
 				if just != None:
 					downdeepverify(ahjs,just)
-					return just-compen
-				if hasfixes(j.name): break
-				compen = compen + longcount(j.name)
-		if type(ahjs) is Template:
-			a = ahjs.src.getSafety()
-			if a != None: downdeepverify(ahjs,a)
-			return a
-		if type(ahjs) is Lambda:
-			just = ahjs.obj.getSafety()
-			if just != None: return just-longcount(ahjs.si)
-		if type(ahjs) is Strategy:
-			return ahjs.verdepth
+					return just
+	if type(ahjs) is DualSubs:
+		if ahjs.origin!=None:
+			downdeepverify(ahjs,ahjs.origin[0].verdepth)
+			return ahjs.origin[0].verdepth
+		if ahjs.verdepth==None: return
+		just = None
+		compen = 0
+		for j in ahjs.rows:
+			just = j.getSafetyrow()
+			if just != None:
+				downdeepverify(ahjs,just)
+				return just-compen
+			if hasfixes(j.name): break
+			compen = compen + longcount(j.name)
+	if type(ahjs) is Template:
+		a = ahjs.src.getSafety()
+		if a != None: downdeepverify(ahjs,a)
+		return a
+	if type(ahjs) is Lambda:
+		just = ahjs.obj.getSafety()
+		if just != None: return just-longcount(ahjs.si)
+	if type(ahjs) is Strategy:
+		return ahjs.verdepth
 
 
-	def unify(self):
-		invert_op = getattr(self,"getSafety",None)
-		if callable(invert_op):
-			invert_op()
+def unify(self):
+	invert_op = getattr(self,"getSafety",None)
+	if callable(invert_op):
+		invert_op()
 def _dbgEnter_detect(self,ranges):
 	if isinstance(self,Tobj):
 		assert not self.isfrozen()
@@ -2576,6 +2575,7 @@ class DualSubs(Tobj):
 
 	@lazyflatten
 	def flatten(self,delta,mog,assistmog,prep=None,obj=None,fillout=None,then=False):
+		# print("flattening: ",mog)
 		s = 0
 		cu = ScopeObject()
 		left = self.verdepth + delta.lenchange
@@ -2599,18 +2599,20 @@ class DualSubs(Tobj):
 				if fillout!=left:
 					delta = delta + ScopeDelta([(fillout,0,left,vv)])
 				left += vv
+
 			else:
+				delta = delta + ScopeDelta([(len(nflat.flat),fillout)])
+				left += len(nflat.flat)#-vv
 				if self.rows[n].obj == None:
 					if nobj == None:
 						dbgdbg = left
 						passprep = prep.emptyinst(dbgdbg,striphuman(dbgdbg-longcount(prep),prep.get_si())[0]) if prep != None else None
 						kaya = self.rows[n].type.emptyinst(dbgdbg,assistmog[n],prep=passprep)
 					else:
-						kaya = nobj.observe()
+						kaya = nobj.dpush(ScopeDelta([(len(nflat.flat),fillout)])).observe()
 					jaaj = longflattenunravel(self.rows[n].name,self.rows[n].type.get_divisibility_si(),kaya,left)
 					delta = delta + ScopeDelta([(jaaj[0],)])
-				delta = delta + ScopeDelta([(-vv,left),(len(nflat.flat),fillout)])
-				left += len(nflat.flat)
+				delta = delta + ScopeDelta([(-vv,left)])				
 			fillout = fillout + len(nflat.flat)
 		return (cu,delta) if then else cu
 
@@ -5111,17 +5113,6 @@ class FileLoader:
 		self.deps.append(filename)
 		self.lengths[filename] = len(self.cumu)-olen
 		self.subdeps[filename] = deps
-
-
-# def _dbgTest():
-# 	print("OSIDJFOIDJFS")
-# 	try:
-# 		FileLoader(verbose=True,basepath="/Users/parkerlawrence/dev/agi/",buildpath="/Users/parkerlawrence/dev/agi/build/",redoAll=False).load("turing.ax",redo=True)
-# 		# FileLoader(verbose=True,basepath="/Users/parkerlawrence/dev/agi/",buildpath="/Users/parkerlawrence/dev/agi/build/",redoAll=False).load("builtin.ax",redo=True)
-# 	except Exception as u:
-# 		if hasattr(u,'xaxException'):
-# 			u.tohtml()
-# 		raise u
 
 
 

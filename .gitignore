@@ -134,5 +134,6 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
-
-
+run_windows.txt
+local_nginx.conf.txt
+qb.json
