@@ -4963,7 +4963,7 @@ class RawDataBlockWriter:
 			self.writeStr(b)
 		for o in ob:
 			o.observe().writefile(self)
-		with f as open(self.filename, "wb"):
+		with open(self.filename, "wb") as f:
 			f.write(self.block)
 
 
