@@ -2,3 +2,4 @@ zappa
 requests
 rollbar
 flask
+blinker

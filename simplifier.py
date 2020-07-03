@@ -1702,6 +1702,15 @@ class TypeRow:
 	def delay(self):
 		return DelayedTypeRow(self.name,DelayedComplication(self.type),None if self.obj==None else DelayedComplication(self.obj),self.silent)
 
+	# def writebytes(self):
+	# 	out = bytearray()
+	# 	out.append((0 if self.obj!=None else 1 if self.silent==None else 1+int(self.silent['silent'])*2+int(self.silent['contractible']!=None))*2+int(self.name==None))
+	# 	if self.name!=None: out.extend(strIncBytes(self.name))
+	# 	out.extend(self.type.writebytes())
+	# 	if self.obj!=None: out.extend(self.obj.writebytes())
+	# 	elif self.silent!=None and self.silent['contractible']!=None: out.extend(numBytes(self.silent['contractible']))
+	# 	return out
+
 	def writefile(self,file):
 		file.writeChar(["a","b","c","d","e","f","g","h","i","j"][(0 if self.obj!=None else 1 if self.silent==None else 1+int(self.silent['silent'])*2+int(self.silent['contractible']!=None))*2+int(self.name==None)])
 		if self.name!=None: file.writeStrInc(self.name)
@@ -2358,6 +2367,23 @@ class DualSubs(Tobj):
 
 	def isemptytype(self):
 		return len(self)==0
+
+
+
+
+
+	# def writebytes(self,shutup=False):
+	# 	out = bytearray()
+	# 	if not shutup:
+	# 		if self.origin ==None: out.append(2)
+	# 		else:
+	# 			out.append(3)
+	# 			out.extend(self.origin[0].writebytes())
+	# 			out.extend(numIncBytes(self.origin[1]))
+	# 			out.extend(numIncBytes(self.origin[2]))
+	# 	out.extend(numBytes(len(self.rows)))
+	# 	for j in self.rows: out.extend(j.writebytes())
+	# 	return out
 
 
 	def writefile(self,file,shutup=False):
@@ -3237,11 +3263,19 @@ class SubsObject(Tobj):
 		self.cachehash = None
 		transferlines(self,pos)
 
+	# def writebytes(self,shutup=False):
+	# 	out = bytearray()
+	# 	if not shutup: out.append(5)
+	# 	out.extend(numBytes(len(self.subs)))
+	# 	for j in self.subs: out.extend(j.obj.writebytes())
+	# 	return out
+
 	def writefile(self,file,shutup=False):
 		if not shutup: file.writeChar("F")
 		file.writeNum(len(self.subs))
 		for j in self.subs:
 			j.obj.writefile(file)
+
 
 	def prepr(self,context,trail):
 		res = context.red("(")+",".join(["EMPTY" if self.subs[k]==None else self.subs[k].prepr(context,trail+[k]) for k in range(len(self.subs))])+context.red(")")
@@ -3420,10 +3454,20 @@ class Lambda(Tobj):
 		def _dbgTest():
 			if verdepth!=None:
 				assert all(type(s) is not list for s in si)
+
+
+	# def writebytes(self):
+	# 	out = bytearray()
+	# 	out.append(6)
+	# 	out.extend(strIncBytes(self.si))
+	# 	out.extend(self.obj.writebytes())
+	# 	return out
+
 	def writefile(self,file):
 		file.writeChar("G")
 		file.writeStrInc(self.si)
 		self.obj.writefile(file)
+
 
 	@detect_memo
 	def detect(self,ranges):
@@ -3562,6 +3606,13 @@ class Strategy(Tobj):
 	def getbecsafety(self):
 		if hasattr(self,'becsafety'): return self.becsafety
 		return len(self.args)
+
+	# def writebytes(self):
+	# 	out = bytearray()
+	# 	out.append(4)
+	# 	out.extend(self.args.writebytes(shutup=True))
+	# 	out.extend(self.type.writebytes())
+	# 	return out
 
 	def writefile(self,file):
 		file.writeChar("E")
@@ -3806,6 +3857,33 @@ class RefTree(Tobj):
 						assert False
 	def semavail(self,mog=False):
 		return self.unwrap().semavail(mog)
+
+
+
+
+
+	# def writebytes(self):
+	# 	out = bytearray()
+	# 	if self.args!=None:
+	# 		if self.src==None:
+	# 			out.append(7)
+	# 			out.extend(numBytes(self.name))
+	# 			out.extend(self.args.writebytes(shutup=True))
+	# 		else:
+	# 			out.append(8)
+	# 			out.extend(numBytes(self.name))
+	# 			out.extend(self.args.writebytes(shutup=True))
+	# 			out.extend(self.src.writebytes())
+	# 	else:
+	# 		if self.src==None:
+	# 			out.append(0)
+	# 			out.extend(numBytes(self.name))
+	# 		else:
+	# 			out.append(1)
+	# 			out.extend(numBytes(self.name))
+	# 			out.extend(self.src.writebytes())
+	# 	return out
+
 	def writefile(self,file):
 		if self.args!=None:
 			if self.src==None:
@@ -4603,6 +4681,18 @@ class ScopeComplicator(Tobj):
 		if hasattr(ranges,'precal'): ranges.precal = [a for a in ranges.precal if a<self.verdepth]
 		return False
 
+
+	# def writebytes(self):
+	# 	self = self.paredown()
+	# 	if type(self) is not ScopeComplicator: return self.writebytes()
+	# 	out = bytearray()
+	# 	out.append(9)
+	# 	out.extend(numBytes(len(self.secrets)))
+	# 	for oe in self.secrets: out.extend(oe.observe().writebytes())
+	# 	out.extend(strIncBytes([a if type(a) is str else "no_name" for a in self.names]))
+	# 	out.extend(self.core.writebytes())
+	# 	return out
+
 	def writefile(self,file):
 		self = self.paredown()
 		if type(self) is not ScopeComplicator: return self.writefile(file)
@@ -4831,13 +4921,60 @@ class DataBlockWriter:
 			self.writeStr(b)
 		for o in ob:
 			o.observe().writefile(self)
+
+class RawDataBlockWriter:
+	def __init__(self,filename):
+		self.filename = filename
+		self.block = bytearray()
+		# self.block = io.BufferedWriter(io.FileIO(filename, 'w'))
+	def writeChar(self,char):
+		self.block.append(ord(char))
+		# self.writer.write(char.encode())
+	def writeStr(self,str):
+		self.block.append(len(str))
+		self.block.extend(bytearray(str,'utf-8'))
+	def writeNum(self,num):
+		assert num>=0
+		while num>128:
+			self.block.append((num&127)|128)
+			num = num//128
+		self.block.append(num)
+
+		# self.writer.write((str(num)+"'").encode())
+	def writeStrInc(self,inc):
+		if type(inc) is list:
+			self.writeNum(len(inc))
+			for j in inc: self.writeStrInc(j)
+		else:
+			self.block.append(0)
+			self.writeStr(inc)
+	def writeNumInc(self,inc):
+		if type(inc) is list:
+			self.writeNum(len(inc))
+			for j in inc: self.writeNumInc(j)
+		else:
+			self.block.append(0)
+			self.writeNum(inc)
+	def writeHeader(self,md5,deps,ob):
+		self.writeStr(md5)
+		self.writeNum(len(deps))
+		for a,b in deps:
+			self.writeStr(a)
+			self.writeStr(b)
+		for o in ob:
+			o.observe().writefile(self)
+		with f as open(self.filename, "wb"):
+			f.write(self.block)
+
+
+
 class DataBlockTransformer:
 	def __init__(self,block,head):
 		self.block = block
 		self.head = head
 	def readChar(self):
 		self.head+=1
-		return self.block[self.head-1]
+		return char(self.block[self.head-1])
 	def readStr(self):
 		oh=self.head
 		while self.block[self.head]!="'":self.head+=1
@@ -4954,6 +5091,41 @@ class DataBlockTransformer:
 			rows.append(self.TypeRow(depth).delay())
 			depth.objwrite(rows[-1].type.observe(),None if rows[-1].obj==None else rows[-1].obj.observe(),rows[-1].name)
 		return rows
+
+
+
+class RawDataBlockTransformer(DataBlockTransformer):
+	def __init__(self,block,head):
+		self.block = block
+		self.head = head
+	def readChar(self):
+		self.head+=1
+		return self.block[self.head-1]
+	def readStr(self):
+		l = self.readNum()
+		self.head+=l
+		return self.block[self.head-l:self.head].decode('utf-8')
+	def readNum(self):
+		currentplace = 1
+		outnum = 0
+		num = 128
+		while num&128:
+			num = self.block[self.head]
+			outnum += (num&127)*currentplace
+			self.head += 1
+			currentplace*=128
+		return outnum
+	def readStrInc(self):
+		g = self.readNum()
+		if g==0: return self.readStr()
+		return [self.readStrInc() for n in range(g)]
+	def readNumInc(self):
+		g = self.readNum()
+		if g==0: return self.readNum()
+		return [self.readNumInc() for n in range(g)]
+
+
+
 class FileLoader:
 	def __init__(self,overrides=None,l=None,basepath="",redoAll=False,verbose=False,buildpath=None):
 		self.lark = l
@@ -5049,8 +5221,8 @@ class FileLoader:
 		md5 = hashlib.md5(document.encode()).hexdigest()
 		self.md5s[filename] = md5
 		if not (self.redoAll or redo) and os.path.exists(self.buildpath+filename+".ver"):
-			with open(self.buildpath+filename+".ver","r") as f:
-				dbt = DataBlockTransformer(f.read(),0)
+			with open(self.buildpath+filename+".ver","br") as f:
+				dbt = RawDataBlockTransformer(bytearray(f.read()),0)
 				try:
 					fmd5,fdeps = dbt.readHeader()
 				except: pass
@@ -5107,7 +5279,7 @@ class FileLoader:
 
 		tosave = self.arrangeTo(copy.copy(self.deps),deps,ncumu.flat[olen:])
 
-		DataBlockWriter(self.buildpath+filename+".ver").writeHeader(md5,[(a,self.md5s[a]) for a in deps],tosave)
+		RawDataBlockWriter(self.buildpath+filename+".ver").writeHeader(md5,[(a,self.md5s[a]) for a in deps],tosave)
 		print("verified: ",self.basepath+filename)
 		self.cumu = ncumu.flat
 		self.deps.append(filename)
