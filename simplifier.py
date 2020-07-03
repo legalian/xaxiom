@@ -4974,7 +4974,7 @@ class DataBlockTransformer:
 		self.head = head
 	def readChar(self):
 		self.head+=1
-		return char(self.block[self.head-1])
+		return self.block[self.head-1]
 	def readStr(self):
 		oh=self.head
 		while self.block[self.head]!="'":self.head+=1
@@ -5100,7 +5100,7 @@ class RawDataBlockTransformer(DataBlockTransformer):
 		self.head = head
 	def readChar(self):
 		self.head+=1
-		return self.block[self.head-1]
+		return char(self.block[self.head-1])
 	def readStr(self):
 		l = self.readNum()
 		self.head+=l
